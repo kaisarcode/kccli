@@ -1,0 +1,4 @@
+bin/
+dist/
+PLAN.md
+.build/
