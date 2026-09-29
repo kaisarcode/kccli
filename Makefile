@@ -18,6 +18,7 @@ OSXCROSS_X86_64_CC := $(OSXCROSS_ROOT)/bin/o64-clang
 OSXCROSS_AARCH64_CC := $(OSXCROSS_ROOT)/bin/oa64-clang
 WINE ?= wine
 WINE_X86_64_CC ?= x86_64-w64-mingw32-gcc
+CC ?= cc
 
 HOST_ARCH := $(shell uname -m)
 HOST_SYSTEM := $(shell uname -s)
@@ -54,6 +55,11 @@ NATIVE_PLATFORM := windows
 endif
 
 NATIVE_TARGET := $(NATIVE_ARCH)/$(NATIVE_PLATFORM)
+NATIVE_EXE_EXT :=
+
+ifeq ($(NATIVE_PLATFORM),windows)
+NATIVE_EXE_EXT := .exe
+endif
 
 .DEFAULT_GOAL := $(NATIVE_TARGET)
 
@@ -183,8 +189,8 @@ test:
 		fi; \
 		$(MAKE) --no-print-directory '$(NATIVE_TARGET)'; \
 		mkdir -p '$(BUILD_DIR)/test'; \
-		cc -std=c11 -O2 -Wall -Wextra -Werror \
-			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/init\" \
+		$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/init$(NATIVE_EXE_EXT)\" \
 			src/test.c -o '$(BUILD_DIR)/test/kccli_test'; \
 		'$(BUILD_DIR)/test/kccli_test'; \
 	fi
