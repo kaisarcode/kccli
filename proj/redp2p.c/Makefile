@@ -90,7 +90,7 @@ define linux_target
 	[ -f "$$library" ] || { echo "kccli: missing libredp2p static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/redp2p.c "$library" -pthread -lm -o "$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/redp2p.c "$$library" -pthread -lm -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
 
@@ -139,7 +139,7 @@ define windows_target
 	[ -f "$$library" ] || { echo "kccli: missing libredp2p static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/redp2p.c "$library" -lws2_32 -lbcrypt -o "$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/redp2p.c "$$library" -lws2_32 -lbcrypt -o "$$out"; \
 	echo "OK $(1)/windows"
 endef
 
@@ -160,7 +160,7 @@ define macos_target
 	mkdir -p '$(BIN_DIR)/$(1)/macos'; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/redp2p.c "$library" -pthread -o "$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/redp2p.c "$$library" -pthread -o "$$out"; \
 	echo "OK $(1)/macos"
 endef
 
