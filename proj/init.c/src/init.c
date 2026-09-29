@@ -100,7 +100,6 @@ static void kc_cli_help(void) {
     printf("Options:\n");
     printf("  -l, --list           List registrations\n");
     printf("  -d, --delete         Remove a registration\n");
-    printf("  --dir <path>         Override metadata directory\n");
     printf("  -h, --help           Show this help\n");
     printf("  -v, --version        Show version\n");
 }
@@ -111,20 +110,6 @@ static void kc_cli_help(void) {
  */
 static void kc_cli_version(void) {
     printf("init build %llu\n", (unsigned long long)kc_init_version());
-}
-
-/**
- * Set the advanced metadata-directory override.
- * @param dir Directory path.
- * @return Zero on success, nonzero on failure.
- */
-static int kc_cli_set_dir_override(const char *dir) {
-    if (!dir || !dir[0]) return 1;
-#ifdef _WIN32
-    return _putenv_s("KC_INIT_DIR", dir) == 0 ? 0 : 1;
-#else
-    return setenv("KC_INIT_DIR", dir, 1) == 0 ? 0 : 1;
-#endif
 }
 
 #if defined(__linux__)
@@ -232,14 +217,6 @@ int main(int argc, char **argv) {
         if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             kc_cli_version();
             return 0;
-        }
-        if (strcmp(argv[i], "--dir") == 0) {
-            if (i + 1 >= argc || kc_cli_set_dir_override(argv[i + 1]) != 0) {
-                fprintf(stderr, "init: invalid --dir value\n");
-                return 1;
-            }
-            i += 2;
-            continue;
         }
         break;
     }

@@ -50,7 +50,6 @@ Commands:
 Options:
   -l, --list           List registrations
   -d, --delete         Remove a registration
-  --dir <path>         Override metadata directory
   -h, --help           Show this help
   -v, --version        Show version
 ```
