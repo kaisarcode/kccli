@@ -48,7 +48,7 @@ Run the x86_64 Windows CLI contract through Wine:
 make test wine
 ```
 
-Tests exercise the final statically linked executable and use an isolated
+Tests exercise the final executable statically linked to libinit and use an isolated
 `KC_INIT_DIR` namespace for non-destructive listing checks.
 
 ## Usage
