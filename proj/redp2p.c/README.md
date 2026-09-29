@@ -1,19 +1,36 @@
 # redp2p.c - REDP2P CLI
 
 `redp2p` runs REDP2P index, publisher, and consumer commands from the command
-line. Publisher and consumer commands bridge REDP2P traffic to local ports.
+line.
+
+A publisher exposes a local TCP or UDP service through REDP2P. A consumer makes
+that published service available on a local port.
 
 ## Build
 
+Build the native host target:
+
 ```sh
 make
+```
+
+Build all configured Linux, Windows, and macOS targets:
+
+```sh
 make all
 ```
 
 ## Tests
 
+Run the native CLI contract:
+
 ```sh
 make test
+```
+
+Run the x86_64 Windows CLI contract through Wine:
+
+```sh
 make test wine
 ```
 
@@ -24,12 +41,6 @@ Start an index:
 ```bash
 redp2p idx 9876
 redp2p idx 9876 --seats 128 --pow 16
-```
-
-List active publisher IDs from a local index:
-
-```bash
-redp2p idx 9876 --list
 ```
 
 Publish a local TCP or UDP port:
@@ -45,15 +56,15 @@ Expose one announced publisher through a local port:
 redp2p con web@idx.example.com:9876 9000
 ```
 
-The consumer derives TCP or UDP from the publisher record. It therefore does
-not accept `--tcp` or `--udp`.
+The consumer does not accept `--tcp` or `--udp`; the publisher transport is
+handled by REDP2P.
 
-The CLI accepts `REDP2P_SEATS`, `REDP2P_POW`, `REDP2P_PASS`,
-`REDP2P_VIP`, `REDP2P_MAX_CONSUMERS_PER_PUBLISHER`, and `REDP2P_STUN`
-as operator configuration and translates them into the public API.
+The CLI accepts `REDP2P_SEATS`, `REDP2P_POW`, `REDP2P_PASS`, `REDP2P_VIP`,
+`REDP2P_MAX_CONSUMERS_PER_PUBLISHER`, and `REDP2P_STUN` as operator
+configuration.
 
-`idx`, `pub`, and `con` processes run until SIGINT or SIGTERM and then
-close their handle.
+`idx`, `pub`, and `con` processes run until SIGINT or SIGTERM and then close
+their handle.
 
 Common options are `-h` / `--help` and `-v` / `--version`.
 
