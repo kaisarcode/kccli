@@ -7,7 +7,7 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../kclib/dist)
+KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
 INIT_DIST_DIR := $(KCLIB_DIST_DIR)/libinit.c
 BIN_DIR := bin
 BUILD_DIR := .build
@@ -63,7 +63,7 @@ endif
 
 .DEFAULT_GOAL := $(NATIVE_TARGET)
 
-.PHONY: all test wine dist clean \
+.PHONY: all test wine clean \
 	x86_64/linux x86_64/windows x86_64/macos \
 	i686/linux i686/windows \
 	aarch64/linux aarch64/macos \
@@ -202,8 +202,6 @@ wine:
 	fi
 	@:
 
-dist: all
-	@sh scripts/dist.sh
 
 clean:
 	@rm -rf '$(BUILD_DIR)' '$(BIN_DIR)' dist
