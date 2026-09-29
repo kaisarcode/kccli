@@ -1,17 +1,11 @@
 # init.c - Persistent Startup Registration CLI
 
-`init` is the command-line interface for `libinit.c`.
+`init` manages persistent operating-system startup registrations from the
+command line.
 
-The project does not compile libinit source. It links against the precompiled
-static library and public header for each target:
-
-```text
-kclib/dist/libinit.c/<arch>/<platform>/libinit.h
-kclib/dist/libinit.c/<arch>/<platform>/libinit.a
-```
-
-The resulting executable does not require the libinit shared library at
-runtime.
+It creates or replaces named startup commands, lists existing registrations,
+and removes registrations. It does not start, stop, supervise, or execute the
+registered commands in the current process.
 
 ## Build
 
@@ -27,13 +21,6 @@ Build all configured Linux, Windows, and macOS targets:
 make all
 ```
 
-By default, `kclib` is expected as a sibling checkout of `kccli`. Override
-the location when necessary:
-
-```sh
-make KCLIB_DIST_DIR=/path/to/kclib/dist
-```
-
 ## Tests
 
 Run the native CLI contract:
@@ -47,9 +34,6 @@ Run the x86_64 Windows CLI contract through Wine:
 ```sh
 make test wine
 ```
-
-Tests exercise the final executable statically linked to libinit and use an isolated
-`KC_INIT_DIR` namespace for non-destructive listing checks.
 
 ## Usage
 
