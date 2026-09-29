@@ -7,10 +7,16 @@
 
 set -e
 
+# Prints command usage information.
+# @return 0 on success.
 usage() {
     echo "Usage: $0 all|NAME" >&2
 }
 
+# Resolves one logical kccli name to its project directory.
+# @param proj_dir Projects directory.
+# @param name Logical kccli name.
+# @return 0 on success, 1 when the project does not exist.
 resolve_project() {
     local proj_dir="$1"
     local name="$2"
@@ -23,6 +29,9 @@ resolve_project() {
     return 1
 }
 
+# Builds one kccli project for every configured target.
+# @param project_dir Project directory.
+# @return 0 on success.
 build_project() {
     local project_dir="$1"
     local project_name
@@ -35,6 +44,9 @@ build_project() {
     )
 }
 
+# Dispatches one project build or all project builds.
+# @param target Logical kccli name or all.
+# @return 0 on success.
 main() {
     local script_dir root_dir proj_dir target project_dir
 

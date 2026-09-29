@@ -12,6 +12,9 @@ ROOT_DIR=$(dirname "$SCRIPT_DIR")
 PROJ_DIR="$ROOT_DIR/proj"
 DIST_DIR="$ROOT_DIR/dist"
 
+# Computes the SHA-256 digest of one file.
+# @param file File path.
+# @return 0 on success; the digest is written to stdout.
 compute_sha256() {
     local file="$1"
 
@@ -24,6 +27,9 @@ compute_sha256() {
     fi
 }
 
+# Returns the logical CLI name for a NAME.c project.
+# @param dir Project directory.
+# @return 0 on success; the CLI name is written to stdout.
 project_name() {
     local dir="$1"
     local name
@@ -32,6 +38,9 @@ project_name() {
     printf '%s\n' "${name%.c}"
 }
 
+# Packages all built targets for one CLI project.
+# @param project_dir Project directory.
+# @return 0 on success.
 package_project() {
     local project_dir="$1"
     local name bin_dir project_dist arch_dir arch platform_dir platform
@@ -88,6 +97,8 @@ package_project() {
     done
 }
 
+# Packages every built CLI project into the distribution directory.
+# @return 0 on success.
 main() {
     local project_dir
 

@@ -7,10 +7,16 @@
 
 set -e
 
+# Prints command usage information.
+# @return 0 on success.
 usage() {
     echo "Usage: $0 all|NAME" >&2
 }
 
+# Resolves one logical kccli name to its project directory.
+# @param proj_dir Projects directory.
+# @param name Logical kccli name.
+# @return 0 on success, 1 when the project does not exist.
 resolve_project() {
     local proj_dir="$1"
     local name="$2"
@@ -23,6 +29,9 @@ resolve_project() {
     return 1
 }
 
+# Tests one kccli project natively and through Wine.
+# @param project_dir Project directory.
+# @return 0 on success.
 test_project() {
     local project_dir="$1"
     local project_name
@@ -36,6 +45,9 @@ test_project() {
     )
 }
 
+# Dispatches one project test run or all project test runs.
+# @param target Logical kccli name or all.
+# @return 0 on success.
 main() {
     local script_dir root_dir proj_dir target project_dir
 
