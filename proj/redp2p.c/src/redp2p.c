@@ -743,7 +743,10 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
     options.receive = redp2p_cli_con_tcp_receive;
     options.userdata = session;
     status = kc_redp2p_con(&session->con, &options);
-    if (status == KC_REDP2P_OK) {
+    if (status != KC_REDP2P_OK) {
+        fprintf(stderr, "redp2p: consumer connection failed: %s\n",
+            kc_redp2p_strerror(status));
+    } else {
         while (!atomic_load(&session->owner->stopping)) {
             int n = redp2p_cli_sock_read(session->fd, (char *)buffer,
                 (int)sizeof(buffer));
