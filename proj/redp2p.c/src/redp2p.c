@@ -1275,7 +1275,8 @@ static int redp2p_cli_pub(int argc, char **argv)
         return 1;
     }
     if (!turn && (turn_user || turn_pass)) {
-        fprintf(stderr, "redp2p: TURN credentials require --turn or REDP2P_TURN\n");
+        fprintf(stderr,
+            "redp2p: TURN credentials require --turn or REDP2P_TURN\n");
         return 1;
     }
     if (redp2p_cli_platform_init() != 0) {
@@ -1386,7 +1387,8 @@ static int redp2p_cli_con(int argc, char **argv)
         !redp2p_cli_u16(argv[3], &port))
     {
         fprintf(stderr,
-            "redp2p: usage: %s con <id>@<index[:port]> <local-port> [peer options]\n",
+            "redp2p: usage: %s con <id>@<index[:port]> <local-port>"
+            " [peer options]\n",
             argv[0]);
         return 1;
     }
