@@ -16,6 +16,8 @@ XDG_DATA_HOME ?= $(HOME)/.local/share
 OSXCROSS_ROOT ?= $(XDG_DATA_HOME)/osxcross/target
 OSXCROSS_X86_64_CC := $(OSXCROSS_ROOT)/bin/o64-clang
 OSXCROSS_AARCH64_CC := $(OSXCROSS_ROOT)/bin/oa64-clang
+MACOSX_OTOOL := $(firstword $(wildcard $(OSXCROSS_ROOT)/bin/*-apple-darwin*-otool))
+MACOSX_DEPLOYMENT_TARGET ?=
 WINE ?= wine
 WINE_X86_64_CC ?= x86_64-w64-mingw32-gcc
 CC ?= cc
@@ -158,9 +160,15 @@ define macos_target
 	[ -f "$$library" ] || { echo "kccli: missing libredp2p static library: $$library" >&2; exit 1; }; \
 	[ -x '$(2)' ] || { echo "kccli: missing macOS cross-compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/macos'; \
+	min='$(MACOSX_DEPLOYMENT_TARGET)'; \
+	if [ -z "$$min" ]; then \
+		[ -x '$(MACOSX_OTOOL)' ] || { echo "kccli: missing macOS otool: set MACOSX_DEPLOYMENT_TARGET" >&2; exit 1; }; \
+		min=$$('$(MACOSX_OTOOL)' -l "$$library" 2>/dev/null | awk '/LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX/ { f = 1; next } f && /minos|version/ { v = $$2 + 0; if (v > m) { m = v; s = $$2 }; f = 0 } END { if (m > 0) print s }'); \
+	fi; \
+	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/redp2p.c "$$library" -o "$$out" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" -I"$$target" src/redp2p.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/macos"
 endef
 
