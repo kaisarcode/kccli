@@ -247,6 +247,27 @@ static int redp2p_cli_uint(const char *text, unsigned int max,
 }
 
 /**
+ * Reads and validates the forced TURN environment switch.
+ * @param enabled Destination enabled flag.
+ * @return 1 on success, 0 when REDP2P_FORCE_TURN is invalid.
+ */
+static int redp2p_cli_force_turn(int *enabled)
+{
+    const char *value;
+
+    if (!enabled) return 0;
+    *enabled = 0;
+    value = getenv("REDP2P_FORCE_TURN");
+    if (!value) return 1;
+    if (strcmp(value, "0") == 0) return 1;
+    if (strcmp(value, "1") == 0) {
+        *enabled = 1;
+        return 1;
+    }
+    return 0;
+}
+
+/**
  * Parses one publisher specification in id@index form.
  * @param text Specification text.
  * @param id Destination publisher identifier.
@@ -1063,6 +1084,7 @@ static void redp2p_cli_usage(const char *name)
     printf("  REDP2P_TURN           Optional TURN URL for pub/con\n");
     printf("  REDP2P_TURN_USER      Optional TURN username for pub/con\n");
     printf("  REDP2P_TURN_PASS      Optional TURN password for pub/con\n");
+    printf("  REDP2P_FORCE_TURN     1 forces pub/con traffic through TURN; 0 disables\n");
 }
 
 /**
@@ -1253,6 +1275,7 @@ static int redp2p_cli_pub(int argc, char **argv)
     const char *turn = getenv("REDP2P_TURN");
     const char *turn_user = getenv("REDP2P_TURN_USER");
     const char *turn_pass = getenv("REDP2P_TURN_PASS");
+    int force_turn;
     int status;
 
     if (argc < 5 || !redp2p_cli_spec(argv[2], id, index)) {
@@ -1302,11 +1325,22 @@ static int redp2p_cli_pub(int argc, char **argv)
         fprintf(stderr, "redp2p: pub requires --tcp <port> or --udp <port>\n");
         return 1;
     }
+    if (!redp2p_cli_force_turn(&force_turn)) {
+        fprintf(stderr, "redp2p: REDP2P_FORCE_TURN must be 0 or 1\n");
+        return 1;
+    }
     if (!turn && (turn_user || turn_pass)) {
         fprintf(stderr,
             "redp2p: TURN credentials require --turn or REDP2P_TURN\n");
         return 1;
     }
+    if (force_turn && !turn) {
+        fprintf(stderr,
+            "redp2p: REDP2P_FORCE_TURN=1 requires --turn or REDP2P_TURN\n");
+        return 1;
+    }
+    if (force_turn)
+        fprintf(stderr, "redp2p: forcing TURN relay\n");
     if (redp2p_cli_platform_init() != 0) {
         fprintf(stderr, "redp2p: pub failed: network failure\n");
         return 1;
@@ -1404,6 +1438,7 @@ static int redp2p_cli_con(int argc, char **argv)
     const char *turn = getenv("REDP2P_TURN");
     const char *turn_user = getenv("REDP2P_TURN_USER");
     const char *turn_pass = getenv("REDP2P_TURN_PASS");
+    int force_turn;
     redp2p_cli_con_runner_t tcp;
     redp2p_cli_con_runner_t udp;
     redp2p_cli_thread_t tcp_thread;
@@ -1450,11 +1485,22 @@ static int redp2p_cli_con(int argc, char **argv)
             return 1;
         }
     }
+    if (!redp2p_cli_force_turn(&force_turn)) {
+        fprintf(stderr, "redp2p: REDP2P_FORCE_TURN must be 0 or 1\n");
+        return 1;
+    }
     if (!turn && (turn_user || turn_pass)) {
         fprintf(stderr,
             "redp2p: TURN credentials require --turn or REDP2P_TURN\n");
         return 1;
     }
+    if (force_turn && !turn) {
+        fprintf(stderr,
+            "redp2p: REDP2P_FORCE_TURN=1 requires --turn or REDP2P_TURN\n");
+        return 1;
+    }
+    if (force_turn)
+        fprintf(stderr, "redp2p: forcing TURN relay\n");
     if (redp2p_cli_platform_init() != 0) {
         fprintf(stderr, "redp2p: con failed: network failure\n");
         return 1;
