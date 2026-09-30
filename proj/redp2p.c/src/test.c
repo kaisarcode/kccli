@@ -101,7 +101,7 @@ static int run_cli(const char *args)
  */
 int main(void)
 {
-    test_total = 6;
+    test_total = 8;
     test_current = 0;
     test_failures = 0;
 
@@ -116,6 +116,10 @@ int main(void)
         run_cli("pub test@127.0.0.1:1") != 0);
     result("con", "rejects the old consumer protocol syntax",
         run_cli("con test@127.0.0.1:1 --tcp 9000") != 0);
+    result("pub turn", "rejects TURN credentials without a TURN URL",
+        run_cli("pub test@127.0.0.1:1 --tcp 9000 --turn-user user") != 0);
+    result("con turn", "rejects TURN credentials without a TURN URL",
+        run_cli("con test@127.0.0.1:1 9000 --turn-pass secret") != 0);
 
     printf("\n%d passed, %d failed\n",
         test_total - test_failures, test_failures);
