@@ -510,9 +510,9 @@ static redp2p_cli_fd_t redp2p_cli_connect_local(int protocol, uint16_t port)
 }
 
 /**
- * Opens one CLI loopback listener or datagram socket.
+ * Opens one CLI consumer listener or datagram socket on all IPv4 interfaces.
  * @param protocol REDP2P TCP or UDP protocol.
- * @param port Local loopback port.
+ * @param port Local exposed port.
  * @return Bound descriptor, or REDP2P_CLI_FD_INVALID on failure.
  */
 static redp2p_cli_fd_t redp2p_cli_bind_local(int protocol, uint16_t port)
@@ -531,7 +531,7 @@ static redp2p_cli_fd_t redp2p_cli_bind_local(int protocol, uint16_t port)
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
-    address.sin_addr.s_addr = htonl(0x7f000001u);
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(fd, (const struct sockaddr *)&address, sizeof(address)) != 0 ||
         (protocol == KC_REDP2P_TCP && listen(fd, 64) != 0))
     {
@@ -789,10 +789,10 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
 }
 
 /**
- * Runs the CLI TCP loopback forwarding application.
+ * Runs the CLI TCP forwarding application.
  * @param id Target publisher identifier.
  * @param index Index endpoint.
- * @param port Local loopback port.
+ * @param port Local exposed port.
  * @param stun Optional STUN URL.
  * @param turn Optional TURN URL.
  * @param turn_user Optional TURN username.
@@ -943,10 +943,10 @@ static int redp2p_cli_con_udp_open(redp2p_cli_con_udp_state_t *state,
 }
 
 /**
- * Runs the CLI UDP loopback forwarding application.
+ * Runs the CLI UDP forwarding application.
  * @param id Target publisher identifier.
  * @param index Index endpoint.
- * @param port Local loopback port.
+ * @param port Local exposed port.
  * @param stun Optional STUN URL.
  * @param turn Optional TURN URL.
  * @param turn_user Optional TURN username.
@@ -1507,7 +1507,7 @@ static int redp2p_cli_con(int argc, char **argv)
         return 1;
     }
 
-    fprintf(stderr, "redp2p: tunnel to '%s' available on 127.0.0.1:%u\n",
+    fprintf(stderr, "redp2p: tunnel to '%s' available on 0.0.0.0:%u\n",
         id, (unsigned)port);
     if (tcp_started) redp2p_cli_thread_join(tcp_thread);
     if (udp_started) redp2p_cli_thread_join(udp_thread);
