@@ -484,21 +484,6 @@ static void redp2p_cli_socket_shutdown(redp2p_cli_fd_t fd)
 }
 
 /**
- * Half-closes the write direction of one CLI TCP socket.
- * @param fd Socket descriptor.
- * @return None.
- */
-static void redp2p_cli_socket_shutdown_write(redp2p_cli_fd_t fd)
-{
-    if (REDP2P_CLI_ISERR(fd)) return;
-#ifdef _WIN32
-    shutdown(fd, SD_SEND);
-#else
-    shutdown(fd, SHUT_WR);
-#endif
-}
-
-/**
  * Opens one CLI socket connected to a loopback service.
  * @param protocol REDP2P TCP or UDP protocol.
  * @param port Loopback service port.
@@ -691,16 +676,10 @@ static void redp2p_cli_pub_receive(const kc_redp2p_pub_input_t *input,
     redp2p_cli_mutex_lock(&owner->mutex);
     for (state = owner->clients; state; state = state->next) {
         if (state->client != input->client) continue;
-        if (!REDP2P_CLI_ISERR(state->fd)) {
-            if (owner->protocol == KC_REDP2P_TCP &&
-                !input->data && input->size == 0)
-            {
-                redp2p_cli_socket_shutdown_write(state->fd);
-            } else if (redp2p_cli_socket_send(state->fd, owner->protocol,
-                input->data, input->size) != 0) {
-                failed = 1;
-            }
-        }
+        if (!REDP2P_CLI_ISERR(state->fd) &&
+            redp2p_cli_socket_send(state->fd, owner->protocol,
+                input->data, input->size) != 0)
+            failed = 1;
         break;
     }
     redp2p_cli_mutex_unlock(&owner->mutex);
@@ -759,10 +738,6 @@ static void redp2p_cli_con_tcp_receive(const void *data, size_t size,
         (redp2p_cli_con_tcp_session_t *)userdata;
 
     if (!session || atomic_load(&session->owner->stopping)) return;
-    if (!data && size == 0) {
-        redp2p_cli_socket_shutdown_write(session->fd);
-        return;
-    }
     (void)redp2p_cli_socket_send(session->fd, KC_REDP2P_TCP, data, size);
 }
 
