@@ -67,11 +67,14 @@ handled by REDP2P.
 
 The CLI accepts `REDP2P_SEATS`, `REDP2P_POW`, `REDP2P_PASS`, `REDP2P_VIP`,
 `REDP2P_MAX_CONSUMERS_PER_PUBLISHER`, `REDP2P_STUN`, `REDP2P_TURN`,
-`REDP2P_TURN_USER`, and `REDP2P_TURN_PASS` as operator configuration.
+`REDP2P_TURN_USER`, `REDP2P_TURN_PASS`, and `REDP2P_FORCE_TURN` as operator configuration.
 
 For `pub` and `con`, the equivalent command-line peer options are
 `--stun`, `--turn`, `--turn-user`, and `--turn-pass`. Direct peer
 connectivity remains preferred; TURN is used by libredp2p as a relay fallback.
+Set `REDP2P_FORCE_TURN=1` to require the relay path. The CLI validates the
+switch, requires TURN configuration when it is enabled, and reports that the
+forced relay mode is active.
 
 `idx`, `pub`, and `con` processes run until SIGINT or SIGTERM and then close
 their handle.
