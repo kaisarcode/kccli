@@ -12,18 +12,21 @@ TEMP_DIR=""
 INDEX_PID=""
 TCP_BACKEND_PID=""
 UDP_BACKEND_PID=""
+PHP_BACKEND_PID=""
 TCP_PUB_PID=""
 UDP_PUB_PID=""
+HTTP_PUB_PID=""
 TCP_CON_PID=""
 UDP_CON_PID=""
+HTTP_CON_PID=""
 
 # Stops every child process and removes temporary resources.
 # @return None.
 cleanup() {
     local pids=(
-        "$TCP_CON_PID" "$UDP_CON_PID"
-        "$TCP_PUB_PID" "$UDP_PUB_PID"
-        "$TCP_BACKEND_PID" "$UDP_BACKEND_PID"
+        "$TCP_CON_PID" "$UDP_CON_PID" "$HTTP_CON_PID"
+        "$TCP_PUB_PID" "$UDP_PUB_PID" "$HTTP_PUB_PID"
+        "$TCP_BACKEND_PID" "$UDP_BACKEND_PID" "$PHP_BACKEND_PID"
         "$INDEX_PID"
     )
     local pid
@@ -106,6 +109,39 @@ wait_log() {
     return 1
 }
 
+# Waits until one TCP listener accepts a connection.
+# @param pid Child process id.
+# @param port Loopback TCP port.
+# @return 0 on success, 1 on timeout or child failure.
+wait_tcp_port() {
+    local pid="$1"
+    local port="$2"
+
+    python3 - "$pid" "$port" <<'PY'
+import os
+import socket
+import sys
+import time
+
+pid = int(sys.argv[1])
+port = int(sys.argv[2])
+
+for _ in range(200):
+    try:
+        sock = socket.create_connection(("127.0.0.1", port), timeout=0.1)
+        sock.close()
+        raise SystemExit(0)
+    except OSError:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            raise SystemExit(1)
+        time.sleep(0.05)
+
+raise SystemExit(1)
+PY
+}
+
 # Executes redp2p with operator peer configuration cleared.
 # @return Child process exit status.
 run_clean() {
@@ -116,6 +152,14 @@ command -v python3 >/dev/null 2>&1 || {
     echo "kccli: python3 is required for REDP2P process integration tests" >&2
     exit 1
 }
+command -v php >/dev/null 2>&1 || {
+    echo "kccli: php is required for REDP2P HTTP process integration tests" >&2
+    exit 1
+}
+command -v curl >/dev/null 2>&1 || {
+    echo "kccli: curl is required for REDP2P HTTP process integration tests" >&2
+    exit 1
+}
 [ -x "$CLI" ] || {
     echo "kccli: REDP2P CLI is not executable: $CLI" >&2
     exit 1
@@ -124,7 +168,7 @@ command -v python3 >/dev/null 2>&1 || {
 TEMP_DIR="$(mktemp -d)"
 trap cleanup EXIT INT TERM
 
-read -r INDEX_PORT TCP_BACKEND_PORT TCP_CON_PORT UDP_BACKEND_PORT UDP_CON_PORT <<EOF
+read -r INDEX_PORT TCP_BACKEND_PORT TCP_CON_PORT UDP_BACKEND_PORT UDP_CON_PORT PHP_BACKEND_PORT HTTP_CON_PORT <<EOF
 $(python3 - <<'PY'
 import socket
 
@@ -157,7 +201,15 @@ def dual_port():
         held.extend((t, u))
         return port
 
-print(tcp_port(), tcp_port(), dual_port(), udp_port(), dual_port())
+print(
+    tcp_port(),
+    tcp_port(),
+    dual_port(),
+    udp_port(),
+    dual_port(),
+    tcp_port(),
+    dual_port(),
+)
 PY
 )
 EOF
@@ -214,6 +266,14 @@ while True:
         conn.close()
 PY
 
+mkdir -p "$TEMP_DIR/php"
+cat > "$TEMP_DIR/php/index.php" <<'PHP'
+<?php
+header('Content-Type: text/plain');
+header('Connection: close');
+echo 'TEST123';
+PHP
+
 cat > "$TEMP_DIR/udp_backend.py" <<'PY'
 import socket
 import sys
@@ -238,6 +298,19 @@ UDP_BACKEND_PID=$!
 wait_log "$UDP_BACKEND_PID" "$TEMP_DIR/udp-backend.log" "READY" ||
     fail "UDP backend did not start"
 
+php -S "127.0.0.1:$PHP_BACKEND_PORT" -t "$TEMP_DIR/php"     >"$TEMP_DIR/php-backend.log" 2>&1 &
+PHP_BACKEND_PID=$!
+wait_tcp_port "$PHP_BACKEND_PID" "$PHP_BACKEND_PORT" ||
+    fail "PHP backend did not start"
+
+if ! curl --http1.1 --fail --silent --show-error --max-time 10     --dump-header "$TEMP_DIR/http-direct.headers"     --output "$TEMP_DIR/http-direct.body"     "http://127.0.0.1:$PHP_BACKEND_PORT/"     2>"$TEMP_DIR/http-direct.log"
+then
+    fail "direct PHP HTTP control request failed"
+fi
+if [ "$(cat "$TEMP_DIR/http-direct.body")" != "TEST123" ]; then
+    fail "direct PHP HTTP control body mismatch"
+fi
+
 run_clean idx "$INDEX_PORT" --pow 0 --max-consumers 32     >"$TEMP_DIR/index.log" 2>&1 &
 INDEX_PID=$!
 wait_log "$INDEX_PID" "$TEMP_DIR/index.log"     "redp2p: idx listening on port $INDEX_PORT" ||
@@ -253,6 +326,11 @@ UDP_PUB_PID=$!
 wait_log "$UDP_PUB_PID" "$TEMP_DIR/udp-pub.log"     "redp2p: 'itestudp' published from local port $UDP_BACKEND_PORT" ||
     fail "UDP publisher did not register"
 
+run_clean pub "itesthttp@127.0.0.1:$INDEX_PORT" --tcp "$PHP_BACKEND_PORT"     >"$TEMP_DIR/http-pub.log" 2>&1 &
+HTTP_PUB_PID=$!
+wait_log "$HTTP_PUB_PID" "$TEMP_DIR/http-pub.log"     "redp2p: 'itesthttp' published from local port $PHP_BACKEND_PORT" ||
+    fail "HTTP publisher did not register"
+
 run_clean con "itesttcp@127.0.0.1:$INDEX_PORT" "$TCP_CON_PORT"     >"$TEMP_DIR/tcp-con.log" 2>&1 &
 TCP_CON_PID=$!
 wait_log "$TCP_CON_PID" "$TEMP_DIR/tcp-con.log"     "redp2p: tunnel to 'itesttcp' available on 0.0.0.0:$TCP_CON_PORT" ||
@@ -262,6 +340,11 @@ run_clean con "itestudp@127.0.0.1:$INDEX_PORT" "$UDP_CON_PORT"     >"$TEMP_DIR/u
 UDP_CON_PID=$!
 wait_log "$UDP_CON_PID" "$TEMP_DIR/udp-con.log"     "redp2p: tunnel to 'itestudp' available on 0.0.0.0:$UDP_CON_PORT" ||
     fail "UDP consumer did not expose its local port"
+
+run_clean con "itesthttp@127.0.0.1:$INDEX_PORT" "$HTTP_CON_PORT"     >"$TEMP_DIR/http-con.log" 2>&1 &
+HTTP_CON_PID=$!
+wait_log "$HTTP_CON_PID" "$TEMP_DIR/http-con.log"     "redp2p: tunnel to 'itesthttp' available on 0.0.0.0:$HTTP_CON_PORT" ||
+    fail "HTTP consumer did not expose its local port"
 
 if ! python3 - "$TCP_CON_PORT" <<'PY'
 import socket
@@ -339,6 +422,16 @@ fi
 
 echo "[PASS] real persistent TCP stream lifecycle"
 
+if ! curl --http1.1 --fail --verbose --max-time 15     --dump-header "$TEMP_DIR/http-tunnel.headers"     --output "$TEMP_DIR/http-tunnel.body"     "http://127.0.0.1:$HTTP_CON_PORT/"     2>"$TEMP_DIR/http-tunnel.log"
+then
+    fail "real PHP HTTP request reset or failed through REDP2P"
+fi
+if [ "$(cat "$TEMP_DIR/http-tunnel.body")" != "TEST123" ]; then
+    fail "real PHP HTTP body mismatch through REDP2P"
+fi
+
+echo "[PASS] real PHP HTTP request through REDP2P"
+
 if ! python3 - "$UDP_CON_PORT" <<'PY'
 import socket
 import sys
@@ -359,4 +452,4 @@ fi
 
 echo "[PASS] real UDP process roundtrip"
 echo
-echo "2 process integration tests passed"
+echo "3 process integration tests passed"
