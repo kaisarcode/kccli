@@ -754,7 +754,6 @@ static void redp2p_cli_pub_peer_shutdown(kc_redp2p_client_t *client,
     redp2p_cli_mutex_unlock(&owner->mutex);
 }
 
-
 /**
  * Stops all active CLI publisher forwarding workers.
  * @param state Publisher CLI state.
@@ -827,7 +826,6 @@ static void redp2p_cli_con_tcp_peer_shutdown(void *userdata)
         redp2p_cli_socket_shutdown_write(session->fd);
     redp2p_cli_mutex_unlock(&session->owner->mutex);
 }
-
 
 /**
  * Runs one local TCP client over one REDP2P peer channel.
