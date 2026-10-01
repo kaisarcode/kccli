@@ -164,12 +164,20 @@ EOF
 
 cat > "$TEMP_DIR/tcp_backend.py" <<'PY'
 import socket
+import struct
 import sys
 
-REQUEST = bytes((i * 17 + 3) & 0xff for i in range(5000))
-RESPONSE = bytes((i * 29 + 7) & 0xff for i in range(9000))
-
 port = int(sys.argv[1])
+
+def recv_exact(conn, size):
+    data = bytearray()
+    while len(data) < size:
+        chunk = conn.recv(size - len(data))
+        if not chunk:
+            return None
+        data.extend(chunk)
+    return bytes(data)
+
 listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 listener.bind(("127.0.0.1", port))
@@ -179,16 +187,19 @@ print("READY", flush=True)
 while True:
     conn, _ = listener.accept()
     try:
-        conn.settimeout(5)
-        request = bytearray()
-        while len(request) < len(REQUEST):
-            chunk = conn.recv(min(4096, len(REQUEST) - len(request)))
-            if not chunk:
+        conn.settimeout(10)
+        while True:
+            header = recv_exact(conn, 4)
+            if header is None:
                 break
-            request.extend(chunk)
-        if bytes(request) != REQUEST:
-            continue
-        conn.sendall(RESPONSE)
+            size = struct.unpack("!I", header)[0]
+            if size > 1024 * 1024:
+                break
+            payload = recv_exact(conn, size)
+            if payload is None:
+                break
+            response = bytes((value ^ 0x5a) for value in payload)
+            conn.sendall(struct.pack("!I", len(response)) + response)
     except (BrokenPipeError, ConnectionResetError, socket.timeout):
         pass
     finally:
@@ -246,35 +257,47 @@ wait_log "$UDP_CON_PID" "$TEMP_DIR/udp-con.log"     "redp2p: tunnel to 'itestudp
 
 if ! python3 - "$TCP_CON_PORT" <<'PY'
 import socket
+import struct
 import sys
 
-REQUEST = bytes((i * 17 + 3) & 0xff for i in range(5000))
-RESPONSE = bytes((i * 29 + 7) & 0xff for i in range(9000))
-
 port = int(sys.argv[1])
+payloads = [
+    bytes((i * 17 + 3) & 0xff for i in range(5000)),
+    bytes((i * 29 + 11) & 0xff for i in range(17000)),
+]
+
+def recv_exact(sock, size):
+    data = bytearray()
+    while len(data) < size:
+        chunk = sock.recv(size - len(data))
+        if not chunk:
+            raise SystemExit(
+                f"stream closed after {len(data)} of {size} expected bytes"
+            )
+        data.extend(chunk)
+    return bytes(data)
+
 sock = socket.create_connection(("127.0.0.1", port), timeout=10)
 sock.settimeout(15)
-sock.sendall(REQUEST)
 
-received = bytearray()
-while True:
-    chunk = sock.recv(4096)
-    if not chunk:
-        break
-    received.extend(chunk)
+for index, payload in enumerate(payloads, 1):
+    sock.sendall(struct.pack("!I", len(payload)) + payload)
+    response_size = struct.unpack("!I", recv_exact(sock, 4))[0]
+    response = recv_exact(sock, response_size)
+    expected = bytes((value ^ 0x5a) for value in payload)
+    if response != expected:
+        raise SystemExit(
+            f"stream exchange {index} mismatch: "
+            f"{len(response)} bytes received"
+        )
 
 sock.close()
-if bytes(received) != RESPONSE:
-    raise SystemExit(
-        f"unexpected TCP response: {len(received)} bytes, "
-        f"expected {len(RESPONSE)}"
-    )
 PY
 then
-    fail "real TCP stream roundtrip or remote close propagation failed"
+    fail "real persistent TCP stream roundtrip failed"
 fi
 
-echo "[PASS] real TCP stream bytes and remote close propagation"
+echo "[PASS] real persistent TCP stream roundtrip"
 
 if ! python3 - "$UDP_CON_PORT" <<'PY'
 import socket
