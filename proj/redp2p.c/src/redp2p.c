@@ -323,6 +323,8 @@ struct redp2p_cli_pub_client {
     redp2p_cli_fd_t fd;
     redp2p_cli_thread_t thread;
     int thread_started;
+    _Atomic int local_shutdown;
+    _Atomic int peer_shutdown;
     redp2p_cli_pub_client_t *next;
 };
 
@@ -344,6 +346,8 @@ struct redp2p_cli_con_tcp_session {
     kc_redp2p_con_t *con;
     redp2p_cli_thread_t thread;
     int thread_started;
+    _Atomic int local_shutdown;
+    _Atomic int peer_shutdown;
     redp2p_cli_con_tcp_session_t *next;
 };
 
@@ -484,6 +488,21 @@ static void redp2p_cli_socket_shutdown(redp2p_cli_fd_t fd)
 }
 
 /**
+ * Shuts down only the local write direction of one TCP socket.
+ * @param fd Socket descriptor.
+ * @return None.
+ */
+static void redp2p_cli_socket_shutdown_write(redp2p_cli_fd_t fd)
+{
+    if (REDP2P_CLI_ISERR(fd)) return;
+#ifdef _WIN32
+    shutdown(fd, SD_SEND);
+#else
+    shutdown(fd, SHUT_WR);
+#endif
+}
+
+/**
  * Opens one CLI socket connected to a loopback service.
  * @param protocol REDP2P TCP or UDP protocol.
  * @param port Loopback service port.
@@ -579,15 +598,37 @@ REDP2P_CLI_THREAD(redp2p_cli_pub_backend_worker)
 {
     redp2p_cli_pub_client_t *state = (redp2p_cli_pub_client_t *)arg;
     unsigned char buffer[REDP2P_CLI_BUF];
+    int abort_stream = 0;
 
     while (!atomic_load(&state->owner->stopping)) {
-        int n = redp2p_cli_sock_read(state->fd, (char *)buffer,
+        int n;
+
+        if (atomic_load(&state->local_shutdown)) {
+            if (atomic_load(&state->peer_shutdown)) break;
+            redp2p_cli_sleep();
+            continue;
+        }
+
+        n = redp2p_cli_sock_read(state->fd, (char *)buffer,
             (int)sizeof(buffer));
-        if (n < 0 || (n == 0 && state->owner->protocol == KC_REDP2P_TCP))
+        if (n < 0) {
+            abort_stream = 1;
             break;
+        }
+        if (n == 0 && state->owner->protocol == KC_REDP2P_TCP) {
+            atomic_store(&state->local_shutdown, 1);
+            if (kc_redp2p_client_shutdown(state->client) != KC_REDP2P_OK) {
+                abort_stream = 1;
+                break;
+            }
+            continue;
+        }
         if (kc_redp2p_client_respond(state->client, buffer, (size_t)n) !=
             KC_REDP2P_OK)
+        {
+            abort_stream = 1;
             break;
+        }
     }
     redp2p_cli_mutex_lock(&state->owner->mutex);
     if (!REDP2P_CLI_ISERR(state->fd)) {
@@ -595,7 +636,10 @@ REDP2P_CLI_THREAD(redp2p_cli_pub_backend_worker)
         state->fd = REDP2P_CLI_FD_INVALID;
     }
     redp2p_cli_mutex_unlock(&state->owner->mutex);
-    kc_redp2p_client_close(state->client);
+    if (abort_stream || atomic_load(&state->owner->stopping) ||
+        (atomic_load(&state->local_shutdown) &&
+        atomic_load(&state->peer_shutdown)))
+        kc_redp2p_client_close(state->client);
     REDP2P_CLI_THREAD_RETURN();
 }
 
@@ -687,6 +731,31 @@ static void redp2p_cli_pub_receive(const kc_redp2p_pub_input_t *input,
 }
 
 /**
+ * Propagates peer send shutdown to one local publisher backend socket.
+ * @param client Publisher client whose peer send direction ended.
+ * @param userdata Publisher CLI state.
+ * @return None.
+ */
+static void redp2p_cli_pub_peer_shutdown(kc_redp2p_client_t *client,
+    void *userdata)
+{
+    redp2p_cli_pub_state_t *owner = (redp2p_cli_pub_state_t *)userdata;
+    redp2p_cli_pub_client_t *state;
+
+    if (!owner || !client || atomic_load(&owner->stopping)) return;
+    redp2p_cli_mutex_lock(&owner->mutex);
+    for (state = owner->clients; state; state = state->next) {
+        if (state->client != client) continue;
+        atomic_store(&state->peer_shutdown, 1);
+        if (!REDP2P_CLI_ISERR(state->fd))
+            redp2p_cli_socket_shutdown_write(state->fd);
+        break;
+    }
+    redp2p_cli_mutex_unlock(&owner->mutex);
+}
+
+
+/**
  * Stops all active CLI publisher forwarding workers.
  * @param state Publisher CLI state.
  * @return None.
@@ -742,6 +811,25 @@ static void redp2p_cli_con_tcp_receive(const void *data, size_t size,
 }
 
 /**
+ * Propagates peer send shutdown to the local consumer TCP socket.
+ * @param userdata TCP forwarding session.
+ * @return None.
+ */
+static void redp2p_cli_con_tcp_peer_shutdown(void *userdata)
+{
+    redp2p_cli_con_tcp_session_t *session =
+        (redp2p_cli_con_tcp_session_t *)userdata;
+
+    if (!session || atomic_load(&session->owner->stopping)) return;
+    atomic_store(&session->peer_shutdown, 1);
+    redp2p_cli_mutex_lock(&session->owner->mutex);
+    if (!REDP2P_CLI_ISERR(session->fd))
+        redp2p_cli_socket_shutdown_write(session->fd);
+    redp2p_cli_mutex_unlock(&session->owner->mutex);
+}
+
+
+/**
  * Runs one local TCP client over one REDP2P peer channel.
  * @param arg TCP forwarding session.
  * @return Platform thread result.
@@ -753,6 +841,7 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
     kc_redp2p_con_options_t options;
     unsigned char buffer[REDP2P_CLI_BUF];
     int status;
+    int abort_stream = 0;
 
     memset(&options, 0, sizeof(options));
     options.id = session->owner->id;
@@ -762,6 +851,7 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
     options.turn_user = session->owner->turn_user;
     options.turn_pass = session->owner->turn_pass;
     options.receive = redp2p_cli_con_tcp_receive;
+    options.peer_shutdown = redp2p_cli_con_tcp_peer_shutdown;
     options.userdata = session;
     status = kc_redp2p_con(&session->con, &options);
     if (status != KC_REDP2P_OK) {
@@ -769,13 +859,35 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
             kc_redp2p_strerror(status));
     } else {
         while (!atomic_load(&session->owner->stopping)) {
-            int n = redp2p_cli_sock_read(session->fd, (char *)buffer,
+            int n;
+
+            if (atomic_load(&session->local_shutdown)) {
+                if (atomic_load(&session->peer_shutdown)) break;
+                redp2p_cli_sleep();
+                continue;
+            }
+            n = redp2p_cli_sock_read(session->fd, (char *)buffer,
                 (int)sizeof(buffer));
-            if (n <= 0) break;
+            if (n < 0) {
+                abort_stream = 1;
+                break;
+            }
+            if (n == 0) {
+                atomic_store(&session->local_shutdown, 1);
+                if (kc_redp2p_con_shutdown(session->con) != KC_REDP2P_OK) {
+                    abort_stream = 1;
+                    break;
+                }
+                continue;
+            }
             if (kc_redp2p_con_send(session->con, buffer, (size_t)n) !=
                 KC_REDP2P_OK)
+            {
+                abort_stream = 1;
                 break;
+            }
         }
+        (void)abort_stream;
         kc_redp2p_con_close(session->con);
         session->con = NULL;
     }
@@ -1339,6 +1451,7 @@ static int redp2p_cli_pub(int argc, char **argv)
     options.turn_pass = turn_pass;
     options.connect = redp2p_cli_pub_connect;
     options.receive = redp2p_cli_pub_receive;
+    options.peer_shutdown = redp2p_cli_pub_peer_shutdown;
     options.userdata = &state;
 
     status = kc_redp2p_pub(&pub, &options);
