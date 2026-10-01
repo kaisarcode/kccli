@@ -22,10 +22,23 @@ make all
 
 ## Tests
 
-Run the native CLI contract:
+Run the native CLI tests:
 
 ```sh
 make test
+```
+
+The native test run includes both the CLI argument contract and black-box
+process integration. The integration test starts real `redp2p idx`,
+`redp2p pub`, and `redp2p con` processes in parallel, attaches real TCP
+and UDP backend sockets, and verifies traffic by connecting through the
+consumer-exposed port. It does not replace the peer path with direct callbacks
+or an in-process channel.
+
+Run only the native process integration:
+
+```sh
+make integration
 ```
 
 Run the x86_64 Windows CLI contract through Wine:
@@ -33,6 +46,9 @@ Run the x86_64 Windows CLI contract through Wine:
 ```sh
 make test wine
 ```
+
+The Wine target currently covers the CLI contract only; native process
+integration is not yet run through Wine.
 
 ## CLI
 
