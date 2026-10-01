@@ -35,12 +35,6 @@ and UDP backend sockets, and verifies traffic by connecting through the
 consumer-exposed port. It does not replace the peer path with direct callbacks
 or an in-process channel.
 
-Run only the native process integration:
-
-```sh
-make integration
-```
-
 Run the x86_64 Windows CLI contract through Wine:
 
 ```sh
