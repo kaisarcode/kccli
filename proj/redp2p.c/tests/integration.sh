@@ -166,6 +166,9 @@ cat > "$TEMP_DIR/tcp_backend.py" <<'PY'
 import socket
 import sys
 
+REQUEST = bytes((i * 17 + 3) & 0xff for i in range(5000))
+RESPONSE = bytes((i * 29 + 7) & 0xff for i in range(9000))
+
 port = int(sys.argv[1])
 listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -178,19 +181,14 @@ while True:
     try:
         conn.settimeout(5)
         request = bytearray()
-        while b"\r\n\r\n" not in request and len(request) < 65536:
-            chunk = conn.recv(4096)
+        while len(request) < len(REQUEST):
+            chunk = conn.recv(min(4096, len(REQUEST) - len(request)))
             if not chunk:
                 break
             request.extend(chunk)
-        body = b"TEST123"
-        response = (
-            b"HTTP/1.1 200 OK\r\n"
-            b"Content-Type: text/plain\r\n"
-            b"Connection: close\r\n"
-            b"\r\n" + body
-        )
-        conn.sendall(response)
+        if bytes(request) != REQUEST:
+            continue
+        conn.sendall(RESPONSE)
     except (BrokenPipeError, ConnectionResetError, socket.timeout):
         pass
     finally:
@@ -250,42 +248,33 @@ if ! python3 - "$TCP_CON_PORT" <<'PY'
 import socket
 import sys
 
+REQUEST = bytes((i * 17 + 3) & 0xff for i in range(5000))
+RESPONSE = bytes((i * 29 + 7) & 0xff for i in range(9000))
+
 port = int(sys.argv[1])
 sock = socket.create_connection(("127.0.0.1", port), timeout=10)
 sock.settimeout(15)
-sock.sendall(
-    b"GET / HTTP/1.1\r\n"
-    b"Host: redp2p.test\r\n"
-    b"Connection: close\r\n"
-    b"\r\n"
-)
+sock.sendall(REQUEST)
 
-data = bytearray()
+received = bytearray()
 while True:
     chunk = sock.recv(4096)
     if not chunk:
         break
-    data.extend(chunk)
+    received.extend(chunk)
 
 sock.close()
-header_end = data.find(b"\r\n\r\n")
-if header_end < 0:
-    raise SystemExit("HTTP response headers were not received")
-status = bytes(data[:header_end]).split(b"\r\n", 1)[0]
-header = bytes(data[:header_end]).decode("latin1")
-body = bytes(data[header_end + 4:])
-if status != b"HTTP/1.1 200 OK":
-    raise SystemExit(f"unexpected HTTP status: {status!r}")
-if "connection: close" not in header.lower():
-    raise SystemExit("backend did not request connection close")
-if body != b"TEST123":
-    raise SystemExit(f"unexpected HTTP body: {body!r}")
+if bytes(received) != RESPONSE:
+    raise SystemExit(
+        f"unexpected TCP response: {len(received)} bytes, "
+        f"expected {len(RESPONSE)}"
+    )
 PY
 then
-    fail "real TCP/HTTP roundtrip failed through idx -> con -> pub -> backend"
+    fail "real TCP stream roundtrip or remote close propagation failed"
 fi
 
-echo "[PASS] real TCP/HTTP process roundtrip"
+echo "[PASS] real TCP stream bytes and remote close propagation"
 
 if ! python3 - "$UDP_CON_PORT" <<'PY'
 import socket
