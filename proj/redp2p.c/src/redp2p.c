@@ -484,21 +484,6 @@ static void redp2p_cli_socket_shutdown(redp2p_cli_fd_t fd)
 }
 
 /**
- * Closes only the local socket write direction.
- * @param fd Socket descriptor.
- * @return None.
- */
-static void redp2p_cli_socket_shutdown_write(redp2p_cli_fd_t fd)
-{
-    if (REDP2P_CLI_ISERR(fd)) return;
-#ifdef _WIN32
-    shutdown(fd, SD_SEND);
-#else
-    shutdown(fd, SHUT_WR);
-#endif
-}
-
-/**
  * Opens one CLI socket connected to a loopback service.
  * @param protocol REDP2P TCP or UDP protocol.
  * @param port Loopback service port.
@@ -757,23 +742,6 @@ static void redp2p_cli_con_tcp_receive(const void *data, size_t size,
 }
 
 /**
- * Propagates remote stream completion to the local consumer socket.
- * @param userdata TCP forwarding session.
- * @return None.
- */
-static void redp2p_cli_con_tcp_stream_end(void *userdata)
-{
-    redp2p_cli_con_tcp_session_t *session =
-        (redp2p_cli_con_tcp_session_t *)userdata;
-
-    if (!session || atomic_load(&session->owner->stopping)) return;
-    redp2p_cli_mutex_lock(&session->owner->mutex);
-    if (!REDP2P_CLI_ISERR(session->fd))
-        redp2p_cli_socket_shutdown_write(session->fd);
-    redp2p_cli_mutex_unlock(&session->owner->mutex);
-}
-
-/**
  * Runs one local TCP client over one REDP2P peer channel.
  * @param arg TCP forwarding session.
  * @return Platform thread result.
@@ -794,7 +762,6 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
     options.turn_user = session->owner->turn_user;
     options.turn_pass = session->owner->turn_pass;
     options.receive = redp2p_cli_con_tcp_receive;
-    options.stream_end = redp2p_cli_con_tcp_stream_end;
     options.userdata = session;
     status = kc_redp2p_con(&session->con, &options);
     if (status != KC_REDP2P_OK) {
