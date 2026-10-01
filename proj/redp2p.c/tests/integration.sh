@@ -20,16 +20,42 @@ UDP_CON_PID=""
 # Stops every child process and removes temporary resources.
 # @return None.
 cleanup() {
+    local pids=(
+        "$TCP_CON_PID" "$UDP_CON_PID"
+        "$TCP_PUB_PID" "$UDP_PUB_PID"
+        "$TCP_BACKEND_PID" "$UDP_BACKEND_PID"
+        "$INDEX_PID"
+    )
     local pid
+    local attempt
+    local alive
 
-    for pid in         "$TCP_CON_PID" "$UDP_CON_PID"         "$TCP_PUB_PID" "$UDP_PUB_PID"         "$TCP_BACKEND_PID" "$UDP_BACKEND_PID"         "$INDEX_PID"
-    do
+    for pid in "${pids[@]}"; do
         if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
             kill "$pid" 2>/dev/null || true
         fi
     done
-    for pid in         "$TCP_CON_PID" "$UDP_CON_PID"         "$TCP_PUB_PID" "$UDP_PUB_PID"         "$TCP_BACKEND_PID" "$UDP_BACKEND_PID"         "$INDEX_PID"
-    do
+
+    attempt=0
+    while [ "$attempt" -lt 20 ]; do
+        alive=0
+        for pid in "${pids[@]}"; do
+            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                alive=1
+                break
+            fi
+        done
+        [ "$alive" -eq 0 ] && break
+        attempt=$((attempt + 1))
+        sleep 0.05
+    done
+
+    for pid in "${pids[@]}"; do
+        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            kill -KILL "$pid" 2>/dev/null || true
+        fi
+    done
+    for pid in "${pids[@]}"; do
         if [ -n "$pid" ]; then
             wait "$pid" 2>/dev/null || true
         fi
