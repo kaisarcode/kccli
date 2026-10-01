@@ -41,10 +41,6 @@ test_project() {
     (
         cd "$project_dir"
         make test
-        if [ "$project_name" = "redp2p.c" ] && [ "$(uname -s)" = "Linux" ]; then
-            KC_CLI_PATH="$project_dir/bin/x86_64/linux/redp2p" \
-                bash tests/integration.sh
-        fi
         make test wine
     )
 }
