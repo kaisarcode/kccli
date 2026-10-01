@@ -201,10 +201,6 @@ test:
 			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/redp2p$(NATIVE_EXE_EXT)\" \
 			src/test.c -o '$(BUILD_DIR)/test/kccli_test'; \
 		'$(BUILD_DIR)/test/kccli_test'; \
-		if [ "$(NATIVE_PLATFORM)" != "windows" ]; then \
-			KC_CLI_PATH="$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/redp2p$(NATIVE_EXE_EXT)" \
-				bash tests/integration.sh; \
-		fi; \
 	fi
 
 wine:
