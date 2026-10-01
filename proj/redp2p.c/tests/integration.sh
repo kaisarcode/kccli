@@ -198,6 +198,8 @@ while True:
             payload = recv_exact(conn, size)
             if payload is None:
                 break
+            if payload == b"REDP2P_TEST_CLOSE":
+                break
             response = bytes((value ^ 0x5a) for value in payload)
             conn.sendall(struct.pack("!I", len(response)) + response)
     except (BrokenPipeError, ConnectionResetError, socket.timeout):
@@ -291,13 +293,32 @@ for index, payload in enumerate(payloads, 1):
             f"{len(response)} bytes received"
         )
 
+close_payload = b"REDP2P_TEST_CLOSE"
+sock.sendall(struct.pack("!I", len(close_payload)) + close_payload)
+try:
+    tail = sock.recv(1)
+except socket.timeout:
+    raise SystemExit("remote explicit close did not reach the consumer socket")
+if tail != b"":
+    raise SystemExit(f"unexpected data after remote close: {tail!r}")
+sock.close()
+
+sock = socket.create_connection(("127.0.0.1", port), timeout=10)
+sock.settimeout(15)
+payload = bytes((i * 13 + 5) & 0xff for i in range(7000))
+sock.sendall(struct.pack("!I", len(payload)) + payload)
+response_size = struct.unpack("!I", recv_exact(sock, 4))[0]
+response = recv_exact(sock, response_size)
+expected = bytes((value ^ 0x5a) for value in payload)
+if response != expected:
+    raise SystemExit("new stream after remote close did not roundtrip")
 sock.close()
 PY
 then
-    fail "real persistent TCP stream roundtrip failed"
+    fail "real persistent TCP stream lifecycle failed"
 fi
 
-echo "[PASS] real persistent TCP stream roundtrip"
+echo "[PASS] real persistent TCP stream lifecycle"
 
 if ! python3 - "$UDP_CON_PORT" <<'PY'
 import socket
