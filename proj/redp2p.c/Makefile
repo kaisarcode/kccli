@@ -65,7 +65,7 @@ endif
 
 .DEFAULT_GOAL := $(NATIVE_TARGET)
 
-.PHONY: all test wine clean \
+.PHONY: all test integration wine clean \
 	x86_64/linux x86_64/windows x86_64/macos \
 	i686/linux i686/windows \
 	aarch64/linux aarch64/macos \
@@ -201,7 +201,24 @@ test:
 			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/redp2p$(NATIVE_EXE_EXT)\" \
 			src/test.c -o '$(BUILD_DIR)/test/kccli_test'; \
 		'$(BUILD_DIR)/test/kccli_test'; \
+		if [ "$(NATIVE_PLATFORM)" != "windows" ]; then \
+			KC_CLI_PATH="$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/redp2p$(NATIVE_EXE_EXT)" \
+				bash tests/integration.sh; \
+		fi; \
 	fi
+
+integration:
+	@if [ "$(NATIVE_ARCH)" = "unsupported" ] || [ "$(NATIVE_PLATFORM)" = "unsupported" ]; then \
+		echo "kccli: unsupported native target $(HOST_ARCH)/$(HOST_SYSTEM)" >&2; \
+		exit 1; \
+	fi
+	@if [ "$(NATIVE_PLATFORM)" = "windows" ]; then \
+		echo "kccli: native REDP2P process integration is not supported on Windows yet" >&2; \
+		exit 1; \
+	fi
+	@$(MAKE) --no-print-directory '$(NATIVE_TARGET)'
+	@KC_CLI_PATH="$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/redp2p$(NATIVE_EXE_EXT)" \
+		bash tests/integration.sh
 
 wine:
 	@if [ -z "$(filter test,$(MAKECMDGOALS))" ]; then \
