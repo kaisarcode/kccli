@@ -221,7 +221,7 @@ UDP_CON_PID=$!
 wait_log "$UDP_CON_PID" "$TEMP_DIR/udp-con.log"     "redp2p: tunnel to 'itestudp' available on 0.0.0.0:$UDP_CON_PORT" ||
     fail "UDP consumer did not expose its local port"
 
-python3 - "$TCP_CON_PORT" <<'PY' ||
+if ! python3 - "$TCP_CON_PORT" <<'PY'
 import socket
 import sys
 
@@ -268,11 +268,13 @@ if content_length != 7:
 if body[:7] != b"TEST123":
     raise SystemExit(f"unexpected HTTP body: {body!r}")
 PY
+then
     fail "real TCP/HTTP roundtrip failed through idx -> con -> pub -> backend"
+fi
 
 echo "[PASS] real TCP/HTTP process roundtrip"
 
-python3 - "$UDP_CON_PORT" <<'PY' ||
+if ! python3 - "$UDP_CON_PORT" <<'PY'
 import socket
 import sys
 
@@ -286,7 +288,9 @@ sock.close()
 if data != payload:
     raise SystemExit(f"unexpected UDP payload: {data!r}")
 PY
+then
     fail "real UDP roundtrip failed through idx -> con -> pub -> backend"
+fi
 
 echo "[PASS] real UDP process roundtrip"
 echo
