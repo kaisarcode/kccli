@@ -200,6 +200,12 @@ while True:
                 break
             if payload == b"REDP2P_TEST_CLOSE":
                 break
+            if payload == b"REDP2P_TEST_HALF_CLOSE":
+                if conn.recv(1) != b"":
+                    raise RuntimeError("expected client send shutdown")
+                response = b"REDP2P_TEST_HALF_CLOSE_OK"
+                conn.sendall(struct.pack("!I", len(response)) + response)
+                break
             response = bytes((value ^ 0x5a) for value in payload)
             conn.sendall(struct.pack("!I", len(response)) + response)
     except (BrokenPipeError, ConnectionResetError, socket.timeout):
@@ -312,6 +318,19 @@ response = recv_exact(sock, response_size)
 expected = bytes((value ^ 0x5a) for value in payload)
 if response != expected:
     raise SystemExit("new stream after remote close did not roundtrip")
+sock.close()
+
+sock = socket.create_connection(("127.0.0.1", port), timeout=10)
+sock.settimeout(15)
+payload = b"REDP2P_TEST_HALF_CLOSE"
+sock.sendall(struct.pack("!I", len(payload)) + payload)
+sock.shutdown(socket.SHUT_WR)
+response_size = struct.unpack("!I", recv_exact(sock, 4))[0]
+response = recv_exact(sock, response_size)
+if response != b"REDP2P_TEST_HALF_CLOSE_OK":
+    raise SystemExit(f"unexpected response after client shutdown: {response!r}")
+if sock.recv(1) != b"":
+    raise SystemExit("backend close did not reach half-closed client")
 sock.close()
 PY
 then
