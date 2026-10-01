@@ -83,7 +83,7 @@ wait_log() {
 # Executes redp2p with operator peer configuration cleared.
 # @return Child process exit status.
 run_clean() {
-    env         -u REDP2P_SEATS         -u REDP2P_POW         -u REDP2P_PASS         -u REDP2P_VIP         -u REDP2P_MAX_CONSUMERS_PER_PUBLISHER         -u REDP2P_STUN         -u REDP2P_TURN         -u REDP2P_TURN_USER         -u REDP2P_TURN_PASS         -u REDP2P_FORCE_TURN         "$CLI" "$@"
+    exec env         -u REDP2P_SEATS         -u REDP2P_POW         -u REDP2P_PASS         -u REDP2P_VIP         -u REDP2P_MAX_CONSUMERS_PER_PUBLISHER         -u REDP2P_STUN         -u REDP2P_TURN         -u REDP2P_TURN_USER         -u REDP2P_TURN_PASS         -u REDP2P_FORCE_TURN         "$CLI" "$@"
 }
 
 command -v python3 >/dev/null 2>&1 || {
