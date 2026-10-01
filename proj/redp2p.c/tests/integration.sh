@@ -187,7 +187,6 @@ while True:
         response = (
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: text/plain\r\n"
-            b"Content-Length: 7\r\n"
             b"Connection: close\r\n"
             b"\r\n" + body
         )
@@ -262,36 +261,24 @@ sock.sendall(
 )
 
 data = bytearray()
-header_end = -1
-content_length = None
 while True:
     chunk = sock.recv(4096)
     if not chunk:
         break
     data.extend(chunk)
-    if header_end < 0:
-        header_end = data.find(b"\r\n\r\n")
-        if header_end >= 0:
-            header = bytes(data[:header_end]).decode("latin1")
-            for line in header.split("\r\n"):
-                if line.lower().startswith("content-length:"):
-                    content_length = int(line.split(":", 1)[1].strip())
-                    break
-    if header_end >= 0 and content_length is not None:
-        body_start = header_end + 4
-        if len(data) - body_start >= content_length:
-            break
 
 sock.close()
+header_end = data.find(b"\r\n\r\n")
 if header_end < 0:
     raise SystemExit("HTTP response headers were not received")
 status = bytes(data[:header_end]).split(b"\r\n", 1)[0]
+header = bytes(data[:header_end]).decode("latin1")
 body = bytes(data[header_end + 4:])
 if status != b"HTTP/1.1 200 OK":
     raise SystemExit(f"unexpected HTTP status: {status!r}")
-if content_length != 7:
-    raise SystemExit(f"unexpected content length: {content_length!r}")
-if body[:7] != b"TEST123":
+if "connection: close" not in header.lower():
+    raise SystemExit("backend did not request connection close")
+if body != b"TEST123":
     raise SystemExit(f"unexpected HTTP body: {body!r}")
 PY
 then
