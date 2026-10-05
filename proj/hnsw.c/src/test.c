@@ -121,7 +121,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/12] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/13] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
@@ -131,15 +131,15 @@ static void result(const char *name, const char *detail, int ok)
  */
 int main(void)
 {
-    const char *file_path = "hnsw-cli-file.csv";
-    const char *dataset = "a,1,0\nb,0,1\n";
+    const char *file_path = "hnsw-cli-file.tsv";
+    const char *dataset = "a\t1,0\nb\t0,1\n";
     char output[4096];
     int fixture_ok;
 
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
-    result("search", "literal dataset searches successfully",
-        capture_output("a,1,0 -q 1,0 -d 2", NULL,
+    result("search", "literal tab-separated dataset searches successfully",
+        capture_output("\"a\t1,0\nb\t0,1\" -q 1,0 -d 2", NULL,
             output, sizeof(output)) && strncmp(output, "a,", 2) == 0);
     result("stdin", "stdin dataset searches successfully",
         capture_output("-q 1,0 -d 2", dataset,
@@ -147,28 +147,30 @@ int main(void)
 
     fixture_ok = write_text_file(file_path, dataset);
     result("input file", "-i reads vectors when higher-priority input is absent",
-        fixture_ok && capture_output("-i hnsw-cli-file.csv -q 1,0 -d 2", NULL,
+        fixture_ok && capture_output("-i hnsw-cli-file.tsv -q 1,0 -d 2", NULL,
             output, sizeof(output)) && strncmp(output, "a,", 2) == 0);
     result("stdin priority", "stdin takes priority over -i",
-        fixture_ok && capture_output("-i hnsw-cli-file.csv -q 0,1 -d 2",
-            "x,0,1\n", output, sizeof(output)) && strncmp(output, "x,", 2) == 0);
+        fixture_ok && capture_output("-i hnsw-cli-file.tsv -q 0,1 -d 2",
+            "x\t0,1\n", output, sizeof(output)) && strncmp(output, "x,", 2) == 0);
     result("argument priority", "argument takes priority over stdin and -i",
         fixture_ok && capture_output(
-            "z,1,0 -i hnsw-cli-file.csv -q 1,0 -d 2",
-            "x,0,1\n", output, sizeof(output)) && strncmp(output, "z,", 2) == 0);
+            "\"z\t1,0\" -i hnsw-cli-file.tsv -q 1,0 -d 2",
+            "x\t0,1\n", output, sizeof(output)) && strncmp(output, "z,", 2) == 0);
     remove(file_path);
 
     result("l2", "l2 metric searches successfully",
-        capture_output("a,0,0 -q 0,0 -d 2 -m l2", NULL,
+        capture_output("\"a\t0,0\nb\t2,2\" -q 0,0 -d 2 -m l2", NULL,
             output, sizeof(output)) && strncmp(output, "a,", 2) == 0);
     result("limit", "limit option is accepted",
-        run_cli("a,1,0 -q 1,0 -d 2 -l 1") == 0);
+        run_cli("\"a\t1,0\nb\t0,1\" -q 1,0 -d 2 -l 1") == 0);
     result("dimension", "invalid vector dimension fails",
-        run_cli("a,1,0 -q 1,0,0 -d 2") != 0);
+        run_cli("\"a\t1,0\" -q 1,0,0 -d 2") != 0);
+    result("separator", "rows without an id/vector tab fail",
+        run_cli("a,1,0 -q 1,0 -d 2") != 0);
     result("missing query", "missing query fails",
-        run_cli("a,1,0 -d 2") != 0);
+        run_cli("\"a\t1,0\" -d 2") != 0);
     result("unknown", "unknown option fails",
-        run_cli("a,1,0 -q 1,0 -d 2 --unknown") != 0);
+        run_cli("\"a\t1,0\" -q 1,0 -d 2 --unknown") != 0);
 
     printf("\n%d passed, %d failed\n", test_total - test_failed, test_failed);
     return test_failed ? 1 : 0;
