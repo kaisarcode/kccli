@@ -21,7 +21,6 @@ static void kc_cli_help(void) {
     printf("\n");
     printf("Commands:\n");
     printf("  menu <id> <cmd>       Register or replace a menu entry\n");
-    printf("  menu -d <id>          Remove a menu entry\n");
     printf("  menu <id> -d          Remove a menu entry\n");
     printf("\n");
     printf("Options:\n");
