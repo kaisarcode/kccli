@@ -42,20 +42,19 @@ static int wch_cli_valid_name(const char *name)
  */
 static void wch_cli_usage(const char *name)
 {
-    printf("Usage: %s <id> <path> -c <cmd> [options]\n", name);
+    printf("Usage: %s <id> <path> <cmd> [options]\n", name);
     printf("\n");
     printf("Commands:\n");
-    printf("  %s <id> <path> -c <cmd>  Create or replace a watcher\n", name);
-    printf("  %s -l [id]               List watchers\n", name);
-    printf("  %s <id> -d               Delete a watcher\n", name);
+    printf("  %s <id> <path> <cmd>  Create or replace a watcher\n", name);
+    printf("  %s -l [id]            List watchers\n", name);
+    printf("  %s <id> -d            Delete a watcher\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  -c, --cmd <command>   Event command\n");
-    printf("  -r, --recursive       Watch directories recursively\n");
-    printf("  -l, --list            List watchers\n");
-    printf("  -d, --delete          Delete a watcher\n");
-    printf("  -h, --help            Show this help\n");
-    printf("  -v, --version         Show version\n");
+    printf("  -r, --recursive    Watch directories recursively\n");
+    printf("  -l, --list         List watchers\n");
+    printf("  -d, --delete       Delete a watcher\n");
+    printf("  -h, --help         Show this help\n");
+    printf("  -v, --version      Show version\n");
 }
 
 /**
@@ -68,7 +67,7 @@ static void wch_cli_version(void)
 }
 
 /**
- * Prints one registered watcher as a tab-separated row.
+ * Prints one registered watcher.
  * @param entry Watcher entry.
  * @return None.
  */
@@ -76,12 +75,10 @@ static void wch_cli_print_entry(const kc_wch_entry_t *entry)
 {
     if (!entry || !entry->name) return;
     printf(
-        "%s\t%s\t%s\t%d\t%d\n",
+        "%s\t%s\t%s\n",
         entry->name,
         entry->path ? entry->path : "",
-        entry->cmd ? entry->cmd : "",
-        entry->recursive ? 1 : 0,
-        entry->running ? 1 : 0
+        entry->cmd ? entry->cmd : ""
     );
 }
 
@@ -157,10 +154,7 @@ int main(int argc, char **argv)
     }
 
     for (i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--cmd") == 0) {
-            if (++i >= argc || !argv[i][0] || command) return 1;
-            command = argv[i];
-        } else if (strcmp(argv[i], "-r") == 0 ||
+        if (strcmp(argv[i], "-r") == 0 ||
             strcmp(argv[i], "--recursive") == 0) {
             recursive = 1;
         } else if (strcmp(argv[i], "-l") == 0 ||
@@ -175,13 +169,15 @@ int main(int argc, char **argv)
             name = argv[i];
         } else if (!path) {
             path = argv[i];
+        } else if (!command) {
+            command = argv[i];
         } else {
             return 1;
         }
     }
 
     if (list) {
-        if (remove || command || recursive || path) return 1;
+        if (remove || recursive || path || command) return 1;
         if (name && !wch_cli_valid_name(name)) return 1;
         return wch_cli_list(name);
     }
