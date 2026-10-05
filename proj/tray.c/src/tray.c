@@ -33,7 +33,6 @@ typedef struct {
 } tray_cli_action_t;
 
 typedef struct {
-    kc_tray_t *tray;
     const char *command;
 } tray_cli_item_data_t;
 
@@ -85,18 +84,16 @@ static void tray_cli_command(kc_tray_item_t *item, void *userdata)
 }
 
 /**
- * Closes the tray from a menu item.
+ * Requests tray shutdown from one menu item.
  * @param item Activated tray item.
- * @param userdata Tray handle.
+ * @param userdata Unused callback data.
  * @return None.
  */
 static void tray_cli_quit(kc_tray_item_t *item, void *userdata)
 {
-    kc_tray_t *tray = (kc_tray_t *)userdata;
-
     (void)item;
+    (void)userdata;
     tray_cli_stop = 1;
-    kc_tray_close(tray);
 }
 
 /**
@@ -145,11 +142,10 @@ static int tray_cli_add_action(kc_tray_t *tray,
         status = kc_tray_add_separator(tray, &item);
     else if (action->type == TRAY_CLI_ACTION_QUIT)
         status = kc_tray_add_item(tray, &item, action->text,
-            tray_cli_quit, tray);
+            tray_cli_quit, NULL);
     else {
         tray_cli_item_data_t *data = &item_data[*data_index];
 
-        data->tray = tray;
         data->command = action->command;
         (*data_index)++;
         status = kc_tray_add_item(tray, &item, action->text,
@@ -286,7 +282,7 @@ int main(int argc, char **argv)
     signal(SIGTERM, tray_cli_signal);
     while (!tray_cli_stop) tray_cli_wait();
 
-    if (tray) kc_tray_close(tray);
+    kc_tray_close(tray);
     free(item_data);
 
 done:
