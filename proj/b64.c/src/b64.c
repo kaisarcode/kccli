@@ -13,6 +13,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 #define B64_MODE_NONE   0
 #define B64_MODE_ENCODE 1
 #define B64_MODE_DECODE 2
@@ -24,23 +32,29 @@
  */
 static void b64_cli_usage(const char *name)
 {
-    printf("Usage: %s -e [text]\n", name);
-    printf("       %s -d [base64]\n", name);
+    printf("Usage: %s -e [text] [options]\n", name);
+    printf("       %s -d [base64] [options]\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  -e, --encode   Encode as Base64\n");
-    printf("  -d, --decode   Decode Base64\n");
-    printf("  -h, --help     Show this help\n");
-    printf("  -v, --version  Show version\n");
+    printf("  -e, --encode        Encode as Base64\n");
+    printf("  -d, --decode        Decode Base64\n");
+    printf("  -i, --input <file>  Read input from file\n");
+    printf("  -h, --help          Show this help\n");
+    printf("  -v, --version       Show version\n");
 }
 
 /**
- * Reads all bytes from standard input.
+ * Reads all bytes from one stream.
+ * @param stream Input stream.
  * @param out Receives allocated data.
  * @param out_size Receives byte count.
  * @return Zero on success, nonzero on failure.
  */
-static int b64_cli_read_stdin(unsigned char **out, size_t *out_size)
+static int b64_cli_read_stream(
+    FILE *stream,
+    unsigned char **out,
+    size_t *out_size
+)
 {
     unsigned char *buffer = NULL;
     size_t size = 0;
@@ -50,7 +64,7 @@ static int b64_cli_read_stdin(unsigned char **out, size_t *out_size)
 
     *out = NULL;
     *out_size = 0;
-    while ((count = fread(chunk, 1, sizeof(chunk), stdin)) > 0) {
+    while ((count = fread(chunk, 1, sizeof(chunk), stream)) > 0) {
         size_t required = size + count;
         unsigned char *next;
 
@@ -69,7 +83,7 @@ static int b64_cli_read_stdin(unsigned char **out, size_t *out_size)
         memcpy(buffer + size, chunk, count);
         size += count;
     }
-    if (ferror(stdin)) {
+    if (ferror(stream)) {
         free(buffer);
         return 1;
     }
@@ -83,6 +97,46 @@ static int b64_cli_read_stdin(unsigned char **out, size_t *out_size)
 }
 
 /**
+ * Reads one input file as raw bytes.
+ * @param path Input file path.
+ * @param out Receives allocated data.
+ * @param out_size Receives byte count.
+ * @return Zero on success, nonzero on failure.
+ */
+static int b64_cli_read_file(
+    const char *path,
+    unsigned char **out,
+    size_t *out_size
+)
+{
+    FILE *file;
+    int status;
+
+    file = fopen(path, "rb");
+    if (!file) return 1;
+    status = b64_cli_read_stream(file, out, out_size);
+    fclose(file);
+    return status;
+}
+
+/**
+ * Reports whether standard input is attached to an interactive terminal.
+ * @return Nonzero when stdin is interactive.
+ */
+static int b64_cli_stdin_is_tty(void)
+{
+#ifdef _WIN32
+    HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+
+    if (handle == INVALID_HANDLE_VALUE || handle == NULL) return 0;
+    return GetConsoleMode(handle, &mode) != 0;
+#else
+    return isatty(STDIN_FILENO);
+#endif
+}
+
+/**
  * Runs the b64 CLI.
  * @param argc Argument count.
  * @param argv Argument vector.
@@ -91,9 +145,20 @@ static int b64_cli_read_stdin(unsigned char **out, size_t *out_size)
 int main(int argc, char **argv)
 {
     const char *text = NULL;
-    unsigned char *stdin_data = NULL;
-    size_t stdin_size = 0;
+    const char *input_path = NULL;
+    unsigned char *owned_input = NULL;
+    const unsigned char *input = NULL;
+    size_t input_size = 0;
     int mode = B64_MODE_NONE;
+
+#ifdef _WIN32
+    if (_setmode(_fileno(stdin), _O_BINARY) == -1 ||
+        _setmode(_fileno(stdout), _O_BINARY) == -1)
+    {
+        fprintf(stderr, "b64: cannot configure binary I/O\n");
+        return 1;
+    }
+#endif
 
     if (argc == 2 && (strcmp(argv[1], "-h") == 0 ||
         strcmp(argv[1], "--help") == 0))
@@ -123,6 +188,18 @@ int main(int argc, char **argv)
                 return 1;
             }
             mode = B64_MODE_DECODE;
+        } else if (strcmp(argv[i], "-i") == 0 ||
+            strcmp(argv[i], "--input") == 0)
+        {
+            if (++i >= argc || !argv[i][0]) {
+                fprintf(stderr, "b64: --input requires a file\n");
+                return 1;
+            }
+            if (input_path != NULL) {
+                fprintf(stderr, "b64: only one input file is accepted\n");
+                return 1;
+            }
+            input_path = argv[i];
         } else if (strcmp(argv[i], "-h") == 0 ||
             strcmp(argv[i], "--help") == 0 ||
             strcmp(argv[i], "-v") == 0 ||
@@ -146,32 +223,50 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (!b64_cli_stdin_is_tty()) {
+        if (b64_cli_read_stream(stdin, &owned_input, &input_size)) {
+            fprintf(stderr, "b64: cannot read stdin\n");
+            return 1;
+        }
+        if (input_size > 0) input = owned_input;
+    }
+    if (!input && text) {
+        input = (const unsigned char *)text;
+        input_size = strlen(text);
+    }
+    if (!input && input_path) {
+        free(owned_input);
+        owned_input = NULL;
+        if (b64_cli_read_file(input_path, &owned_input, &input_size)) {
+            fprintf(stderr, "b64: cannot read input file\n");
+            return 1;
+        }
+        input = owned_input;
+    }
+    if (!input) {
+        if (!owned_input &&
+            b64_cli_read_stream(stdin, &owned_input, &input_size))
+        {
+            fprintf(stderr, "b64: cannot read stdin\n");
+            return 1;
+        }
+        input = owned_input;
+    }
+
     if (mode == B64_MODE_DECODE) {
-        const char *input;
-        char *stdin_text = NULL;
+        char *encoded = (char *)malloc(input_size + 1);
         void *decoded;
         size_t decoded_size = 0;
 
-        if (text) {
-            input = text;
-        } else {
-            if (b64_cli_read_stdin(&stdin_data, &stdin_size)) {
-                fprintf(stderr, "b64: cannot read stdin\n");
-                return 1;
-            }
-            stdin_text = (char *)malloc(stdin_size + 1);
-            if (!stdin_text) {
-                free(stdin_data);
-                return 1;
-            }
-            memcpy(stdin_text, stdin_data, stdin_size);
-            stdin_text[stdin_size] = '\0';
-            free(stdin_data);
-            input = stdin_text;
+        if (!encoded) {
+            free(owned_input);
+            return 1;
         }
-
-        decoded = kc_b64_decode(input, &decoded_size);
-        free(stdin_text);
+        memcpy(encoded, input, input_size);
+        encoded[input_size] = '\0';
+        decoded = kc_b64_decode(encoded, &decoded_size);
+        free(encoded);
+        free(owned_input);
         if (!decoded) {
             fprintf(stderr, "b64: invalid base64 input\n");
             return 1;
@@ -187,26 +282,10 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (text) {
-        char *encoded = kc_b64_encode(text, strlen(text));
-
-        if (!encoded) {
-            fprintf(stderr, "b64: encoding failed\n");
-            return 1;
-        }
-        fputs(encoded, stdout);
-        kc_b64_free(encoded);
-        return 0;
-    }
-
-    if (b64_cli_read_stdin(&stdin_data, &stdin_size)) {
-        fprintf(stderr, "b64: cannot read stdin\n");
-        return 1;
-    }
     {
-        char *encoded = kc_b64_encode(stdin_data, stdin_size);
+        char *encoded = kc_b64_encode(input, input_size);
 
-        free(stdin_data);
+        free(owned_input);
         if (!encoded) {
             fprintf(stderr, "b64: encoding failed\n");
             return 1;
