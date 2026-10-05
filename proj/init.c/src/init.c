@@ -88,14 +88,14 @@ static int kc_cli_join_args(
  * @return None.
  */
 static void kc_cli_help(void) {
-    printf("Usage: init <name> [command...]\n");
+    printf("Usage: init <id> [command...]\n");
     printf("\n");
     printf("Commands:\n");
-    printf("  init <name> <cmd>    Register or replace a startup entry\n");
-    printf("  init -l [name]       List registrations\n");
-    printf("  init <name> -l       List one registration\n");
-    printf("  init -d <name>       Remove a registration\n");
-    printf("  init <name> -d       Remove a registration\n");
+    printf("  init <id> <cmd>      Register or replace a startup entry\n");
+    printf("  init -l [id]         List registrations\n");
+    printf("  init <id> -l         List one registration\n");
+    printf("  init -d <id>         Remove a registration\n");
+    printf("  init <id> -d         Remove a registration\n");
     printf("\n");
     printf("Options:\n");
     printf("  -l, --list           List registrations\n");
