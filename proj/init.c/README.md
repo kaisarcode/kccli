@@ -3,9 +3,9 @@
 `init` manages persistent operating-system startup registrations from the
 command line.
 
-It creates or replaces named startup commands, lists existing registrations,
-and removes registrations. It does not start, stop, supervise, or execute the
-registered commands in the current process.
+It creates or replaces startup commands by identifier, lists existing
+registrations, and removes registrations. It does not start, stop, supervise, or
+execute the registered commands in the current process.
 
 ## Build
 
@@ -38,14 +38,14 @@ make test wine
 ## Usage
 
 ```text
-Usage: init <name> [command...]
+Usage: init <id> [command...]
 
 Commands:
-  init <name> <cmd>    Register or replace a startup entry
-  init -l [name]       List registrations
-  init <name> -l       List one registration
-  init -d <name>       Remove a registration
-  init <name> -d       Remove a registration
+  init <id> <cmd>      Register or replace a startup entry
+  init -l [id]         List registrations
+  init <id> -l         List one registration
+  init -d <id>         Remove a registration
+  init <id> -d         Remove a registration
 
 Options:
   -l, --list           List registrations
