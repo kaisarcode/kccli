@@ -49,7 +49,7 @@ Options:
 ```text
 --seats <N>            Publisher capacity; default unlimited
 --pow <N>              Registration PoW bits (0..32)
---max-consumers <N>    Consumers allowed per publisher
+--max-con <N>          Consumers allowed per publisher
 --pass <pass>          Registration password
 --vip <id> <pass>      Reserve an id/password pair; repeatable
 ```
@@ -58,7 +58,7 @@ Examples:
 
 ```bash
 redp2p idx 9876
-redp2p idx 9876 --seats 128 --pow 16
+redp2p idx 9876 --seats 128 --pow 16 --max-con 32
 redp2p idx 9876 --pass secret --vip admin vip-secret
 ```
 
@@ -131,7 +131,7 @@ variables remain supported as fallback/operator configuration for compatibility:
 | `REDP2P_POW` | `--pow <N>` | `idx` |
 | `REDP2P_PASS` | `--pass <pass>` | `idx`, `pub` |
 | `REDP2P_VIP` | `--vip <id> <pass>` | `idx` |
-| `REDP2P_MAX_CONSUMERS_PER_PUBLISHER` | `--max-consumers <N>` | `idx` |
+| `REDP2P_MAX_CONSUMERS_PER_PUBLISHER` | `--max-con <N>` | `idx` |
 | `REDP2P_STUN` | `--stun <url>` | `pub`, `con` |
 | `REDP2P_TURN` | `--turn <url>` | `pub`, `con` |
 | `REDP2P_TURN_USER` | `--turn-user <u>` | `pub`, `con` |
