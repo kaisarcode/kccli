@@ -1147,17 +1147,19 @@ static void redp2p_cli_usage(const char *name)
     printf("\n");
     printf("Commands:\n");
     printf("  idx <port> [--seats <N>] [--pow <N>] [--max-consumers <N>]\n");
-    printf("  pub <id>@<index[:port]> --tcp <port> [peer options]\n");
-    printf("  pub <id>@<index[:port]> --udp <port> [peer options]\n");
-    printf("  con <id>@<index[:port]> <local-port> [peer options]\n");
+    printf("  pub <id>@<index[:port]> -p <port> [--tcp|--udp] [peer options]\n");
+    printf("  con <id>@<index[:port]> -p <port> [--tcp|--udp] [peer options]\n");
     printf("\n");
     printf("Options:\n");
-    printf("  -h, --help      Show this help\n");
-    printf("  -v, --version   Show version\n");
-    printf("  --stun <url>    Optional STUN URL\n");
-    printf("  --turn <url>    Optional TURN URL\n");
-    printf("  --turn-user <u> Optional TURN username\n");
-    printf("  --turn-pass <p> Optional TURN password\n");
+    printf("  -p, --port <port> Local service port for pub/con\n");
+    printf("  --tcp             Use TCP transport (default)\n");
+    printf("  --udp             Use UDP transport\n");
+    printf("  -h, --help        Show this help\n");
+    printf("  -v, --version     Show version\n");
+    printf("  --stun <url>      Optional STUN URL\n");
+    printf("  --turn <url>      Optional TURN URL\n");
+    printf("  --turn-user <u>   Optional TURN username\n");
+    printf("  --turn-pass <p>   Optional TURN password\n");
     printf("\n");
     printf("Environment:\n");
     printf("  REDP2P_SEATS          Index publisher capacity; unset means unlimited\n");
@@ -1355,7 +1357,8 @@ static int redp2p_cli_pub(int argc, char **argv)
     char id[KC_REDP2P_ID_MAX + 1];
     char index[320];
     uint16_t port = 0;
-    int protocol = 0;
+    int protocol = KC_REDP2P_TCP;
+    int protocol_set = 0;
     const char *stun = getenv("REDP2P_STUN");
     const char *turn = getenv("REDP2P_TURN");
     const char *turn_user = getenv("REDP2P_TURN_USER");
@@ -1363,20 +1366,29 @@ static int redp2p_cli_pub(int argc, char **argv)
     int force_turn;
     int status;
 
-    if (argc < 5 || !redp2p_cli_spec(argv[2], id, index)) {
+    if (argc < 3 || !redp2p_cli_spec(argv[2], id, index)) {
         fprintf(stderr,
-            "redp2p: usage: %s pub <id>@<index[:port]> --tcp|--udp <port>\n",
+            "redp2p: usage: %s pub <id>@<index[:port]> -p <port>"
+            " [--tcp|--udp] [peer options]\n",
             argv[0]);
         return 1;
     }
     for (int i = 3; i < argc; i++) {
-        if (strcmp(argv[i], "--tcp") == 0 || strcmp(argv[i], "--udp") == 0) {
-            if (protocol || ++i >= argc || !redp2p_cli_u16(argv[i], &port)) {
-                fprintf(stderr, "redp2p: choose one protocol and valid port\n");
+        if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--port") == 0) {
+            if (port || ++i >= argc || !redp2p_cli_u16(argv[i], &port)) {
+                fprintf(stderr, "redp2p: -p/--port requires a valid port\n");
                 return 1;
             }
-            protocol = strcmp(argv[i - 1], "--tcp") == 0 ?
+        } else if (strcmp(argv[i], "--tcp") == 0 ||
+            strcmp(argv[i], "--udp") == 0)
+        {
+            if (protocol_set) {
+                fprintf(stderr, "redp2p: choose only one of --tcp or --udp\n");
+                return 1;
+            }
+            protocol = strcmp(argv[i], "--tcp") == 0 ?
                 KC_REDP2P_TCP : KC_REDP2P_UDP;
+            protocol_set = 1;
         } else if (strcmp(argv[i], "--stun") == 0) {
             if (++i >= argc || !argv[i][0]) {
                 fprintf(stderr, "redp2p: --stun requires a URL\n");
@@ -1406,8 +1418,8 @@ static int redp2p_cli_pub(int argc, char **argv)
             return 1;
         }
     }
-    if (!protocol || !port) {
-        fprintf(stderr, "redp2p: pub requires --tcp <port> or --udp <port>\n");
+    if (!port) {
+        fprintf(stderr, "redp2p: pub requires -p/--port <port>\n");
         return 1;
     }
     if (!redp2p_cli_force_turn(&force_turn)) {
@@ -1476,40 +1488,6 @@ static int redp2p_cli_pub(int argc, char **argv)
 }
 
 /**
- * Arguments for one consumer forwarding runner.
- */
-typedef struct {
-    const char *id;
-    const char *index;
-    const char *stun;
-    const char *turn;
-    const char *turn_user;
-    const char *turn_pass;
-    uint16_t port;
-    int protocol;
-    int result;
-} redp2p_cli_con_runner_t;
-
-/**
- * Runs one local consumer forwarding socket.
- * @param arg Consumer runner arguments.
- * @return Platform thread result.
- */
-REDP2P_CLI_THREAD(redp2p_cli_con_runner)
-{
-    redp2p_cli_con_runner_t *runner = (redp2p_cli_con_runner_t *)arg;
-
-    runner->result = runner->protocol == KC_REDP2P_TCP ?
-        redp2p_cli_con_tcp_run(runner->id, runner->index, runner->port,
-            runner->stun, runner->turn, runner->turn_user,
-            runner->turn_pass) :
-        redp2p_cli_con_udp_run(runner->id, runner->index, runner->port,
-            runner->stun, runner->turn, runner->turn_user,
-            runner->turn_pass);
-    REDP2P_CLI_THREAD_RETURN();
-}
-
-/**
  * Runs the con command.
  * @param argc Argument count.
  * @param argv Argument vector.
@@ -1519,30 +1497,40 @@ static int redp2p_cli_con(int argc, char **argv)
 {
     char id[KC_REDP2P_ID_MAX + 1];
     char index[320];
-    uint16_t port;
+    uint16_t port = 0;
+    int protocol = KC_REDP2P_TCP;
+    int protocol_set = 0;
     const char *stun = getenv("REDP2P_STUN");
     const char *turn = getenv("REDP2P_TURN");
     const char *turn_user = getenv("REDP2P_TURN_USER");
     const char *turn_pass = getenv("REDP2P_TURN_PASS");
     int force_turn;
-    redp2p_cli_con_runner_t tcp;
-    redp2p_cli_con_runner_t udp;
-    redp2p_cli_thread_t tcp_thread;
-    redp2p_cli_thread_t udp_thread;
-    int tcp_started = 0;
-    int udp_started = 0;
+    int result;
 
-    if (argc < 4 || !redp2p_cli_spec(argv[2], id, index) ||
-        !redp2p_cli_u16(argv[3], &port))
-    {
+    if (argc < 3 || !redp2p_cli_spec(argv[2], id, index)) {
         fprintf(stderr,
-            "redp2p: usage: %s con <id>@<index[:port]> <local-port>"
-            " [peer options]\n",
+            "redp2p: usage: %s con <id>@<index[:port]> -p <port>"
+            " [--tcp|--udp] [peer options]\n",
             argv[0]);
         return 1;
     }
-    for (int i = 4; i < argc; i++) {
-        if (strcmp(argv[i], "--stun") == 0) {
+    for (int i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--port") == 0) {
+            if (port || ++i >= argc || !redp2p_cli_u16(argv[i], &port)) {
+                fprintf(stderr, "redp2p: -p/--port requires a valid port\n");
+                return 1;
+            }
+        } else if (strcmp(argv[i], "--tcp") == 0 ||
+            strcmp(argv[i], "--udp") == 0)
+        {
+            if (protocol_set) {
+                fprintf(stderr, "redp2p: choose only one of --tcp or --udp\n");
+                return 1;
+            }
+            protocol = strcmp(argv[i], "--tcp") == 0 ?
+                KC_REDP2P_TCP : KC_REDP2P_UDP;
+            protocol_set = 1;
+        } else if (strcmp(argv[i], "--stun") == 0) {
             if (++i >= argc || !argv[i][0]) {
                 fprintf(stderr, "redp2p: --stun requires a URL\n");
                 return 1;
@@ -1571,6 +1559,10 @@ static int redp2p_cli_con(int argc, char **argv)
             return 1;
         }
     }
+    if (!port) {
+        fprintf(stderr, "redp2p: con requires -p/--port <port>\n");
+        return 1;
+    }
     if (!redp2p_cli_force_turn(&force_turn)) {
         fprintf(stderr, "redp2p: REDP2P_FORCE_TURN must be 0 or 1\n");
         return 1;
@@ -1592,38 +1584,18 @@ static int redp2p_cli_con(int argc, char **argv)
         return 1;
     }
 
-    memset(&tcp, 0, sizeof(tcp));
-    memset(&udp, 0, sizeof(udp));
-    tcp.id = udp.id = id;
-    tcp.index = udp.index = index;
-    tcp.stun = udp.stun = stun;
-    tcp.turn = udp.turn = turn;
-    tcp.turn_user = udp.turn_user = turn_user;
-    tcp.turn_pass = udp.turn_pass = turn_pass;
-    tcp.port = udp.port = port;
-    tcp.protocol = KC_REDP2P_TCP;
-    udp.protocol = KC_REDP2P_UDP;
-    tcp.result = udp.result = 1;
-
     redp2p_cli_stop = 0;
     signal(SIGINT, redp2p_cli_signal);
     signal(SIGTERM, redp2p_cli_signal);
-    if (redp2p_cli_thread_start(&tcp_thread, redp2p_cli_con_runner, &tcp) == 0)
-        tcp_started = 1;
-    if (redp2p_cli_thread_start(&udp_thread, redp2p_cli_con_runner, &udp) == 0)
-        udp_started = 1;
-    if (!tcp_started && !udp_started) {
-        redp2p_cli_platform_cleanup();
-        fprintf(stderr, "redp2p: con failed: network failure\n");
-        return 1;
-    }
-
     fprintf(stderr, "redp2p: tunnel to '%s' available on 0.0.0.0:%u\n",
         id, (unsigned)port);
-    if (tcp_started) redp2p_cli_thread_join(tcp_thread);
-    if (udp_started) redp2p_cli_thread_join(udp_thread);
+    result = protocol == KC_REDP2P_TCP ?
+        redp2p_cli_con_tcp_run(id, index, port, stun, turn,
+            turn_user, turn_pass) :
+        redp2p_cli_con_udp_run(id, index, port, stun, turn,
+            turn_user, turn_pass);
     redp2p_cli_platform_cleanup();
-    return tcp.result != 0 && udp.result != 0 ? 1 : 0;
+    return result;
 }
 
 /**
