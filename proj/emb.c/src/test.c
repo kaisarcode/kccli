@@ -43,7 +43,7 @@ static int run_cli(const char *args)
  */
 static int csv_output_ok(void)
 {
-    char path[256];
+    const char *path = "emb-cli-output.txt";
     char command[4096];
     char buffer[8192];
     FILE *file;
@@ -51,12 +51,9 @@ static int csv_output_ok(void)
     int ok;
 
 #ifdef _WIN32
-    snprintf(path, sizeof(path), "emb-cli-output-%u.txt",
-        (unsigned)GetCurrentProcessId());
     snprintf(command, sizeof(command),
         "\"%s\" \"Hello world\" > %s 2>NUL", KC_CLI_PATH, path);
 #else
-    snprintf(path, sizeof(path), "/tmp/emb-cli-output-%ld.txt", (long)getpid());
     snprintf(command, sizeof(command),
         "\"%s\" \"Hello world\" > %s 2>/dev/null", KC_CLI_PATH, path);
 #endif
