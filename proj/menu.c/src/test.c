@@ -136,7 +136,7 @@ static int run_cli(const char *args) {
  * @return Process status.
  */
 int main(void) {
-    test_total = 6;
+    test_total = 7;
     test_current = 0;
     test_failures = 0;
 
@@ -148,23 +148,28 @@ int main(void) {
     );
     result(
         "errors",
-        "rejects an unknown command",
-        run_cli("unknown") != 0
+        "rejects an unknown option",
+        run_cli("--unknown") != 0
     );
     result(
-        "add",
-        "rejects incomplete add arguments",
-        run_cli("add only-id") != 0
+        "command",
+        "rejects a missing command",
+        run_cli("only-id") != 0
     );
     result(
         "name",
         "rejects a missing --name value",
-        run_cli("add test-id test-command --name") != 0
+        run_cli("test-id test-command --name") != 0
     );
     result(
-        "delete",
-        "deleting a missing entry is a successful no-op",
-        run_cli("delete kccli-menu-contract-missing") == 0
+        "delete-prefix",
+        "deletes a missing entry with -d <id>",
+        run_cli("-d kccli-menu-contract-missing-a") == 0
+    );
+    result(
+        "delete-suffix",
+        "deletes a missing entry with <id> -d",
+        run_cli("kccli-menu-contract-missing-b -d") == 0
     );
 
     printf(
