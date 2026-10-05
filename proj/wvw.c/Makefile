@@ -8,7 +8,9 @@
 SHELL := /bin/sh
 
 KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
+KCLIB_ROOT_DIR ?= $(abspath $(KCLIB_DIST_DIR)/..)
 WVW_DIST_DIR := $(KCLIB_DIST_DIR)/libwvw.c
+WVW_LOADER := $(KCLIB_ROOT_DIR)/proj/libwvw.c/lib/webview2/WebView2Loader.dll
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -83,12 +85,15 @@ define windows_target
 	header="$$target/libwvw.h"; \
 	library="$$target/libwvw.a"; \
 	out='$(BIN_DIR)/$(1)/windows/wvw.exe'; \
+	loader='$(WVW_LOADER)'; \
 	[ -f "$$header" ] || { echo "kccli: missing libwvw header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libwvw static library: $$library" >&2; exit 1; }; \
+	[ -f "$$loader" ] || { echo "kccli: missing WebView2Loader.dll: $$loader" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/wvw.c \
 		"$$library" -lole32 -luuid -luser32 -lgdi32 -lshell32 -o "$$out"; \
+	cp "$$loader" '$(BIN_DIR)/$(1)/windows/WebView2Loader.dll'; \
 	echo "OK $(1)/windows"
 endef
 
@@ -132,6 +137,7 @@ test:
 		command -v $(WINE_X86_64_CC) >/dev/null 2>&1 || { echo "kccli: missing Windows compiler: $(WINE_X86_64_CC)" >&2; exit 1; }; \
 		mkdir -p '$(BUILD_DIR)/test-wine'; \
 		cp '$(BIN_DIR)/x86_64/windows/wvw.exe' '$(BUILD_DIR)/test-wine/wvw.exe'; \
+		cp '$(BIN_DIR)/x86_64/windows/WebView2Loader.dll' '$(BUILD_DIR)/test-wine/WebView2Loader.dll'; \
 		$(WINE_X86_64_CC) -std=c11 -O2 -Wall -Wextra -Werror \
 			-DKC_CLI_PATH=\"wvw.exe\" src/test.c \
 			-o '$(BUILD_DIR)/test-wine/kccli_test.exe'; \
