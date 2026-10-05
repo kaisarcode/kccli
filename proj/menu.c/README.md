@@ -41,12 +41,13 @@ make test wine
 Usage: menu <command> [arguments]
 
 Commands:
-  menu add <id> <name> <command> [options]
+  menu add <id> <command> [options]
       Add an application menu entry
   menu delete <id>
       Delete an application menu entry
 
 Add options:
+  --name <name>         Application name (defaults to id)
   --description <text>  Application description
   --icon <path>         Application icon path
   --category <name>     Application menu category
@@ -56,7 +57,8 @@ Options:
   -v, --version         Show version
 ```
 
-`id`, `name`, and `command` are required.
+`id` and `command` are required. `--name` is optional; when omitted, the entry
+name is the same as `id`.
 
 Deleting a missing entry is a successful no-op.
 
