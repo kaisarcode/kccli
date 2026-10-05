@@ -56,18 +56,17 @@ static void wch_cli_usage(const char *name)
     printf("Usage: %s <id> [path] [options]\n", name);
     printf("\n");
     printf("Commands:\n");
-    printf("  %s <id> <path> -c <cmd>  Create or replace a watcher\n", name);
-    printf("  %s <id>                  Stream watcher events\n", name);
-    printf("  %s -l [id]               List watchers\n", name);
-    printf("  %s <id> -d               Delete a watcher\n", name);
+    printf("  %s <id> <path>       Create or replace and stream a watcher\n", name);
+    printf("  %s <id>              Stream an existing watcher\n", name);
+    printf("  %s -l [id]           List watchers\n", name);
+    printf("  %s <id> -d           Delete a watcher\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  -c, --cmd <command>   Persistent event command\n");
-    printf("  -r, --recursive       Watch directories recursively\n");
-    printf("  -l, --list            List watchers\n");
-    printf("  -d, --delete          Delete a watcher\n");
-    printf("  -h, --help            Show this help\n");
-    printf("  -v, --version         Show version\n");
+    printf("  -r, --recursive      Watch directories recursively\n");
+    printf("  -l, --list           List watchers\n");
+    printf("  -d, --delete         Delete a watcher\n");
+    printf("  -h, --help           Show this help\n");
+    printf("  -v, --version        Show version\n");
 }
 
 /**
@@ -88,10 +87,9 @@ static void wch_cli_print_entry(const kc_wch_entry_t *entry)
 {
     if (!entry || !entry->name) return;
     printf(
-        "%s\t%s\t%s\t%d\t%d\n",
+        "%s\t%s\t%d\t%d\n",
         entry->name,
         entry->path ? entry->path : "",
-        entry->cmd ? entry->cmd : "",
         entry->recursive ? 1 : 0,
         entry->running ? 1 : 0
     );
@@ -107,22 +105,19 @@ static int wch_cli_list(const char *filter)
     kc_wch_entry_t *entries = NULL;
     size_t count = 0;
     size_t i;
-    int found = 0;
 
     if (kc_wch_list(&entries, &count) != KC_WCH_OK) return 1;
     for (i = 0; i < count; i++) {
         if (filter && strcmp(entries[i].name, filter) != 0) continue;
         wch_cli_print_entry(&entries[i]);
-        found = 1;
     }
     kc_wch_free(entries);
-    if (filter && !found) return 0;
     return 0;
 }
 
 /**
  * Prints one watcher event to standard output.
- * @param event Event label passed through userdata.
+ * @param event Event label.
  * @param path Changed filesystem path.
  * @return None.
  */
@@ -211,17 +206,28 @@ static int wch_cli_stream(const char *name)
 }
 
 /**
+ * Returns the private neutral command used by the CLI watcher.
+ * @return Platform-specific neutral command.
+ */
+static const char *wch_cli_neutral_command(void)
+{
+#ifdef _WIN32
+    return "rem";
+#else
+    return ":";
+#endif
+}
+
+/**
  * Creates or replaces one resident watcher.
  * @param name Watcher name.
  * @param path Watched path.
- * @param command Persistent event command.
  * @param recursive Nonzero enables recursive watching.
  * @return Process exit code.
  */
 static int wch_cli_create(
     const char *name,
     const char *path,
-    const char *command,
     int recursive
 )
 {
@@ -229,7 +235,7 @@ static int wch_cli_create(
 
     memset(&options, 0, sizeof(options));
     options.path = path;
-    options.cmd = command;
+    options.cmd = wch_cli_neutral_command();
     options.recursive = recursive;
     return kc_wch_create(name, &options) == KC_WCH_OK ? 0 : 1;
 }
@@ -244,7 +250,6 @@ int main(int argc, char **argv)
 {
     const char *name = NULL;
     const char *path = NULL;
-    const char *command = NULL;
     int recursive = 0;
     int list = 0;
     int remove = 0;
@@ -262,10 +267,7 @@ int main(int argc, char **argv)
     }
 
     for (i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--cmd") == 0) {
-            if (++i >= argc || !argv[i][0] || command) return 1;
-            command = argv[i];
-        } else if (strcmp(argv[i], "-r") == 0 ||
+        if (strcmp(argv[i], "-r") == 0 ||
             strcmp(argv[i], "--recursive") == 0) {
             recursive = 1;
         } else if (strcmp(argv[i], "-l") == 0 ||
@@ -286,22 +288,19 @@ int main(int argc, char **argv)
     }
 
     if (list) {
-        if (remove || command || recursive || path) return 1;
+        if (remove || recursive || path) return 1;
         if (name && !wch_cli_valid_name(name)) return 1;
         return wch_cli_list(name);
     }
     if (!name || !wch_cli_valid_name(name)) return 1;
     if (remove) {
-        if (path || command || recursive) return 1;
+        if (path || recursive) return 1;
         return kc_wch_delete(name) == KC_WCH_OK ? 0 : 1;
     }
     if (!path) {
-        if (command || recursive) return 1;
+        if (recursive) return 1;
         return wch_cli_stream(name);
     }
-    if (!command) {
-        fprintf(stderr, "wch: creating a watcher requires -c/--cmd\n");
-        return 1;
-    }
-    return wch_cli_create(name, path, command, recursive);
+    if (wch_cli_create(name, path, recursive) != 0) return 1;
+    return wch_cli_stream(name);
 }
