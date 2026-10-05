@@ -1,16 +1,33 @@
 #!/bin/bash
 # kccli dist tool
-# Summary: Packages built CLI projects by platform and architecture.
+# Summary: Packages one or all built CLI projects by platform and architecture.
 # Author:  KaisarCode
 # Website: https://kaisarcode.com
 # License: GNU General Public License v3.0
 
 set -e
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-ROOT_DIR=$(dirname "$SCRIPT_DIR")
-PROJ_DIR="$ROOT_DIR/proj"
-DIST_DIR="$ROOT_DIR/dist"
+# Prints command usage information.
+# @return 0 on success.
+usage() {
+    echo "Usage: $0 all|NAME" >&2
+}
+
+# Resolves one logical kccli name to its project directory.
+# @param proj_dir Projects directory.
+# @param name Logical kccli name.
+# @return 0 on success, 1 when the project does not exist.
+resolve_project() {
+    local proj_dir="$1"
+    local name="$2"
+
+    if [ -d "$proj_dir/$name.c" ]; then
+        printf '%s\n' "$proj_dir/$name.c"
+        return 0
+    fi
+
+    return 1
+}
 
 # Computes the SHA-256 digest of one file.
 # @param file File path.
@@ -51,6 +68,7 @@ package_project() {
     [ -d "$bin_dir" ] || return 0
 
     project_dist="$DIST_DIR/$(basename "$project_dir")"
+    rm -rf "$project_dist"
     mkdir -p "$project_dist"
 
     echo "Processing $(basename "$project_dir")..."
@@ -103,20 +121,58 @@ package_project() {
     done
 }
 
-# Packages every built CLI project into the distribution directory.
+# Dispatches one project distribution or all project distributions.
+# @param target Logical kccli name or all.
 # @return 0 on success.
 main() {
-    local project_dir
+    local script_dir root_dir proj_dir target project_dir
 
-    rm -rf "$DIST_DIR"
+    [ "$#" -eq 1 ] || {
+        usage
+        exit 1
+    }
+
+    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    root_dir=$(dirname "$script_dir")
+    proj_dir="$root_dir/proj"
+    target="$1"
+
+    [ -d "$proj_dir" ] || {
+        echo "error: projects directory not found: $proj_dir" >&2
+        exit 1
+    }
+
+    DIST_DIR="$root_dir/dist"
     mkdir -p "$DIST_DIR"
 
-    for project_dir in "$PROJ_DIR"/*.c; do
-        [ -d "$project_dir" ] || continue
-        package_project "$project_dir"
-    done
+    if [ "$target" = "all" ]; then
+        rm -rf "$DIST_DIR"
+        mkdir -p "$DIST_DIR"
 
-    echo "Done. Packages ready in $DIST_DIR/"
+        for project_dir in "$proj_dir"/*.c; do
+            [ -d "$project_dir" ] || continue
+            package_project "$project_dir"
+        done
+
+        echo "Done. Packages ready in $DIST_DIR/"
+        return 0
+    fi
+
+    case "$target" in
+        *[!A-Za-z0-9_-]*|'')
+            echo "error: invalid project name: $target" >&2
+            usage
+            exit 1
+            ;;
+    esac
+
+    project_dir=$(resolve_project "$proj_dir" "$target") || {
+        echo "error: project not found: $target" >&2
+        exit 1
+    }
+
+    package_project "$project_dir"
+    echo "Done. Packages ready in $DIST_DIR/$(basename "$project_dir")/"
 }
 
 main "$@"
