@@ -13,6 +13,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 /**
  * Prints public CLI usage.
  * @param name Program executable name.
@@ -20,9 +26,10 @@
  */
 static void tpl_cli_usage(const char *name)
 {
-    printf("Usage: %s <template> [options]\n", name);
+    printf("Usage: %s [template] [options]\n", name);
     printf("\n");
     printf("Options:\n");
+    printf("  -i, --input <file>      Read template from file\n");
     printf("  -r, --root <path>       Include root (default: .)\n");
     printf("  -v, --var <key> <value> Set a template variable; repeatable\n");
     printf("  -h, --help              Show this help\n");
@@ -33,9 +40,10 @@ static void tpl_cli_usage(const char *name)
  * Reads all bytes from one stream as a NUL-terminated string.
  * @param stream Input stream.
  * @param out Receives allocated string.
+ * @param out_size Receives byte count when non-NULL.
  * @return Zero on success, nonzero on failure.
  */
-static int tpl_cli_read_stream(FILE *stream, char **out)
+static int tpl_cli_read_stream(FILE *stream, char **out, size_t *out_size)
 {
     char *buffer = NULL;
     size_t size = 0;
@@ -44,6 +52,7 @@ static int tpl_cli_read_stream(FILE *stream, char **out)
     size_t count;
 
     *out = NULL;
+    if (out_size) *out_size = 0;
     while ((count = fread(chunk, 1, sizeof(chunk), stream)) > 0) {
         size_t required = size + count + 1;
         char *next;
@@ -73,26 +82,59 @@ static int tpl_cli_read_stream(FILE *stream, char **out)
     }
     buffer[size] = '\0';
     *out = buffer;
+    if (out_size) *out_size = size;
     return 0;
 }
 
 /**
- * Reads one template source from a file or standard input.
- * @param path File path, or "-" for standard input.
+ * Reads one template source from a file.
+ * @param path File path.
  * @param out Receives allocated template source.
  * @return Zero on success, nonzero on failure.
  */
-static int tpl_cli_read_source(const char *path, char **out)
+static int tpl_cli_read_file(const char *path, char **out)
 {
     FILE *file;
     int status;
 
-    if (strcmp(path, "-") == 0) return tpl_cli_read_stream(stdin, out);
     file = fopen(path, "rb");
     if (!file) return 1;
-    status = tpl_cli_read_stream(file, out);
+    status = tpl_cli_read_stream(file, out, NULL);
     fclose(file);
     return status;
+}
+
+/**
+ * Reports whether standard input is attached to an interactive terminal.
+ * @return Nonzero when stdin is interactive.
+ */
+static int tpl_cli_stdin_is_tty(void)
+{
+#ifdef _WIN32
+    HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+
+    if (handle == INVALID_HANDLE_VALUE || handle == NULL) return 0;
+    return GetConsoleMode(handle, &mode) != 0;
+#else
+    return isatty(STDIN_FILENO);
+#endif
+}
+
+/**
+ * Copies one literal template argument into owned storage.
+ * @param text Literal template text.
+ * @param out Receives allocated copy.
+ * @return Zero on success, nonzero on allocation failure.
+ */
+static int tpl_cli_copy_text(const char *text, char **out)
+{
+    size_t size = strlen(text) + 1;
+
+    *out = (char *)malloc(size);
+    if (!*out) return 1;
+    memcpy(*out, text, size);
+    return 0;
 }
 
 /**
@@ -103,7 +145,8 @@ static int tpl_cli_read_source(const char *path, char **out)
  */
 int main(int argc, char **argv)
 {
-    const char *template_path = NULL;
+    const char *template_text = NULL;
+    const char *input_path = NULL;
     const char *root = NULL;
     kc_tpl_var_t *vars = NULL;
     size_t var_count = 0;
@@ -130,7 +173,19 @@ int main(int argc, char **argv)
     if (!vars) return 1;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--root") == 0) {
+        if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
+            if (++i >= argc || !argv[i][0]) {
+                fprintf(stderr, "tpl: --input requires a file\n");
+                goto done;
+            }
+            if (input_path != NULL) {
+                fprintf(stderr, "tpl: only one input file is accepted\n");
+                goto done;
+            }
+            input_path = argv[i];
+        } else if (strcmp(argv[i], "-r") == 0 ||
+            strcmp(argv[i], "--root") == 0)
+        {
             if (++i >= argc || !argv[i][0]) {
                 fprintf(stderr, "tpl: --root requires a path\n");
                 goto done;
@@ -155,23 +210,40 @@ int main(int argc, char **argv)
             fprintf(stderr,
                 "tpl: help and version options must be used alone\n");
             goto done;
-        } else if (argv[i][0] == '-' && strcmp(argv[i], "-") != 0) {
+        } else if (argv[i][0] == '-') {
             fprintf(stderr, "tpl: unknown option '%s'\n", argv[i]);
             goto done;
-        } else if (template_path != NULL) {
-            fprintf(stderr, "tpl: only one template path is accepted\n");
+        } else if (template_text != NULL) {
+            fprintf(stderr, "tpl: only one template argument is accepted\n");
             goto done;
         } else {
-            template_path = argv[i];
+            template_text = argv[i];
         }
     }
 
-    if (!template_path) {
-        fprintf(stderr, "tpl: missing template path\n");
-        goto done;
+    if (!tpl_cli_stdin_is_tty()) {
+        size_t stdin_size = 0;
+
+        if (tpl_cli_read_stream(stdin, &source, &stdin_size)) {
+            fprintf(stderr, "tpl: cannot read stdin\n");
+            goto done;
+        }
+        if (stdin_size == 0) {
+            free(source);
+            source = NULL;
+        }
     }
-    if (tpl_cli_read_source(template_path, &source)) {
-        fprintf(stderr, "tpl: cannot read template '%s'\n", template_path);
+    if (!source && template_text) {
+        if (tpl_cli_copy_text(template_text, &source)) goto done;
+    }
+    if (!source && input_path) {
+        if (tpl_cli_read_file(input_path, &source)) {
+            fprintf(stderr, "tpl: cannot read input file\n");
+            goto done;
+        }
+    }
+    if (!source) {
+        fprintf(stderr, "tpl: missing template input\n");
         goto done;
     }
 
