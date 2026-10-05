@@ -1,6 +1,6 @@
 /**
  * test.c - min CLI contract tests.
- * Summary: Validates minification syntax and execution.
+ * Summary: Validates minification syntax and input precedence.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -17,6 +17,24 @@
 
 static int test_total = 0;
 static int test_failed = 0;
+
+/**
+ * Writes one text fixture file.
+ * @param path Output file path.
+ * @param text Text to write.
+ * @return Nonzero on success.
+ */
+static int write_text_file(const char *path, const char *text)
+{
+    FILE *file = fopen(path, "wb");
+    size_t size = strlen(text);
+    int ok;
+
+    if (!file) return 0;
+    ok = fwrite(text, 1, size, file) == size;
+    fclose(file);
+    return ok;
+}
 
 /**
  * Executes the CLI with output discarded.
@@ -50,38 +68,28 @@ static int output_equals(
     const char *expected
 )
 {
-    const char *input_path = "min-cli-input.txt";
+    const char *input_path = "min-cli-stdin.txt";
     const char *output_path = "min-cli-output.txt";
     char command[4096];
     char buffer[4096];
     FILE *file;
     size_t size;
-    int ok;
 
-    if (stdin_text) {
-        file = fopen(input_path, "wb");
-        if (!file) return 0;
-        if (fwrite(stdin_text, 1, strlen(stdin_text), file) != strlen(stdin_text)) {
-            fclose(file);
-            remove(input_path);
-            return 0;
-        }
-        fclose(file);
-    }
+    if (stdin_text && !write_text_file(input_path, stdin_text)) return 0;
 
 #ifdef _WIN32
     snprintf(command, sizeof(command),
         "\"%s\" %s %s> %s 2>NUL",
         KC_CLI_PATH,
         args ? args : "",
-        stdin_text ? "< min-cli-input.txt " : "",
+        stdin_text ? "< min-cli-stdin.txt " : "",
         output_path);
 #else
     snprintf(command, sizeof(command),
         "\"%s\" %s %s> %s 2>/dev/null",
         KC_CLI_PATH,
         args ? args : "",
-        stdin_text ? "< min-cli-input.txt " : "",
+        stdin_text ? "< min-cli-stdin.txt " : "",
         output_path);
 #endif
     if (system(command) != 0) {
@@ -100,8 +108,7 @@ static int output_equals(
     if (stdin_text) remove(input_path);
     remove(output_path);
     buffer[size] = '\0';
-    ok = strcmp(buffer, expected) == 0;
-    return ok;
+    return strcmp(buffer, expected) == 0;
 }
 
 /**
@@ -115,7 +122,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/10] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/12] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
@@ -125,13 +132,32 @@ static void result(const char *name, const char *detail, int ok)
  */
 int main(void)
 {
+    const char *file_path = "min-cli-file.txt";
+    int fixture_ok;
+
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("default txt", "text argument defaults to txt",
         output_equals("\"fdfsdfsd sdfsd     ff sd              fsdfd\"", NULL,
             "fdfsdfsd sdfsd ff sd fsdfd"));
-    result("argument priority", "text argument wins over stdin",
-        output_equals("\"argument   wins\"", "stdin loses", "argument wins"));
+    result("stdin", "stdin defaults to txt",
+        output_equals(NULL, "  hello   world\n\nfoo\tbar  ",
+            "hello world foo bar"));
+
+    fixture_ok = write_text_file(file_path, "file      input");
+    result("input file", "-i reads file when higher-priority input is absent",
+        fixture_ok && output_equals("-i min-cli-file.txt", NULL,
+            "file input"));
+    result("argument priority", "argument takes priority over -i",
+        fixture_ok && output_equals(
+            "\"argument    input\" -i min-cli-file.txt", NULL,
+            "argument input"));
+    result("stdin priority", "stdin takes priority over argument and -i",
+        fixture_ok && output_equals(
+            "\"argument input\" -i min-cli-file.txt",
+            "stdin      input", "stdin input"));
+    remove(file_path);
+
     result("css", "CSS argument minification succeeds",
         output_equals("-t css \"/* hi */ body{}\"", NULL, "body{}"));
     result("js", "JavaScript argument minification succeeds",
@@ -139,9 +165,6 @@ int main(void)
             "const x = 1;"));
     result("html", "HTML argument minification succeeds",
         output_equals("-t html \"<!-- c --><p>hi</p>\"", NULL, "<p>hi</p>"));
-    result("stdin", "stdin defaults to txt",
-        output_equals(NULL, "  hello   world\n\nfoo\tbar  ",
-            "hello world foo bar"));
     result("bad type", "unknown type fails", run_cli("-t xml \"text\"") != 0);
     result("unknown", "unknown option fails", run_cli("--unknown") != 0);
 
