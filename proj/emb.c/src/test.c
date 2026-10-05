@@ -61,7 +61,7 @@ static int capture_output(
 
 #ifdef _WIN32
     snprintf(command, sizeof(command),
-        "\"%s\" %s %s> %s 2>NUL",
+        "\"\"%s\" %s %s> %s 2>NUL\"",
         KC_CLI_PATH,
         args ? args : "",
         stdin_text ? "< emb-cli-stdin.txt " : "",
@@ -101,7 +101,7 @@ static int run_cli(const char *args)
     char command[4096];
 
 #ifdef _WIN32
-    snprintf(command, sizeof(command), "\"%s\" %s > NUL 2>&1",
+    snprintf(command, sizeof(command), "\"\"%s\" %s > NUL 2>&1\"",
         KC_CLI_PATH, args ? args : "");
 #else
     snprintf(command, sizeof(command), "\"%s\" %s > /dev/null 2>&1",
