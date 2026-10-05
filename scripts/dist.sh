@@ -44,7 +44,7 @@ project_name() {
 package_project() {
     local project_dir="$1"
     local name bin_dir project_dist arch_dir arch platform_dir platform
-    local executable package_name package work
+    local executable package_name package work sidecar sidecar_name
 
     name=$(project_name "$project_dir")
     bin_dir="$project_dir/bin"
@@ -75,6 +75,12 @@ package_project() {
             work=$(mktemp -d)
 
             cp "$platform_dir/$executable" "$work/$executable"
+            for sidecar in "$platform_dir"/*; do
+                [ -f "$sidecar" ] || continue
+                sidecar_name=$(basename "$sidecar")
+                [ "$sidecar_name" = "$executable" ] && continue
+                cp "$sidecar" "$work/$sidecar_name"
+            done
             [ -f "$project_dir/README.md" ] &&
                 cp "$project_dir/README.md" "$work/README.md"
             [ -f "$project_dir/LICENSE" ] &&
