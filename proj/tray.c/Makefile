@@ -95,10 +95,11 @@ define macos_target
 	header="$$target/libtray.h"; \
 	library="$$target/libtray.a"; \
 	out='$(BIN_DIR)/$(1)/macos/tray'; \
+	object='$(BUILD_DIR)/tray-$(1)-macos.o'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtray header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtray static library: $$library" >&2; exit 1; }; \
 	[ -x '$(2)' ] || { echo "kccli: missing macOS cross-compiler: $(2)" >&2; exit 1; }; \
-	mkdir -p '$(BIN_DIR)/$(1)/macos'; \
+	mkdir -p '$(BIN_DIR)/$(1)/macos' '$(BUILD_DIR)'; \
 	min='$(MACOSX_DEPLOYMENT_TARGET)'; \
 	if [ -z "$$min" ]; then \
 		[ -x '$(MACOSX_OTOOL)' ] || { echo "kccli: missing macOS otool: set MACOSX_DEPLOYMENT_TARGET" >&2; exit 1; }; \
@@ -108,7 +109,11 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -x objective-c -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/tray.c "$$library" \
+		-mmacosx-version-min="$$min" -I"$$target" -c src/tray.c \
+		-o "$$object" || exit 1; \
+	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
+	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
+	$(2) -mmacosx-version-min="$$min" "$$object" "$$library" \
 		-framework Cocoa -framework Foundation -pthread -lm -o "$$out" || exit 1; \
 	echo "OK $(1)/macos"
 endef
