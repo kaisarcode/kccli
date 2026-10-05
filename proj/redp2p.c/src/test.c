@@ -101,7 +101,7 @@ static int run_cli(const char *args)
  */
 int main(void)
 {
-    test_total = 14;
+    test_total = 16;
     test_current = 0;
     test_failures = 0;
 
@@ -112,6 +112,10 @@ int main(void)
         run_cli("unknown") != 0);
     result("idx", "rejects an invalid index port",
         run_cli("idx 0") != 0);
+    result("max con value", "requires a value for --max-con",
+        run_cli("idx 9876 --max-con") != 0);
+    result("max con old", "rejects legacy --max-consumers",
+        run_cli("idx 9876 --max-consumers 8") != 0);
     result("pub port", "requires -p or --port",
         run_cli("pub test@127.0.0.1:1") != 0);
     result("con port", "requires -p or --port",
