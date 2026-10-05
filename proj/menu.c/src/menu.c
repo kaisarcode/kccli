@@ -121,12 +121,14 @@ static int kc_cli_delete(int argc, char **argv) {
  */
 int main(int argc, char **argv) {
     if (argc == 2 &&
-            (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
+            (strcmp(argv[1], "-h") == 0 ||
+            strcmp(argv[1], "--help") == 0)) {
         kc_cli_help();
         return 0;
     }
     if (argc == 2 &&
-            (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0)) {
+            (strcmp(argv[1], "-v") == 0 ||
+            strcmp(argv[1], "--version") == 0)) {
         kc_cli_version();
         return 0;
     }
