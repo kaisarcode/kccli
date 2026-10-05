@@ -7,9 +7,21 @@
  * License: GNU General Public License v3.0
  */
 
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef _WIN32
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+#endif
 
 #ifndef KC_CLI_PATH
 #define KC_CLI_PATH "wch"
@@ -119,12 +131,45 @@ static void result(const char *name, const char *detail, int ok)
 
 #ifndef _WIN32
 /**
- * Configures an isolated watcher runtime directory.
- * @return Nonzero on success.
+ * Sleeps briefly while the resident watcher starts.
+ * @return None.
  */
-static int configure_runtime(void)
+static void test_delay(void)
 {
-    return setenv("KC_WCH_DIR", "wch-cli-runtime", 1) == 0;
+    struct timespec delay;
+
+    delay.tv_sec = 0;
+    delay.tv_nsec = 300000000L;
+    nanosleep(&delay, NULL);
+}
+
+/**
+ * Starts one streaming watcher process for contract testing.
+ * @return Child process identifier, or negative one on failure.
+ */
+static pid_t start_watcher(void)
+{
+    pid_t pid = fork();
+
+    if (pid != 0) return pid;
+    (void)freopen("/dev/null", "w", stdout);
+    (void)freopen("/dev/null", "w", stderr);
+    execl(KC_CLI_PATH, KC_CLI_PATH, "sample", ".", (char *)NULL);
+    _exit(127);
+}
+
+/**
+ * Stops one streaming watcher process.
+ * @param pid Child process identifier.
+ * @return None.
+ */
+static void stop_watcher(pid_t pid)
+{
+    int status;
+
+    if (pid <= 0) return;
+    (void)kill(pid, SIGTERM);
+    (void)waitpid(pid, &status, 0);
 }
 
 /**
@@ -148,11 +193,7 @@ int main(void)
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("missing", "missing watcher name fails", run_cli("") != 0);
-    result(
-        "create command",
-        "creation without -c fails",
-        run_cli("sample .") != 0
-    );
+    result("cmd", "-c is not part of the CLI", run_cli("sample . -c x") != 0);
     result(
         "unknown",
         "unknown option fails",
@@ -165,21 +206,22 @@ int main(void)
     );
 
 #ifndef _WIN32
-    if (!configure_runtime()) {
+    if (setenv("KC_WCH_DIR", "wch-cli-runtime", 1) != 0) {
         result("runtime", "isolated runtime is configured", 0);
     } else {
+        pid_t pid;
+
         clear_runtime();
-        result(
-            "create",
-            "watcher creation succeeds",
-            run_cli("sample . -c true") == 0
-        );
+        pid = start_watcher();
+        test_delay();
+        result("create", "path creates a resident watcher", pid > 0);
         result(
             "list",
-            "list emits tab-separated watcher fields",
+            "list hides the internal command and emits TSV",
             capture_output("-l sample", output, sizeof(output)) &&
-            strncmp(output, "sample\t.\ttrue\t0\t", 16) == 0
+            strncmp(output, "sample\t.\t0\t1", 12) == 0
         );
+        stop_watcher(pid);
         result(
             "delete",
             "watcher deletion succeeds",
