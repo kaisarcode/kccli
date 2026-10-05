@@ -8,31 +8,51 @@ rendered result directly to standard output.
 ## Usage
 
 ```text
-Usage: tpl <template> [options]
+Usage: tpl [template] [options]
 
 Options:
+  -i, --input <file>      Read template from file
   -r, --root <path>       Include root (default: .)
   -v, --var <key> <value> Set a template variable; repeatable
   -h, --help              Show this help
   -V, --version           Show version
 ```
 
-Render a file:
+A positional argument is literal template text. A template file is selected
+only with `-i` or `--input`.
 
-```bash
-tpl page.tpl --var title Home --var user_name Kaisar
+Input precedence is:
+
+```text
+stdin > positional argument > -i/--input
 ```
 
-Read the template source from standard input:
+Standard input takes precedence only when it is redirected or piped and contains
+bytes. An empty redirected stdin falls through to the positional argument and
+then to `-i`.
+
+Render literal template text:
 
 ```bash
-printf '<h1>{{ title }}</h1>' | tpl - --var title Home
+tpl '<h1>{{ title }}</h1>' --var title Home
+```
+
+Render from standard input:
+
+```bash
+printf '<h1>{{ title }}</h1>' | tpl --var title Home
+```
+
+Render a template file:
+
+```bash
+tpl -i page.tpl --var title Home --var user_name Kaisar
 ```
 
 Set a custom include root:
 
 ```bash
-tpl page.tpl --root ./views
+tpl -i page.tpl --root ./views
 ```
 
 `--var` is repeatable. Variables are passed to one `kc_tpl_render()` call as an
