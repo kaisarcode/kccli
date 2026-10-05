@@ -24,12 +24,12 @@ only with `-i` or `--input`.
 Input precedence is:
 
 ```text
-stdin > positional argument > -i/--input
+argument > stdin > -i/--input
 ```
 
-Standard input takes precedence only when it is redirected or piped and contains
-bytes. An empty redirected stdin falls through to the positional argument and
-then to `-i`.
+A positional argument wins over redirected or piped stdin. Without an argument,
+stdin wins over `-i` when stdin contains input. An empty redirected stdin may
+fall through to the file.
 
 Render literal template text:
 
