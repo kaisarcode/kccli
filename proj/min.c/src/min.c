@@ -19,11 +19,6 @@
 #include <unistd.h>
 #endif
 
-/**
- * Prints public CLI usage.
- * @param name Program executable name.
- * @return None.
- */
 static void min_cli_usage(const char *name)
 {
     printf("Usage: %s [text] [options]\n", name);
@@ -35,13 +30,6 @@ static void min_cli_usage(const char *name)
     printf("  -v, --version       Show version\n");
 }
 
-/**
- * Reads all bytes from one stream as a NUL-terminated string.
- * @param stream Input stream.
- * @param out Receives allocated string.
- * @param out_size Receives byte count when non-NULL.
- * @return Zero on success, nonzero on failure.
- */
 static int min_cli_read_stream(FILE *stream, char **out, size_t *out_size)
 {
     char *buffer = NULL;
@@ -85,12 +73,6 @@ static int min_cli_read_stream(FILE *stream, char **out, size_t *out_size)
     return 0;
 }
 
-/**
- * Reads one input file.
- * @param path Input file path.
- * @param out Receives allocated string.
- * @return Zero on success, nonzero on failure.
- */
 static int min_cli_read_file(const char *path, char **out)
 {
     FILE *file;
@@ -103,10 +85,6 @@ static int min_cli_read_file(const char *path, char **out)
     return status;
 }
 
-/**
- * Reports whether standard input is attached to an interactive terminal.
- * @return Nonzero when stdin is interactive.
- */
 static int min_cli_stdin_is_tty(void)
 {
 #ifdef _WIN32
@@ -120,12 +98,6 @@ static int min_cli_stdin_is_tty(void)
 #endif
 }
 
-/**
- * Dispatches minification by public type name.
- * @param type Type name.
- * @param input Input text.
- * @return Owned minified output, or NULL on failure.
- */
 static char *min_cli_minify(const char *type, const char *input)
 {
     if (strcmp(type, "css") == 0) return kc_min_css(input);
@@ -135,12 +107,6 @@ static char *min_cli_minify(const char *type, const char *input)
     return NULL;
 }
 
-/**
- * Runs the min CLI.
- * @param argc Argument count.
- * @param argv Argument vector.
- * @return Process exit code.
- */
 int main(int argc, char **argv)
 {
     const char *type = "txt";
@@ -207,7 +173,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (!min_cli_stdin_is_tty()) {
+    if (text) {
+        input = text;
+    } else if (!min_cli_stdin_is_tty()) {
         size_t stdin_size = 0;
 
         if (min_cli_read_stream(stdin, &owned_input, &stdin_size)) {
@@ -216,7 +184,6 @@ int main(int argc, char **argv)
         }
         if (stdin_size > 0) input = owned_input;
     }
-    if (!input && text) input = text;
     if (!input && input_path) {
         free(owned_input);
         owned_input = NULL;
