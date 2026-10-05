@@ -90,7 +90,7 @@ static void redp2p_cli_public_usage(const char *name)
     printf("\n");
     printf("pub options:\n");
     printf("  -p, --port <port>      Local service port\n");
-    printf("  --transport <type>     tcp or udp (default: tcp)\n");
+    printf("  -t, --transport <type> tcp or udp (default: tcp)\n");
     printf("  --pass <pass>          Index registration password\n");
     printf("  --stun <url>           Optional STUN URL\n");
     printf("  --turn <url>           Optional TURN URL\n");
@@ -100,7 +100,7 @@ static void redp2p_cli_public_usage(const char *name)
     printf("\n");
     printf("con options:\n");
     printf("  -p, --port <port>      Local service port\n");
-    printf("  --transport <type>     tcp or udp (default: tcp)\n");
+    printf("  -t, --transport <type> tcp or udp (default: tcp)\n");
     printf("  --stun <url>           Optional STUN URL\n");
     printf("  --turn <url>           Optional TURN URL\n");
     printf("  --turn-user <u>        Optional TURN username\n");
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "--tcp") == 0 || strcmp(argv[i], "--udp") == 0) {
-            fprintf(stderr, "redp2p: use --transport tcp|udp\n");
+            fprintf(stderr, "redp2p: use -t/--transport tcp|udp\n");
             free(vip);
             free(next);
             return 1;
@@ -181,11 +181,12 @@ int main(int argc, char **argv)
             next[out++] = argv[i];
             continue;
         }
-        if (strcmp(argv[i], "--transport") == 0) {
+        if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--transport") == 0) {
             if (!redp2p_cli_peer_command(command) || transport_set ||
                 ++i >= argc)
             {
-                fprintf(stderr, "redp2p: --transport requires tcp or udp\n");
+                fprintf(stderr,
+                    "redp2p: -t/--transport requires tcp or udp\n");
                 free(vip);
                 free(next);
                 return 1;
@@ -195,7 +196,8 @@ int main(int argc, char **argv)
             else if (strcmp(argv[i], "udp") == 0)
                 next[out++] = "--udp";
             else {
-                fprintf(stderr, "redp2p: --transport requires tcp or udp\n");
+                fprintf(stderr,
+                    "redp2p: -t/--transport requires tcp or udp\n");
                 free(vip);
                 free(next);
                 return 1;
