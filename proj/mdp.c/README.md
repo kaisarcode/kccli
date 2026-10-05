@@ -11,17 +11,27 @@ as an HTML fragment.
 Usage: mdp [text] [options]
 
 Options:
-  --body         Print Markdown body without frontmatter
-  --meta         Print raw frontmatter
-  -h, --help     Show this help
-  -v, --version  Show version
+  -i, --input <file>  Read Markdown from file when stdin is absent
+  --body              Print Markdown body without frontmatter
+  --meta              Print raw frontmatter
+  -h, --help          Show this help
+  -v, --version       Show version
 ```
 
 HTML output is the default.
 
-A positional argument is treated as literal Markdown text. When a positional
-argument is present it takes priority over standard input. When it is absent,
-input is read from standard input.
+Input precedence is:
+
+```text
+positional argument > stdin > -i/--input
+```
+
+A positional argument is treated as literal Markdown text. When it is present,
+it is used even if stdin is redirected or `-i/--input` is also provided.
+
+When no positional argument is present, redirected stdin takes priority over
+`-i/--input`. The input file is used only when no higher-priority input is
+available.
 
 Render Markdown passed as an argument:
 
@@ -33,6 +43,18 @@ Render Markdown from standard input:
 
 ```bash
 printf '# Hello' | mdp
+```
+
+Render a Markdown file:
+
+```bash
+mdp -i README.md
+```
+
+If both stdin and a file are provided, stdin wins:
+
+```bash
+printf '# From stdin' | mdp -i README.md
 ```
 
 Print the Markdown body after recognized frontmatter:
