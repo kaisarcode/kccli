@@ -38,8 +38,23 @@ proj/<name>.c/
     └── test.c
 ```
 
-Additional source files are allowed when the CLI genuinely needs them, but do
-not split a small CLI into layers without a concrete reason.
+This two-source-file layout is the default KCCLI structure: one application
+source and one test source.
+
+Do not create extra source files, wrappers, entry points, parser shims, helper
+translation units, or other layers merely because they make one change easier
+to implement. An agent does not have implicit permission to expand the source
+tree.
+
+Additional source files are acceptable only when the nature of the application
+genuinely requires them and the same result cannot reasonably remain in the
+main application source without harming clarity, correctness, portability, or
+maintainability. Any such exception should be narrow and justified by the
+application itself, not by implementation convenience.
+
+At present, there is no known existing kclib-backed KCCLI that requires an
+extra application source file beyond `src/<name>.c`. Prefer keeping that model
+unless a future CLI provides a concrete reason not to.
 
 The root scripts discover projects automatically from `proj/<name>.c`. Do not
 add a root project registry just to introduce a new CLI.
@@ -263,6 +278,11 @@ rewrites while changing behavior.
 Each project Makefile is responsible for building the CLI directly against the
 precompiled static kclib artifacts for its supported targets.
 
+Compile `src/<name>.c` directly as the application source. Do not introduce a
+separate `entry.c`, `main.c`, wrapper, source-inclusion shim, or argument
+translation layer when the public syntax can be implemented directly in the
+application file.
+
 The established pattern includes:
 
 - native target detection,
@@ -355,6 +375,11 @@ Normally:
    project automatically; do not edit them merely to enumerate the new name.
 7. Run the project build and tests and then run `kcs` from the repository root.
 
+Do not create additional source files during project setup unless the CLI has a
+concrete architectural need that cannot reasonably be handled by
+`src/<name>.c`. Convenience, parser organization, argument normalization, or a
+preference for extra layering are not sufficient reasons.
+
 Do not copy platform link flags blindly. Derive them from the library and the
 closest working KCCLI project.
 
@@ -376,6 +401,10 @@ syntax that the parser does not accept.
 
 When an old form is intentionally removed, reject it explicitly when doing so
 produces a clearer diagnostic and protects the new contract.
+
+Do not add a new source file as a workaround for changing an existing parser or
+public surface. Modify the existing application source directly unless the
+application itself has developed a real architectural need for separation.
 
 Avoid changing the linked kclib solely to make the CLI implementation easier.
 If the public library API is genuinely insufficient, treat that as a separate
