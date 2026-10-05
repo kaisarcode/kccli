@@ -168,11 +168,11 @@ int main(void)
 {
     char output[4096];
 #ifdef _WIN32
-    const char *create_args = "sample . -c rem";
-    const char *list_prefix = "sample\t.\trem\t0\t1";
+    const char *create_args = "sample . rem";
+    const char *list_prefix = "sample\t.\trem";
 #else
-    const char *create_args = "sample . -c true";
-    const char *list_prefix = "sample\t.\ttrue\t0\t1";
+    const char *create_args = "sample . true";
+    const char *list_prefix = "sample\t.\ttrue";
 #endif
 
     result("help", "--help succeeds", run_cli("--help") == 0);
@@ -180,7 +180,7 @@ int main(void)
     result("missing", "missing watcher name fails", run_cli("") != 0);
     result(
         "cmd",
-        "creation without -c fails",
+        "creation without command fails",
         run_cli("sample .") != 0
     );
     result(
@@ -200,7 +200,7 @@ int main(void)
     if (setenv("KC_WCH_DIR", "wch-cli-runtime", 1) != 0) {
 #endif
         result("create", "watcher creation succeeds", 0);
-        result("list", "list emits watcher registration as TSV", 0);
+        result("list", "list emits id, path, and command", 0);
         result("delete", "watcher deletion succeeds", 0);
     } else {
         clear_runtime();
@@ -212,7 +212,7 @@ int main(void)
         test_delay();
         result(
             "list",
-            "list emits watcher registration as TSV",
+            "list emits id, path, and command",
             capture_output("-l sample", output, sizeof(output)) &&
             strncmp(output, list_prefix, strlen(list_prefix)) == 0
         );
