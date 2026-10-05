@@ -233,7 +233,7 @@ static int hnsw_cli_parse_vector(
 }
 
 /**
- * Adds CSV dataset rows to one index.
+ * Adds tab-separated id/vector rows to one index.
  * @param hnsw Index handle.
  * @param source Mutable dataset text.
  * @param dimension Vector dimension.
@@ -250,7 +250,7 @@ static int hnsw_cli_add_rows(
     while (*cursor) {
         char *line = cursor;
         char *newline = strchr(cursor, '\n');
-        char *comma;
+        char *separator;
         float *values = NULL;
         int status;
 
@@ -266,11 +266,12 @@ static int hnsw_cli_add_rows(
         }
         if (!line[0]) continue;
 
-        comma = strchr(line, ',');
-        if (!comma || comma == line || !comma[1]) return 1;
-        *comma = '\0';
+        separator = strchr(line, '\t');
+        if (!separator || separator == line || !separator[1]) return 1;
+        if (strchr(separator + 1, '\t')) return 1;
+        *separator = '\0';
 
-        if (hnsw_cli_parse_vector(comma + 1, dimension, &values)) return 1;
+        if (hnsw_cli_parse_vector(separator + 1, dimension, &values)) return 1;
         status = kc_hnsw_add(hnsw, line, values);
         free(values);
         if (status != KC_HNSW_OK) return 1;
