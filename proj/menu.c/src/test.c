@@ -141,14 +141,31 @@ int main(void) {
     test_failures = 0;
 
     result("help", "prints command help", run_cli("--help") == 0);
-    result("version", "reports linked libmenu build version",
-        run_cli("--version") == 0);
-    result("errors", "rejects an unknown command", run_cli("unknown") != 0);
-    result("add", "rejects incomplete add arguments", run_cli("add only-id") != 0);
-    result("delete", "deleting a missing entry is a successful no-op",
-        run_cli("delete kccli-menu-contract-missing") == 0);
+    result(
+        "version",
+        "reports linked libmenu build version",
+        run_cli("--version") == 0
+    );
+    result(
+        "errors",
+        "rejects an unknown command",
+        run_cli("unknown") != 0
+    );
+    result(
+        "add",
+        "rejects incomplete add arguments",
+        run_cli("add only-id") != 0
+    );
+    result(
+        "delete",
+        "deleting a missing entry is a successful no-op",
+        run_cli("delete kccli-menu-contract-missing") == 0
+    );
 
-    printf("\n%d passed, %d failed\n",
-        test_total - test_failures, test_failures);
+    printf(
+        "\n%d passed, %d failed\n",
+        test_total - test_failures,
+        test_failures
+    );
     return test_failures ? 1 : 0;
 }
