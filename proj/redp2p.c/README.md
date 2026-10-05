@@ -49,13 +49,13 @@ Publish a local TCP service. TCP is the default transport:
 
 ```bash
 redp2p pub web@idx.example.com:9876 -p 8080
-redp2p pub web@idx.example.com:9876 --port 8080 --tcp
+redp2p pub web@idx.example.com:9876 --port 8080 --transport tcp
 ```
 
 Publish a local UDP service:
 
 ```bash
-redp2p pub game@idx.example.com:9876 -p 7777 --udp
+redp2p pub game@idx.example.com:9876 -p 7777 --transport udp
 ```
 
 Peer options may be combined with either transport:
@@ -71,13 +71,13 @@ default consumer transport:
 
 ```bash
 redp2p con web@idx.example.com:9876 -p 9000
-redp2p con web@idx.example.com:9876 --port 9000 --tcp
+redp2p con web@idx.example.com:9876 --port 9000 --transport tcp
 ```
 
 Expose it through a local UDP port:
 
 ```bash
-redp2p con game@idx.example.com:9876 -p 9000 --udp
+redp2p con game@idx.example.com:9876 -p 9000 --transport udp
 ```
 
 The CLI accepts `REDP2P_SEATS`, `REDP2P_POW`, `REDP2P_PASS`, `REDP2P_VIP`,
@@ -85,13 +85,13 @@ The CLI accepts `REDP2P_SEATS`, `REDP2P_POW`, `REDP2P_PASS`, `REDP2P_VIP`,
 `REDP2P_TURN_USER`, `REDP2P_TURN_PASS`, and `REDP2P_FORCE_TURN` as operator
 configuration.
 
-For `pub` and `con`, `-p` / `--port` is required. `--tcp` and `--udp` are
-optional transport selectors; when neither is present, TCP is used. The peer
-options are `--stun`, `--turn`, `--turn-user`, and `--turn-pass`. Direct peer
-connectivity remains preferred; TURN is used by libredp2p as a relay fallback.
-Set `REDP2P_FORCE_TURN=1` to require the relay path. The CLI validates the
-switch, requires TURN configuration when it is enabled, and reports that the
-forced relay mode is active.
+For `pub` and `con`, `-p` / `--port` is required. `--transport` accepts `tcp`
+or `udp`; when omitted, TCP is used. The peer options are `--stun`, `--turn`,
+`--turn-user`, and `--turn-pass`. Direct peer connectivity remains preferred;
+TURN is used by libredp2p as a relay fallback. Set `REDP2P_FORCE_TURN=1` to
+require the relay path. The CLI validates the switch, requires TURN
+configuration when it is enabled, and reports that the forced relay mode is
+active.
 
 `idx`, `pub`, and `con` processes run until SIGINT or SIGTERM and then close
 their handle.
