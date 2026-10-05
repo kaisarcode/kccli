@@ -64,6 +64,7 @@ Typical root commands are:
 ```sh
 ./scripts/build.sh <name>
 ./scripts/test.sh <name>
+./scripts/dist.sh <name>
 ```
 
 Use `all` instead of a project name to operate on every project.
@@ -160,8 +161,6 @@ This means:
     the file supplied through `-i`;
 - otherwise, if stdin is redirected or piped and contains input, use stdin;
 - otherwise, if `-i, --input <file>` is present, read the input from that file;
-- do not block waiting for interactive stdin merely because no positional
-    argument was supplied;
 - an empty redirected stdin may fall through to `-i` when a file was supplied,
     rather than masking the file with no content.
 
