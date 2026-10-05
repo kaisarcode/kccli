@@ -1,6 +1,6 @@
 /**
  * test.c - lng CLI contract tests.
- * Summary: Validates language detection argument parsing and execution.
+ * Summary: Validates language detection input precedence and execution.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -18,11 +18,65 @@
 static int test_total = 0;
 static int test_failed = 0;
 
-/**
- * Executes the CLI with output discarded.
- * @param args Arguments appended after executable.
- * @return Child process status from system().
- */
+static int write_text_file(const char *path, const char *text)
+{
+    FILE *file = fopen(path, "wb");
+    size_t size = strlen(text);
+    int ok;
+
+    if (!file) return 0;
+    ok = fwrite(text, 1, size, file) == size;
+    fclose(file);
+    return ok;
+}
+
+static int capture_output(
+    const char *args,
+    const char *stdin_text,
+    char *buffer,
+    size_t buffer_size
+)
+{
+    const char *stdin_path = "lng-cli-stdin.txt";
+    const char *output_path = "lng-cli-output.txt";
+    char command[4096];
+    FILE *file;
+    size_t size;
+
+    if (stdin_text && !write_text_file(stdin_path, stdin_text)) return 0;
+
+#ifdef _WIN32
+    snprintf(command, sizeof(command),
+        "\"%s\" %s %s> %s 2>NUL",
+        KC_CLI_PATH,
+        args ? args : "",
+        stdin_text ? "< lng-cli-stdin.txt " : "",
+        output_path);
+#else
+    snprintf(command, sizeof(command),
+        "\"%s\" %s %s> %s 2>/dev/null",
+        KC_CLI_PATH,
+        args ? args : "",
+        stdin_text ? "< lng-cli-stdin.txt " : "",
+        output_path);
+#endif
+
+    if (system(command) != 0) {
+        if (stdin_text) remove(stdin_path);
+        remove(output_path);
+        return 0;
+    }
+    if (stdin_text) remove(stdin_path);
+
+    file = fopen(output_path, "rb");
+    if (!file) return 0;
+    size = fread(buffer, 1, buffer_size - 1, file);
+    fclose(file);
+    remove(output_path);
+    buffer[size] = '\0';
+    return 1;
+}
+
 static int run_cli(const char *args)
 {
     char command[4096];
@@ -37,71 +91,52 @@ static int run_cli(const char *args)
     return system(command);
 }
 
-/**
- * Verifies that one detection line uses headerless CSV output.
- * @return Nonzero on success.
- */
 static int csv_output_ok(void)
 {
-    char command[4096];
-    char line[256];
-    FILE *file;
-    int rc;
-    int ok;
+    char buffer[256];
 
-#ifdef _WIN32
-    snprintf(command, sizeof(command),
-        "\"%s\" \"Hello world\" > lng-test-output.txt 2>NUL",
-        KC_CLI_PATH);
-#else
-    snprintf(command, sizeof(command),
-        "\"%s\" \"Hello world\" > lng-test-output.txt 2>/dev/null",
-        KC_CLI_PATH);
-#endif
-    rc = system(command);
-    if (rc != 0) return 0;
-
-    file = fopen("lng-test-output.txt", "r");
-    if (!file) return 0;
-    if (!fgets(line, sizeof(line), file)) {
-        fclose(file);
-        remove("lng-test-output.txt");
-        return 0;
-    }
-    fclose(file);
-    remove("lng-test-output.txt");
-
-    ok = strchr(line, ',') != NULL && strchr(line, '\t') == NULL &&
-        strncmp(line, "code,score", 10) != 0;
-    return ok;
+    if (!capture_output("\"Hello world\"", NULL,
+        buffer, sizeof(buffer))) return 0;
+    return strchr(buffer, ',') != NULL && strchr(buffer, '\t') == NULL &&
+        strncmp(buffer, "code,score", 10) != 0;
 }
 
-/**
- * Prints one contract-test result.
- * @param name Test name.
- * @param detail Behavior under test.
- * @param ok Nonzero on success.
- * @return None.
- */
 static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/9] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/12] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
-/**
- * Runs all lng CLI contract tests.
- * @return Zero when all tests pass.
- */
 int main(void)
 {
+    const char *file_path = "lng-cli-file.txt";
+    char expected[256];
+    char actual[256];
+    int fixture_ok;
+
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("detect", "text detection succeeds",
         run_cli("\"Hello world\"") == 0);
     result("csv", "output is headerless CSV", csv_output_ok());
+
+    fixture_ok = write_text_file(file_path, "Bonjour le monde");
+    result("input file", "-i detects text from file",
+        fixture_ok && run_cli("-i lng-cli-file.txt") == 0);
+    result("stdin priority", "stdin takes priority over -i",
+        fixture_ok && capture_output(NULL, "Hello world",
+            expected, sizeof(expected)) &&
+        capture_output("-i lng-cli-file.txt", "Hello world",
+            actual, sizeof(actual)) && strcmp(expected, actual) == 0);
+    result("argument priority", "argument takes priority over stdin and -i",
+        fixture_ok && capture_output("\"Hello world\"", NULL,
+            expected, sizeof(expected)) &&
+        capture_output("\"Hello world\" -i lng-cli-file.txt", "Bonjour le monde",
+            actual, sizeof(actual)) && strcmp(expected, actual) == 0);
+    remove(file_path);
+
     result("threshold", "valid threshold succeeds",
         run_cli("\"Hello world\" --threshold 0.1") == 0);
     result("limit", "valid limit succeeds",
