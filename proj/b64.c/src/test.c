@@ -105,7 +105,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/8] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/10] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
@@ -117,16 +117,19 @@ int main(void)
 {
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
-    result("encode arg", "text argument encodes",
-        output_equals("\"hello world\"", NULL, "aGVsbG8gd29ybGQ="));
-    result("encode stdin", "stdin encodes when argument is absent",
-        output_equals("", "hello world", "aGVsbG8gd29ybGQ="));
-    result("argument priority", "argument takes priority over stdin",
-        output_equals("\"hello\"", "ignored", "aGVsbG8="));
-    result("decode arg", "Base64 argument decodes",
+    result("encode arg", "-e encodes text argument",
+        output_equals("-e \"hello world\"", NULL, "aGVsbG8gd29ybGQ="));
+    result("encode stdin", "-e reads stdin when argument is absent",
+        output_equals("-e", "hello world", "aGVsbG8gd29ybGQ="));
+    result("encode priority", "encode argument takes priority over stdin",
+        output_equals("-e \"hello\"", "ignored", "aGVsbG8="));
+    result("decode arg", "-d decodes Base64 argument",
         output_equals("-d aGVsbG8=", NULL, "hello"));
-    result("decode stdin", "Base64 stdin decodes",
+    result("decode stdin", "-d reads stdin when argument is absent",
         output_equals("-d", "aGVsbG8=", "hello"));
+    result("decode priority", "decode argument takes priority over stdin",
+        output_equals("-d aGVsbG8=", "aWdub3JlZA==", "hello"));
+    result("missing mode", "encode or decode mode is required", run_cli("") != 0);
     result("invalid", "invalid Base64 fails", run_cli("-d invalid") != 0);
 
     printf("\n%d passed, %d failed\n", test_total - test_failed, test_failed);
