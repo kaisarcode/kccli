@@ -11,17 +11,17 @@ explain. Do not distort a good CLI design merely to satisfy a superficial rule.
 
 - Keep each CLI small, direct, deterministic, and inspectable.
 - Prefer consistency with existing KCCLI projects when several designs are
-  equally reasonable.
+    equally reasonable.
 - Treat the linked kclib public API as the source of truth.
 - Do not depend on library internals when the public API can express the task.
 - Do not add unrelated dependencies, frameworks, services, generators, or
-  runtime layers for convenience.
+    runtime layers for convenience.
 - Preserve existing behavior unless the task explicitly changes the public CLI
-  contract.
+    contract.
 - Keep platform-specific behavior only where the underlying library or OS
-  requires it.
+    requires it.
 - Prefer a single obvious way to perform an operation in documentation and
-  help output, even if the parser intentionally accepts equivalent forms.
+    help output, even if the parser intentionally accepts equivalent forms.
 
 ## Repository model
 
@@ -365,14 +365,14 @@ than designing it from scratch.
 Normally:
 
 1. Create `proj/<name>.c/` using an existing project with similar platform and
-   library requirements as the structural reference.
+    library requirements as the structural reference.
 2. Add `src/<name>.c` as the CLI implementation.
 3. Add `src/test.c` with black-box contract tests.
 4. Add a Makefile that links the appropriate static library from `kclib/dist`
-   and exposes the standard build/test targets applicable to that library.
+    and exposes the standard build/test targets applicable to that library.
 5. Add `README.md`, `LICENSE`, and `.kcsignore` following repository patterns.
 6. Verify that the root `scripts/build.sh` and `scripts/test.sh` discover the
-   project automatically; do not edit them merely to enumerate the new name.
+    project automatically; do not edit them merely to enumerate the new name.
 7. Run the project build and tests and then run `kcs` from the repository root.
 
 Do not create additional source files during project setup unless the CLI has a
