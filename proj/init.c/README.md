@@ -43,8 +43,6 @@ Usage: init <id> [command...]
 Commands:
   init <id> <cmd>      Register or replace a startup entry
   init -l [id]         List registrations
-  init <id> -l         List one registration
-  init -d <id>         Remove a registration
   init <id> -d         Remove a registration
 
 Options:
