@@ -136,7 +136,7 @@ static int run_cli(const char *args) {
  * @return Process status.
  */
 int main(void) {
-    test_total = 5;
+    test_total = 6;
     test_current = 0;
     test_failures = 0;
 
@@ -155,6 +155,11 @@ int main(void) {
         "add",
         "rejects incomplete add arguments",
         run_cli("add only-id") != 0
+    );
+    result(
+        "name",
+        "rejects a missing --name value",
+        run_cli("add test-id test-command --name") != 0
     );
     result(
         "delete",
