@@ -13,6 +13,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 /**
  * Prints public CLI usage.
  * @param name Program executable name.
@@ -23,17 +29,20 @@ static void min_cli_usage(const char *name)
     printf("Usage: %s [text] [options]\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  -t, --type <type>  css, js, html, or txt (default: txt)\n");
-    printf("  -h, --help         Show this help\n");
-    printf("  -v, --version      Show version\n");
+    printf("  -i, --input <file>  Read input from file\n");
+    printf("  -t, --type <type>   css, js, html, or txt (default: txt)\n");
+    printf("  -h, --help          Show this help\n");
+    printf("  -v, --version       Show version\n");
 }
 
 /**
- * Reads all bytes from standard input as a NUL-terminated string.
+ * Reads all bytes from one stream as a NUL-terminated string.
+ * @param stream Input stream.
  * @param out Receives allocated string.
+ * @param out_size Receives byte count when non-NULL.
  * @return Zero on success, nonzero on failure.
  */
-static int min_cli_read_stdin(char **out)
+static int min_cli_read_stream(FILE *stream, char **out, size_t *out_size)
 {
     char *buffer = NULL;
     size_t size = 0;
@@ -42,7 +51,8 @@ static int min_cli_read_stdin(char **out)
     size_t count;
 
     *out = NULL;
-    while ((count = fread(chunk, 1, sizeof(chunk), stdin)) > 0) {
+    if (out_size) *out_size = 0;
+    while ((count = fread(chunk, 1, sizeof(chunk), stream)) > 0) {
         size_t required = size + count + 1;
         char *next;
 
@@ -61,7 +71,7 @@ static int min_cli_read_stdin(char **out)
         memcpy(buffer + size, chunk, count);
         size += count;
     }
-    if (ferror(stdin)) {
+    if (ferror(stream)) {
         free(buffer);
         return 1;
     }
@@ -71,7 +81,43 @@ static int min_cli_read_stdin(char **out)
     }
     buffer[size] = '\0';
     *out = buffer;
+    if (out_size) *out_size = size;
     return 0;
+}
+
+/**
+ * Reads one input file.
+ * @param path Input file path.
+ * @param out Receives allocated string.
+ * @return Zero on success, nonzero on failure.
+ */
+static int min_cli_read_file(const char *path, char **out)
+{
+    FILE *file;
+    int status;
+
+    file = fopen(path, "rb");
+    if (!file) return 1;
+    status = min_cli_read_stream(file, out, NULL);
+    fclose(file);
+    return status;
+}
+
+/**
+ * Reports whether standard input is attached to an interactive terminal.
+ * @return Nonzero when stdin is interactive.
+ */
+static int min_cli_stdin_is_tty(void)
+{
+#ifdef _WIN32
+    HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+
+    if (handle == INVALID_HANDLE_VALUE || handle == NULL) return 0;
+    return GetConsoleMode(handle, &mode) != 0;
+#else
+    return isatty(STDIN_FILENO);
+#endif
 }
 
 /**
@@ -99,8 +145,9 @@ int main(int argc, char **argv)
 {
     const char *type = "txt";
     const char *text = NULL;
-    const char *input;
-    char *stdin_input = NULL;
+    const char *input_path = NULL;
+    const char *input = NULL;
+    char *owned_input = NULL;
     char *output;
 
     if (argc == 2 && (strcmp(argv[1], "-h") == 0 ||
@@ -117,7 +164,19 @@ int main(int argc, char **argv)
     }
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--type") == 0) {
+        if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
+            if (++i >= argc || !argv[i][0]) {
+                fprintf(stderr, "min: --input requires a file\n");
+                return 1;
+            }
+            if (input_path != NULL) {
+                fprintf(stderr, "min: only one input file is accepted\n");
+                return 1;
+            }
+            input_path = argv[i];
+        } else if (strcmp(argv[i], "-t") == 0 ||
+            strcmp(argv[i], "--type") == 0)
+        {
             if (++i >= argc) {
                 fprintf(stderr, "min: --type requires a value\n");
                 return 1;
@@ -130,7 +189,7 @@ int main(int argc, char **argv)
         {
             fprintf(stderr, "min: help/version must be used alone\n");
             return 1;
-        } else if (argv[i][0] == '-' && strcmp(argv[i], "-") != 0) {
+        } else if (argv[i][0] == '-') {
             fprintf(stderr, "min: unknown option '%s'\n", argv[i]);
             return 1;
         } else if (text != NULL) {
@@ -148,18 +207,35 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (text) {
-        input = text;
-    } else {
-        if (min_cli_read_stdin(&stdin_input)) {
+    if (!min_cli_stdin_is_tty()) {
+        size_t stdin_size = 0;
+
+        if (min_cli_read_stream(stdin, &owned_input, &stdin_size)) {
             fprintf(stderr, "min: cannot read stdin\n");
             return 1;
         }
-        input = stdin_input;
+        if (stdin_size > 0) input = owned_input;
+    }
+    if (!input && text) input = text;
+    if (!input && input_path) {
+        free(owned_input);
+        owned_input = NULL;
+        if (min_cli_read_file(input_path, &owned_input)) {
+            fprintf(stderr, "min: cannot read input file\n");
+            return 1;
+        }
+        input = owned_input;
+    }
+    if (!input) {
+        if (!owned_input && min_cli_read_stream(stdin, &owned_input, NULL)) {
+            fprintf(stderr, "min: cannot read stdin\n");
+            return 1;
+        }
+        input = owned_input;
     }
 
     output = min_cli_minify(type, input);
-    free(stdin_input);
+    free(owned_input);
     if (!output) {
         fprintf(stderr, "min: minification failed\n");
         return 1;
