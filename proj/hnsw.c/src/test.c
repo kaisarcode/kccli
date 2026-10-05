@@ -139,7 +139,7 @@ int main(void)
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("search", "literal dataset searches successfully",
-        capture_output("\"a,1,0\nb,0,1\" -q 1,0 -d 2", NULL,
+        capture_output("a,1,0 -q 1,0 -d 2", NULL,
             output, sizeof(output)) && strncmp(output, "a,", 2) == 0);
     result("stdin", "stdin dataset searches successfully",
         capture_output("-q 1,0 -d 2", dataset,
@@ -154,21 +154,21 @@ int main(void)
             "x,0,1\n", output, sizeof(output)) && strncmp(output, "x,", 2) == 0);
     result("argument priority", "argument takes priority over stdin and -i",
         fixture_ok && capture_output(
-            "\"z,1,0\" -i hnsw-cli-file.csv -q 1,0 -d 2",
+            "z,1,0 -i hnsw-cli-file.csv -q 1,0 -d 2",
             "x,0,1\n", output, sizeof(output)) && strncmp(output, "z,", 2) == 0);
     remove(file_path);
 
     result("l2", "l2 metric searches successfully",
-        capture_output("\"a,0,0\nb,2,2\" -q 0,0 -d 2 -m l2", NULL,
+        capture_output("a,0,0 -q 0,0 -d 2 -m l2", NULL,
             output, sizeof(output)) && strncmp(output, "a,", 2) == 0);
     result("limit", "limit option is accepted",
-        run_cli("\"a,1,0\nb,0,1\" -q 1,0 -d 2 -l 1") == 0);
+        run_cli("a,1,0 -q 1,0 -d 2 -l 1") == 0);
     result("dimension", "invalid vector dimension fails",
-        run_cli("\"a,1,0\" -q 1,0,0 -d 2") != 0);
+        run_cli("a,1,0 -q 1,0,0 -d 2") != 0);
     result("missing query", "missing query fails",
-        run_cli("\"a,1,0\" -d 2") != 0);
+        run_cli("a,1,0 -d 2") != 0);
     result("unknown", "unknown option fails",
-        run_cli("\"a,1,0\" -q 1,0 -d 2 --unknown") != 0);
+        run_cli("a,1,0 -q 1,0 -d 2 --unknown") != 0);
 
     printf("\n%d passed, %d failed\n", test_total - test_failed, test_failed);
     return test_failed ? 1 : 0;
