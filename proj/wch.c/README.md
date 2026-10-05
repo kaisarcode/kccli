@@ -8,20 +8,19 @@ API or its behavior.
 ## Usage
 
 ```text
-Usage: wch <id> <path> -c <cmd> [options]
+Usage: wch <id> <path> <cmd> [options]
 
 Commands:
-  wch <id> <path> -c <cmd>  Create or replace a watcher
-  wch -l [id]               List watchers
-  wch <id> -d               Delete a watcher
+  wch <id> <path> <cmd>  Create or replace a watcher
+  wch -l [id]            List watchers
+  wch <id> -d            Delete a watcher
 
 Options:
-  -c, --cmd <command>   Event command
-  -r, --recursive       Watch directories recursively
-  -l, --list            List watchers
-  -d, --delete          Delete a watcher
-  -h, --help            Show this help
-  -v, --version         Show version
+  -r, --recursive    Watch directories recursively
+  -l, --list         List watchers
+  -d, --delete       Delete a watcher
+  -h, --help         Show this help
+  -v, --version      Show version
 ```
 
 ## Create a watcher
@@ -29,7 +28,7 @@ Options:
 Define the watcher in one command:
 
 ```bash
-wch source ./src -c ./handler.sh
+wch source ./src ./handler.sh
 ```
 
 The watcher is resident. The CLI returns immediately after creating or replacing
@@ -38,13 +37,13 @@ the registration; it does not keep the terminal open.
 Watch directories recursively:
 
 ```bash
-wch source ./src -r -c ./handler.sh
+wch source ./src ./handler.sh -r
 ```
 
 Commands containing spaces must be quoted as one CLI argument:
 
 ```bash
-wch source ./src -c "./handler.sh --reload"
+wch source ./src "./handler.sh --reload"
 ```
 
 The configured command is executed by `libwch.c` when an event occurs, using the
@@ -64,13 +63,11 @@ List one watcher:
 wch -l source
 ```
 
-Each row is headerless TSV with these fields:
+Each row contains only the watcher identifier, watched path, and command:
 
 ```text
-<id><TAB><path><TAB><cmd><TAB><recursive><TAB><running>
+<id><TAB><path><TAB><cmd>
 ```
-
-The final two fields are `0` or `1`.
 
 ## Delete a watcher
 
