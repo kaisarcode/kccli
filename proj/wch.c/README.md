@@ -11,53 +11,35 @@ API or its behavior.
 Usage: wch <id> [path] [options]
 
 Commands:
-  wch <id> <path> -c <cmd>  Create or replace a watcher
-  wch <id>                  Stream watcher events
-  wch -l [id]               List watchers
-  wch <id> -d               Delete a watcher
+  wch <id> <path>       Create or replace and stream a watcher
+  wch <id>              Stream an existing watcher
+  wch -l [id]           List watchers
+  wch <id> -d           Delete a watcher
 
 Options:
-  -c, --cmd <command>   Persistent event command
-  -r, --recursive       Watch directories recursively
-  -l, --list            List watchers
-  -d, --delete          Delete a watcher
-  -h, --help            Show this help
-  -v, --version         Show version
+  -r, --recursive      Watch directories recursively
+  -l, --list           List watchers
+  -d, --delete         Delete a watcher
+  -h, --help           Show this help
+  -v, --version        Show version
 ```
 
-## Create a watcher
+## Watch a path
 
-Creating a resident watcher requires a persistent command because `libwch`
-requires `cmd` when creating one.
+Create or replace a named watcher and immediately stream its events:
 
 ```bash
-wch source ./src -c ./handler.sh
+wch source ./src
 ```
 
 Watch directories recursively:
 
 ```bash
-wch source ./src -r -c ./handler.sh
+wch source ./src -r
 ```
 
-The persistent command receives the event and changed path according to the
-existing `libwch.c` command contract.
-
-Commands containing spaces must be quoted as one CLI argument:
-
-```bash
-wch source ./src -c "./handler.sh --reload"
-```
-
-## Stream events
-
-Open an existing watcher by name without a path to stream all of its events:
-
-```bash
-wch source
-```
-
-Each event is printed as one headerless tab-separated row:
+The CLI keeps running and writes each event to standard output as one
+headerless tab-separated row:
 
 ```text
 <event><TAB><path>
@@ -73,11 +55,25 @@ del	/home/user/project/old.txt
 
 The event name is one of `add`, `upd`, or `del`.
 
-This output is intended to compose naturally with other commands:
+The command required internally by `libwch.c` is an implementation detail of
+this CLI and is not exposed as part of the `wch` interface.
+
+## Stream an existing watcher
+
+Open an existing watcher by name and stream its events without replacing its
+configuration:
+
+```bash
+wch source
+```
+
+This makes the output easy to compose with another command:
 
 ```bash
 wch source | ./consumer
 ```
+
+The consumer can parse the event name and path directly from standard input.
 
 ## List watchers
 
@@ -96,10 +92,11 @@ wch -l source
 Each row is headerless TSV with these fields:
 
 ```text
-<id><TAB><path><TAB><cmd><TAB><recursive><TAB><running>
+<id><TAB><path><TAB><recursive><TAB><running>
 ```
 
-The final two fields are `0` or `1`.
+The final two fields are `0` or `1`. The private command used internally by the
+CLI is intentionally not exposed.
 
 ## Delete a watcher
 
@@ -123,9 +120,9 @@ Build all configured desktop targets:
 make all
 ```
 
-On Windows the CLI uses the `libwch.dll` import library and packages the DLL
-beside `wch.exe`, preserving the resident watcher behavior implemented by
-`libwch.c`.
+Linux and macOS link the static `libwch` artifact. Windows uses the `libwch.dll`
+import library and packages the DLL beside `wch.exe`, preserving the resident
+watcher implementation provided by `libwch.c`.
 
 ## Tests
 
