@@ -27,6 +27,12 @@
 #define KC_CLI_PATH "wch"
 #endif
 
+#ifdef _WIN32
+#define WCH_TEST_COUNT 8
+#else
+#define WCH_TEST_COUNT 9
+#endif
+
 static int test_total = 0;
 static int test_failed = 0;
 
@@ -121,8 +127,9 @@ static void result(const char *name, const char *detail, int ok)
     test_total++;
     if (!ok) test_failed++;
     printf(
-        "[%d] [%s] %s: %s\n",
+        "[%d/%d] [%s] %s: %s\n",
         test_total,
+        WCH_TEST_COUNT,
         ok ? "PASS" : "FAIL",
         name,
         detail
