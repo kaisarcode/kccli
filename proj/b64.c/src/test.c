@@ -18,12 +18,6 @@
 static int test_total = 0;
 static int test_failed = 0;
 
-/**
- * Writes one fixture file.
- * @param path Output file path.
- * @param text Text to write.
- * @return Nonzero on success.
- */
 static int write_text_file(const char *path, const char *text)
 {
     FILE *file = fopen(path, "wb");
@@ -36,13 +30,6 @@ static int write_text_file(const char *path, const char *text)
     return ok;
 }
 
-/**
- * Executes one CLI command and captures stdout.
- * @param args CLI arguments.
- * @param stdin_text Optional stdin content.
- * @param expected Expected stdout.
- * @return Nonzero on success.
- */
 static int output_equals(
     const char *args,
     const char *stdin_text,
@@ -91,11 +78,6 @@ static int output_equals(
     return strcmp(buffer, expected) == 0;
 }
 
-/**
- * Executes the CLI with output discarded.
- * @param args Arguments appended after executable.
- * @return Child process status from system().
- */
 static int run_cli(const char *args)
 {
     char command[4096];
@@ -110,13 +92,6 @@ static int run_cli(const char *args)
     return system(command);
 }
 
-/**
- * Prints one contract-test result.
- * @param name Test name.
- * @param detail Behavior under test.
- * @param ok Nonzero on success.
- * @return None.
- */
 static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
@@ -125,10 +100,6 @@ static void result(const char *name, const char *detail, int ok)
         name, detail);
 }
 
-/**
- * Runs all b64 CLI contract tests.
- * @return Zero when all tests pass.
- */
 int main(void)
 {
     const char *file_path = "b64-cli-file.txt";
@@ -145,14 +116,13 @@ int main(void)
     result("encode file", "-e -i reads file",
         fixture_ok && output_equals("-e -i b64-cli-file.txt", NULL,
             "ZmlsZQ=="));
-    result("argument priority", "argument takes priority over -i",
-        fixture_ok && output_equals(
-            "-e \"argument\" -i b64-cli-file.txt", NULL,
-            "YXJndW1lbnQ="));
-    result("stdin priority", "stdin takes priority over argument and -i",
+    result("stdin priority", "stdin takes priority over -i",
+        fixture_ok && output_equals("-e -i b64-cli-file.txt", "stdin",
+            "c3RkaW4="));
+    result("argument priority", "argument takes priority over stdin and -i",
         fixture_ok && output_equals(
             "-e \"argument\" -i b64-cli-file.txt", "stdin",
-            "c3RkaW4="));
+            "YXJndW1lbnQ="));
 
     result("decode arg", "-d decodes Base64 argument",
         output_equals("-d aGVsbG8=", NULL, "hello"));
