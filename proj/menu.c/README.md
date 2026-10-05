@@ -5,7 +5,7 @@
 
 It adds application launchers and deletes them by identifier. Linux uses the
 current user's XDG application menu and Windows uses the current user's Start
-Menu Programs folder, following the linked `libmenu.c` implementation.
+Menu Programs folder.
 
 ## Build
 
@@ -56,10 +56,9 @@ Options:
   -v, --version         Show version
 ```
 
-`id`, `name`, and `command` are required by `libmenu.c`. Quote `name`,
-`command`, or optional values when they contain spaces.
+`id`, `name`, and `command` are required.
 
-Deleting a missing entry is a successful no-op, matching the library contract.
+Deleting a missing entry is a successful no-op.
 
 ---
 
