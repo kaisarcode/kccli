@@ -137,6 +137,51 @@ Avoid duplicated public syntaxes in help. If the parser accepts both prefix and
 suffix placement for compatibility or convenience, document one canonical
 form unless showing both is necessary to understand distinct behavior.
 
+## Content input convention
+
+For CLIs whose primary operation consumes one block of text or data, prefer the
+same three input surfaces when they are natural for that command:
+
+```text
+<text-or-data-argument>
+stdin
+-i, --input <file>
+```
+
+Their precedence is:
+
+```text
+argument > stdin > -i/--input
+```
+
+This means:
+
+- when a positional content argument is present, use it and do not read stdin or
+    the file supplied through `-i`;
+- otherwise, if stdin is redirected or piped and contains input, use stdin;
+- otherwise, if `-i, --input <file>` is present, read the input from that file;
+- do not block waiting for interactive stdin merely because no positional
+    argument was supplied;
+- an empty redirected stdin may fall through to `-i` when a file was supplied,
+    rather than masking the file with no content.
+
+The positional value is literal content, not a filename. File input should be
+spelled explicitly with `-i, --input <file>`.
+
+Use this convention only when the CLI genuinely processes a content payload,
+such as text, markup, encoded bytes, or a document. Do not add `-i` to commands
+whose natural model is identifiers, configuration, lifecycle operations,
+network endpoints, or other non-content inputs merely for superficial
+consistency.
+
+Preserve the natural data model of the library. For example, a Base64 encoder
+should keep stdin and `-i` binary-safe, while text-processing CLIs may treat
+those sources as NUL-terminated text when that matches the public kclib API.
+
+When this convention applies, cover the precedence contract in black-box tests,
+including at least the meaningful cases for file input and competing input
+sources.
+
 ## Defaults
 
 Use sensible defaults when the underlying API has one clear conventional mode.
