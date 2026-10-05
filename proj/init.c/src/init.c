@@ -93,8 +93,6 @@ static void kc_cli_help(void) {
     printf("Commands:\n");
     printf("  init <id> <cmd>      Register or replace a startup entry\n");
     printf("  init -l [id]         List registrations\n");
-    printf("  init <id> -l         List one registration\n");
-    printf("  init -d <id>         Remove a registration\n");
     printf("  init <id> -d         Remove a registration\n");
     printf("\n");
     printf("Options:\n");
