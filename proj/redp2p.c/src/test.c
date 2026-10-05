@@ -101,7 +101,7 @@ static int run_cli(const char *args)
  */
 int main(void)
 {
-    test_total = 11;
+    test_total = 14;
     test_current = 0;
     test_failures = 0;
 
@@ -122,6 +122,12 @@ int main(void)
         run_cli("pub test@127.0.0.1:1 -p 9000 --transport bad") != 0);
     result("transport old", "rejects legacy transport flags",
         run_cli("pub test@127.0.0.1:1 -p 9000 --udp") != 0);
+    result("idx vip", "requires id and password for --vip",
+        run_cli("idx 9876 --vip only-id") != 0);
+    result("con pass", "rejects --pass for con",
+        run_cli("con test@127.0.0.1:1 -p 9000 --pass secret") != 0);
+    result("force turn", "rejects invalid --force-turn values",
+        run_cli("pub test@127.0.0.1:1 -p 9000 --force-turn yes") != 0);
     result("pub turn", "rejects TURN credentials without a TURN URL",
         run_cli("pub test@127.0.0.1:1 -p 9000 --turn-user user") != 0);
     result("con turn", "rejects TURN credentials without a TURN URL",
