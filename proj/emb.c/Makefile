@@ -11,6 +11,7 @@ KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
 EMB_DIST_DIR := $(KCLIB_DIST_DIR)/libemb.c
 BIN_DIR := bin
 BUILD_DIR := .build
+comma := ,
 
 XDG_DATA_HOME ?= $(HOME)/.local/share
 OSXCROSS_ROOT ?= $(XDG_DATA_HOME)/osxcross/target
@@ -95,8 +96,8 @@ define linux_target
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	command -v $(3) >/dev/null 2>&1 || { echo "kccli: missing C++ linker: $(3)" >&2; exit 1; }; \
 	mkdir -p '$(BUILD_DIR)' '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj"; \
-	$(3) "$$obj" "$$library" -pthread -ldl -lm $(4) -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
+	$(3) "$$obj" "$$library" -pthread -ldl -lm $(4) -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
 
@@ -122,10 +123,10 @@ powerpc64le/linux:
 	$(call linux_target,powerpc64le,powerpc64le-linux-gnu-gcc,powerpc64le-linux-gnu-g++)
 
 mips/linux:
-	$(call linux_target,mips,mips-linux-gnu-gcc,mips-linux-gnu-g++,-latomic -Wl,--no-warn-mismatch)
+	$(call linux_target,mips,mips-linux-gnu-gcc,mips-linux-gnu-g++,-latomic -Wl$(comma)--no-warn-mismatch)
 
 mipsel/linux:
-	$(call linux_target,mipsel,mipsel-linux-gnu-gcc,mipsel-linux-gnu-g++,-latomic -Wl,--no-warn-mismatch)
+	$(call linux_target,mipsel,mipsel-linux-gnu-gcc,mipsel-linux-gnu-g++,-latomic -Wl$(comma)--no-warn-mismatch)
 
 mips64el/linux:
 	$(call linux_target,mips64el,mips64el-linux-gnuabi64-gcc,mips64el-linux-gnuabi64-g++)
@@ -147,8 +148,8 @@ define windows_target
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	command -v $(3) >/dev/null 2>&1 || { echo "kccli: missing C++ linker: $(3)" >&2; exit 1; }; \
 	mkdir -p '$(BUILD_DIR)' '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj"; \
-	$(3) "$$obj" "$$library" -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
+	$(3) "$$obj" "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
 
@@ -177,9 +178,9 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" \
-		-I"$$target" -c src/emb.c -o "$$obj"; \
+		-I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
-	$(3) -mmacosx-version-min="$$min" "$$obj" "$$library" -pthread -lm -o "$$out"; \
+	$(3) -mmacosx-version-min="$$min" "$$obj" "$$library" -pthread -lm -o "$$out" || exit 1; \
 	echo "OK $(1)/macos"
 endef
 
