@@ -18,6 +18,12 @@
 static int test_total = 0;
 static int test_failed = 0;
 
+/**
+ * Writes one text fixture file.
+ * @param path Output file path.
+ * @param text Text to write.
+ * @return Nonzero on success.
+ */
 static int write_text_file(const char *path, const char *text)
 {
     FILE *file = fopen(path, "wb");
@@ -30,6 +36,11 @@ static int write_text_file(const char *path, const char *text)
     return ok;
 }
 
+/**
+ * Executes the CLI with output discarded.
+ * @param args Arguments appended after executable.
+ * @return Child process status from system().
+ */
 static int run_cli(const char *args)
 {
     char command[4096];
@@ -44,6 +55,13 @@ static int run_cli(const char *args)
     return system(command);
 }
 
+/**
+ * Executes the CLI and compares captured stdout exactly.
+ * @param args CLI arguments.
+ * @param stdin_text Optional stdin content.
+ * @param expected Expected stdout.
+ * @return Nonzero on success.
+ */
 static int output_equals(
     const char *args,
     const char *stdin_text,
@@ -93,6 +111,13 @@ static int output_equals(
     return strcmp(buffer, expected) == 0;
 }
 
+/**
+ * Prints one contract-test result.
+ * @param name Test name.
+ * @param detail Behavior under test.
+ * @param ok Nonzero on success.
+ * @return None.
+ */
 static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
@@ -101,6 +126,10 @@ static void result(const char *name, const char *detail, int ok)
         name, detail);
 }
 
+/**
+ * Runs all min CLI contract tests.
+ * @return Zero when all tests pass.
+ */
 int main(void)
 {
     const char *file_path = "min-cli-file.txt";
