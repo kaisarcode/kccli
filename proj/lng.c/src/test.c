@@ -111,17 +111,17 @@ static int run_cli(const char *args)
 }
 
 /**
- * Verifies that language output is headerless CSV.
+ * Verifies that language output is headerless TSV.
  * @return Nonzero on success.
  */
-static int csv_output_ok(void)
+static int tsv_output_ok(void)
 {
     char buffer[256];
 
     if (!capture_output("\"Hello world\"", NULL,
         buffer, sizeof(buffer))) return 0;
-    return strchr(buffer, ',') != NULL && strchr(buffer, '\t') == NULL &&
-        strncmp(buffer, "code,score", 10) != 0;
+    return strchr(buffer, '\t') != NULL && strchr(buffer, ',') == NULL &&
+        strncmp(buffer, "code\tscore", 10) != 0;
 }
 
 /**
@@ -154,7 +154,7 @@ int main(void)
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("detect", "text detection succeeds",
         run_cli("\"Hello world\"") == 0);
-    result("csv", "output is headerless CSV", csv_output_ok());
+    result("tsv", "output is headerless TSV", tsv_output_ok());
 
     fixture_ok = write_text_file(file_path, "Bonjour le monde");
     result("input file", "-i detects text from file",
