@@ -25,22 +25,26 @@ Options:
   -v, --version            Show version
 ```
 
-The vector dataset is headerless CSV with one vector per line:
+The vector dataset has exactly two logical columns per row, separated by one
+tab character:
 
 ```text
-id,value1,value2,...
+<id><TAB><vector>
 ```
+
+The vector column is a comma-separated list of floats. The identifier is a
+separate field and is never interpreted as part of the vector.
 
 For example:
 
 ```text
-alice,1,0,0
-bob,0,1,0
-carol,0,0,1
+alice	1,0,0
+bob	0,1,0
+carol	0,0,1
 ```
 
-The positional dataset argument is literal CSV content, not a filename. File
-input is explicit through `-i` or `--input`.
+The positional dataset argument is literal dataset content, not a filename.
+File input is explicit through `-i` or `--input`.
 
 Input precedence follows the KCCLI content convention:
 
@@ -51,19 +55,19 @@ argument > stdin > -i/--input
 Search literal vectors:
 
 ```bash
-hnsw $'a,1,0\nb,0,1' -q 1,0 -d 2
+hnsw $'a\t1,0\nb\t0,1' -q 1,0 -d 2
 ```
 
 Search vectors from standard input:
 
 ```bash
-printf 'a,1,0\nb,0,1\n' | hnsw -q 1,0 -d 2
+printf 'a\t1,0\nb\t0,1\n' | hnsw -q 1,0 -d 2
 ```
 
 Search vectors from a file:
 
 ```bash
-hnsw -i vectors.csv -q 1,0 -d 2
+hnsw -i vectors.tsv -q 1,0 -d 2
 ```
 
 Output is headerless CSV:
