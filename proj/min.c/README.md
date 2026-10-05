@@ -8,39 +8,42 @@ to standard output.
 ## Usage
 
 ```text
-Usage: min -t <type> [file]
+Usage: min [text] [options]
 
 Options:
-  -t, --type <type>  css, js, html, or txt
+  -t, --type <type>  css, js, html, or txt (default: txt)
   -h, --help         Show this help
   -v, --version      Show version
 ```
 
-When `file` is omitted, input is read from standard input. `-` also explicitly
-selects standard input.
+The positional argument is literal source text. When it is present, it has
+priority over standard input. When it is omitted, input is read from standard
+input.
 
-Minify a CSS file:
+Generic text is the default mode:
 
 ```bash
-min -t css style.css > style.min.css
+min "fdfsdfsd sdfsd     ff sd              fsdfd"
 ```
 
-Minify JavaScript from standard input:
+Output:
 
-```bash
-cat app.js | min -t js > app.min.js
+```text
+fdfsdfsd sdfsd ff sd fsdfd
 ```
 
-Minify HTML:
+The same default applies to standard input:
 
 ```bash
-min -t html page.html > page.min.html
+printf '  hello   world  ' | min
 ```
 
-Collapse generic text whitespace:
+Select another minifier with `-t` or `--type`:
 
 ```bash
-printf '  hello   world  ' | min -t txt
+min -t css "body { color: red; }"
+min -t js "const x = 1; // comment"
+min -t html "<!-- comment --><p>hello</p>"
 ```
 
 The four modes map directly to `kc_min_css()`, `kc_min_js()`,
