@@ -1,6 +1,6 @@
 /**
  * test.c - b64 CLI contract tests.
- * Summary: Validates Base64 argument and stdin behavior.
+ * Summary: Validates Base64 modes and input precedence.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -19,9 +19,27 @@ static int test_total = 0;
 static int test_failed = 0;
 
 /**
- * Executes one shell command and captures stdout.
+ * Writes one fixture file.
+ * @param path Output file path.
+ * @param text Text to write.
+ * @return Nonzero on success.
+ */
+static int write_text_file(const char *path, const char *text)
+{
+    FILE *file = fopen(path, "wb");
+    size_t size = strlen(text);
+    int ok;
+
+    if (!file) return 0;
+    ok = fwrite(text, 1, size, file) == size;
+    fclose(file);
+    return ok;
+}
+
+/**
+ * Executes one CLI command and captures stdout.
  * @param args CLI arguments.
- * @param stdin_text Optional text piped to stdin.
+ * @param stdin_text Optional stdin content.
  * @param expected Expected stdout.
  * @return Nonzero on success.
  */
@@ -31,6 +49,7 @@ static int output_equals(
     const char *expected
 )
 {
+    const char *input_path = "b64-cli-stdin.txt";
     const char *output_path = "b64-cli-output.txt";
     char command[4096];
     char buffer[4096];
@@ -38,29 +57,26 @@ static int output_equals(
     size_t size;
     int status;
 
+    if (stdin_text && !write_text_file(input_path, stdin_text)) return 0;
+
 #ifdef _WIN32
-    if (stdin_text) {
-        snprintf(command, sizeof(command),
-            "echo|set /p=\"%s\" | \"%s\" %s > %s 2>NUL",
-            stdin_text, KC_CLI_PATH, args ? args : "", output_path);
-    } else {
-        snprintf(command, sizeof(command),
-            "\"\"%s\" %s > %s 2>NUL\"",
-            KC_CLI_PATH, args ? args : "", output_path);
-    }
+    snprintf(command, sizeof(command),
+        "\"\"%s\" %s %s> %s 2>NUL\"",
+        KC_CLI_PATH,
+        args ? args : "",
+        stdin_text ? "< b64-cli-stdin.txt " : "",
+        output_path);
 #else
-    if (stdin_text) {
-        snprintf(command, sizeof(command),
-            "printf '%%s' '%s' | \"%s\" %s > %s 2>/dev/null",
-            stdin_text, KC_CLI_PATH, args ? args : "", output_path);
-    } else {
-        snprintf(command, sizeof(command),
-            "\"%s\" %s > %s 2>/dev/null",
-            KC_CLI_PATH, args ? args : "", output_path);
-    }
+    snprintf(command, sizeof(command),
+        "\"%s\" %s %s> %s 2>/dev/null",
+        KC_CLI_PATH,
+        args ? args : "",
+        stdin_text ? "< b64-cli-stdin.txt " : "",
+        output_path);
 #endif
 
     status = system(command);
+    if (stdin_text) remove(input_path);
     if (status != 0) {
         remove(output_path);
         return 0;
@@ -105,7 +121,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/10] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/13] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
@@ -115,22 +131,41 @@ static void result(const char *name, const char *detail, int ok)
  */
 int main(void)
 {
+    const char *file_path = "b64-cli-file.txt";
+    int fixture_ok;
+
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("encode arg", "-e encodes text argument",
         output_equals("-e \"hello world\"", NULL, "aGVsbG8gd29ybGQ="));
     result("encode stdin", "-e reads stdin when argument is absent",
         output_equals("-e", "hello world", "aGVsbG8gd29ybGQ="));
-    result("encode priority", "encode argument takes priority over stdin",
-        output_equals("-e \"hello\"", "ignored", "aGVsbG8="));
+
+    fixture_ok = write_text_file(file_path, "file");
+    result("encode file", "-e -i reads file",
+        fixture_ok && output_equals("-e -i b64-cli-file.txt", NULL,
+            "ZmlsZQ=="));
+    result("argument priority", "argument takes priority over -i",
+        fixture_ok && output_equals(
+            "-e \"argument\" -i b64-cli-file.txt", NULL,
+            "YXJndW1lbnQ="));
+    result("stdin priority", "stdin takes priority over argument and -i",
+        fixture_ok && output_equals(
+            "-e \"argument\" -i b64-cli-file.txt", "stdin",
+            "c3RkaW4="));
+
     result("decode arg", "-d decodes Base64 argument",
         output_equals("-d aGVsbG8=", NULL, "hello"));
-    result("decode stdin", "-d reads stdin when argument is absent",
+    result("decode stdin", "-d reads Base64 from stdin",
         output_equals("-d", "aGVsbG8=", "hello"));
-    result("decode priority", "decode argument takes priority over stdin",
-        output_equals("-d aGVsbG8=", "aWdub3JlZA==", "hello"));
+    fixture_ok = fixture_ok && write_text_file(file_path, "aGVsbG8=");
+    result("decode file", "-d -i reads Base64 file",
+        fixture_ok && output_equals("-d -i b64-cli-file.txt", NULL, "hello"));
+    remove(file_path);
+
     result("missing mode", "encode or decode mode is required", run_cli("") != 0);
     result("invalid", "invalid Base64 fails", run_cli("-d invalid") != 0);
+    result("unknown", "unknown option fails", run_cli("-e --unknown") != 0);
 
     printf("\n%d passed, %d failed\n", test_total - test_failed, test_failed);
     return test_failed ? 1 : 0;
