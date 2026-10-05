@@ -16,6 +16,7 @@
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #endif
@@ -110,13 +111,17 @@ static int mdp_cli_read_file(const char *path, char **out)
 }
 
 /**
- * Reports whether standard input is attached to a terminal.
+ * Reports whether standard input is attached to an interactive terminal.
  * @return Nonzero when stdin is interactive.
  */
 static int mdp_cli_stdin_is_tty(void)
 {
 #ifdef _WIN32
-    return _isatty(_fileno(stdin));
+    HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+
+    if (handle == NULL || handle == INVALID_HANDLE_VALUE) return 0;
+    return GetConsoleMode(handle, &mode) != 0;
 #else
     return isatty(STDIN_FILENO);
 #endif
