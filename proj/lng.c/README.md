@@ -2,8 +2,8 @@
 
 `lng` is a command-line frontend for `liblng.c` language detection.
 
-It accepts one text argument or reads text from standard input, then prints one
-ranked result per line as headerless CSV:
+It accepts one text argument, standard input, or a file, then prints one ranked
+result per line as headerless CSV:
 
 ```text
 <code>,<score>
@@ -18,16 +18,39 @@ calibrated probabilities.
 Usage: lng [text] [options]
 
 Options:
+  -i, --input <file>   Read text from file
   -t, --threshold <N>  Minimum score in range 0..1 (default: 0.001)
   -l, --limit <N>      Maximum results (default: 1, max: 32)
   -h, --help           Show this help
   -v, --version        Show version
 ```
 
+Input precedence is:
+
+```text
+argument > stdin > -i/--input
+```
+
+A positional argument wins over redirected or piped stdin. Without an argument,
+stdin wins over `-i` when stdin contains input. An empty redirected stdin may
+fall through to the file.
+
 Quote text containing spaces:
 
 ```bash
 lng "Hello world"
+```
+
+Read from standard input:
+
+```bash
+printf 'Bonjour le monde' | lng
+```
+
+Read from a file:
+
+```bash
+lng -i document.txt
 ```
 
 Return more ranked matches:
@@ -40,12 +63,6 @@ Filter weak matches:
 
 ```bash
 lng "Hello world" --threshold 0.1
-```
-
-When no positional text is supplied, input is read from standard input:
-
-```bash
-printf 'Bonjour le monde' | lng
 ```
 
 An empty input is valid and produces no output. Zero matches are also a
