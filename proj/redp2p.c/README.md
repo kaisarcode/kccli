@@ -28,21 +28,13 @@ Run the native CLI tests:
 make test
 ```
 
-The native test run includes both the CLI argument contract and black-box
-process integration. The integration test starts real `redp2p idx`,
-`redp2p pub`, and `redp2p con` processes in parallel, attaches real TCP
-and UDP backend sockets, and verifies traffic by connecting through the
-consumer-exposed port. It does not replace the peer path with direct callbacks
-or an in-process channel.
+The native test run includes the CLI argument contract.
 
 Run the x86_64 Windows CLI contract through Wine:
 
 ```sh
 make test wine
 ```
-
-The Wine target currently covers the CLI contract only; native process
-integration is not yet run through Wine.
 
 ## CLI
 
@@ -53,34 +45,49 @@ redp2p idx 9876
 redp2p idx 9876 --seats 128 --pow 16
 ```
 
-Publish a local TCP or UDP port:
+Publish a local TCP service. TCP is the default transport:
 
 ```bash
-redp2p pub web@idx.example.com:9876 --tcp 8080
-redp2p pub game@idx.example.com:9876 --udp 7777
-redp2p pub web@idx.example.com:9876 --tcp 8080 \
+redp2p pub web@idx.example.com:9876 -p 8080
+redp2p pub web@idx.example.com:9876 --port 8080 --tcp
+```
+
+Publish a local UDP service:
+
+```bash
+redp2p pub game@idx.example.com:9876 -p 7777 --udp
+```
+
+Peer options may be combined with either transport:
+
+```bash
+redp2p pub web@idx.example.com:9876 -p 8080 \
   --turn turn:turn.example.com:3478 \
   --turn-user user --turn-pass secret
 ```
 
-Expose one announced publisher through a local port:
+Expose one announced publisher through a local TCP port. TCP is also the
+default consumer transport:
 
 ```bash
-redp2p con web@idx.example.com:9876 9000
-redp2p con web@idx.example.com:9876 9000 \
-  --turn turn:turn.example.com:3478 \
-  --turn-user user --turn-pass secret
+redp2p con web@idx.example.com:9876 -p 9000
+redp2p con web@idx.example.com:9876 --port 9000 --tcp
 ```
 
-The consumer does not accept `--tcp` or `--udp`; the publisher transport is
-handled by REDP2P.
+Expose it through a local UDP port:
+
+```bash
+redp2p con game@idx.example.com:9876 -p 9000 --udp
+```
 
 The CLI accepts `REDP2P_SEATS`, `REDP2P_POW`, `REDP2P_PASS`, `REDP2P_VIP`,
 `REDP2P_MAX_CONSUMERS_PER_PUBLISHER`, `REDP2P_STUN`, `REDP2P_TURN`,
-`REDP2P_TURN_USER`, `REDP2P_TURN_PASS`, and `REDP2P_FORCE_TURN` as operator configuration.
+`REDP2P_TURN_USER`, `REDP2P_TURN_PASS`, and `REDP2P_FORCE_TURN` as operator
+configuration.
 
-For `pub` and `con`, the equivalent command-line peer options are
-`--stun`, `--turn`, `--turn-user`, and `--turn-pass`. Direct peer
+For `pub` and `con`, `-p` / `--port` is required. `--tcp` and `--udp` are
+optional transport selectors; when neither is present, TCP is used. The peer
+options are `--stun`, `--turn`, `--turn-user`, and `--turn-pass`. Direct peer
 connectivity remains preferred; TURN is used by libredp2p as a relay fallback.
 Set `REDP2P_FORCE_TURN=1` to require the relay path. The CLI validates the
 switch, requires TURN configuration when it is enabled, and reports that the
