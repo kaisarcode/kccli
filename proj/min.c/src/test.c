@@ -46,7 +46,7 @@ static int run_cli(const char *args)
     char command[4096];
 
 #ifdef _WIN32
-    snprintf(command, sizeof(command), "\"%s\" %s > NUL 2>&1",
+    snprintf(command, sizeof(command), "\"\"%s\" %s > NUL 2>&1\"",
         KC_CLI_PATH, args ? args : "");
 #else
     snprintf(command, sizeof(command), "\"%s\" %s > /dev/null 2>&1",
@@ -79,7 +79,7 @@ static int output_equals(
 
 #ifdef _WIN32
     snprintf(command, sizeof(command),
-        "\"%s\" %s %s> %s 2>NUL",
+        "\"\"%s\" %s %s> %s 2>NUL\"",
         KC_CLI_PATH,
         args ? args : "",
         stdin_text ? "< min-cli-stdin.txt " : "",
