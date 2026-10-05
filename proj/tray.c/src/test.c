@@ -9,22 +9,82 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/wait.h>
+#endif
 
 #ifndef KC_CLI_PATH
 #define KC_CLI_PATH "tray"
 #endif
 
-static int total = 0;
-static int failed = 0;
+static int test_total;
+static int test_current;
+static int test_failures;
 
 /**
- * Runs one shell command and returns whether it succeeded.
- * @param command Command line.
- * @return Nonzero on success.
+ * Executes the CLI with output discarded.
+ * @param args Arguments appended after the executable.
+ * @return Child exit code, or -1 on execution failure.
  */
-static int run_ok(const char *command)
+static int run_cli(const char *args)
 {
-    return system(command) == 0;
+#ifdef _WIN32
+    HANDLE null_handle;
+    STARTUPINFOA startup;
+    PROCESS_INFORMATION process;
+    char command_line[4096];
+    DWORD exit_code;
+
+    if ((size_t)snprintf(command_line, sizeof(command_line),
+            "\"%s\" %s", KC_CLI_PATH, args ? args : "") >=
+        sizeof(command_line))
+        return -1;
+
+    null_handle = CreateFileA("NUL", GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL, NULL);
+    if (null_handle == INVALID_HANDLE_VALUE) return -1;
+
+    memset(&startup, 0, sizeof(startup));
+    memset(&process, 0, sizeof(process));
+    startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESTDHANDLES;
+    startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    startup.hStdOutput = null_handle;
+    startup.hStdError = null_handle;
+
+    if (!CreateProcessA(NULL, command_line, NULL, NULL, TRUE, 0, NULL, NULL,
+        &startup, &process))
+    {
+        CloseHandle(null_handle);
+        return -1;
+    }
+
+    WaitForSingleObject(process.hProcess, INFINITE);
+    if (!GetExitCodeProcess(process.hProcess, &exit_code))
+        exit_code = (DWORD)-1;
+
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    CloseHandle(null_handle);
+    return (int)exit_code;
+#else
+    char command[8192];
+    int rc;
+
+    if ((size_t)snprintf(command, sizeof(command),
+            "\"%s\" %s > /dev/null 2>&1",
+            KC_CLI_PATH, args ? args : "") >= sizeof(command))
+        return -1;
+
+    rc = system(command);
+    if (rc == -1 || !WIFEXITED(rc)) return -1;
+    return WEXITSTATUS(rc);
+#endif
 }
 
 /**
@@ -36,10 +96,10 @@ static int run_ok(const char *command)
  */
 static void result(const char *name, const char *detail, int ok)
 {
-    total++;
-    if (!ok) failed++;
-    printf("[%d/7] [%s] %s: %s\n", total, ok ? "PASS" : "FAIL",
-        name, detail);
+    test_current++;
+    if (!ok) test_failures++;
+    printf("[%d/%d] [%s] %s: %s\n", test_current, test_total,
+        ok ? "PASS" : "FAIL", name, detail);
 }
 
 /**
@@ -48,36 +108,21 @@ static void result(const char *name, const char *detail, int ok)
  */
 int main(void)
 {
-    char command[1024];
+    test_total = 7;
+    test_current = 0;
+    test_failures = 0;
 
-    snprintf(command, sizeof(command), "\"%s\" --help > /dev/null 2>&1",
-        KC_CLI_PATH);
-    result("help", "--help succeeds", run_ok(command));
+    result("help", "--help succeeds", run_cli("--help") == 0);
+    result("version", "--version succeeds", run_cli("--version") == 0);
+    result("unknown", "unknown options fail", run_cli("--bad") != 0);
+    result("icon", "--icon requires a value", run_cli("--icon") != 0);
+    result("tooltip", "--tooltip requires a value",
+        run_cli("--tooltip") != 0);
+    result("item", "--item requires text and command",
+        run_cli("--item label") != 0);
+    result("quit", "--quit requires a label", run_cli("--quit") != 0);
 
-    snprintf(command, sizeof(command), "\"%s\" --version > /dev/null 2>&1",
-        KC_CLI_PATH);
-    result("version", "--version succeeds", run_ok(command));
-
-    snprintf(command, sizeof(command), "\"%s\" --bad > /dev/null 2>&1",
-        KC_CLI_PATH);
-    result("unknown", "unknown options fail", !run_ok(command));
-
-    snprintf(command, sizeof(command), "\"%s\" --icon > /dev/null 2>&1",
-        KC_CLI_PATH);
-    result("icon", "--icon requires a value", !run_ok(command));
-
-    snprintf(command, sizeof(command), "\"%s\" --tooltip > /dev/null 2>&1",
-        KC_CLI_PATH);
-    result("tooltip", "--tooltip requires a value", !run_ok(command));
-
-    snprintf(command, sizeof(command), "\"%s\" --item label > /dev/null 2>&1",
-        KC_CLI_PATH);
-    result("item", "--item requires text and command", !run_ok(command));
-
-    snprintf(command, sizeof(command), "\"%s\" --quit > /dev/null 2>&1",
-        KC_CLI_PATH);
-    result("quit", "--quit requires a label", !run_ok(command));
-
-    printf("\n%d passed, %d failed\n", total - failed, failed);
-    return failed ? 1 : 0;
+    printf("\n%d passed, %d failed\n",
+        test_total - test_failures, test_failures);
+    return test_failures ? 1 : 0;
 }
