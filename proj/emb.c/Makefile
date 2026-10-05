@@ -149,7 +149,8 @@ define windows_target
 	command -v $(3) >/dev/null 2>&1 || { echo "kccli: missing C++ linker: $(3)" >&2; exit 1; }; \
 	mkdir -p '$(BUILD_DIR)' '$(BIN_DIR)/$(1)/windows'; \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
-	$(3) "$$obj" "$$library" -o "$$out" || exit 1; \
+	$(3) -static -static-libgcc -static-libstdc++ \
+		"$$obj" "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
 
