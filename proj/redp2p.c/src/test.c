@@ -101,7 +101,7 @@ static int run_cli(const char *args)
  */
 int main(void)
 {
-    test_total = 10;
+    test_total = 11;
     test_current = 0;
     test_failures = 0;
 
@@ -118,8 +118,10 @@ int main(void)
         run_cli("con test@127.0.0.1:1") != 0);
     result("con positional", "rejects a positional local port",
         run_cli("con test@127.0.0.1:1 9000") != 0);
-    result("transport", "rejects simultaneous TCP and UDP selection",
-        run_cli("pub test@127.0.0.1:1 -p 9000 --tcp --udp") != 0);
+    result("transport value", "rejects an invalid transport value",
+        run_cli("pub test@127.0.0.1:1 -p 9000 --transport bad") != 0);
+    result("transport old", "rejects legacy transport flags",
+        run_cli("pub test@127.0.0.1:1 -p 9000 --udp") != 0);
     result("pub turn", "rejects TURN credentials without a TURN URL",
         run_cli("pub test@127.0.0.1:1 -p 9000 --turn-user user") != 0);
     result("con turn", "rejects TURN credentials without a TURN URL",
