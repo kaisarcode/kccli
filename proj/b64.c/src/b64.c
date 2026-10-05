@@ -13,6 +13,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define B64_MODE_NONE   0
+#define B64_MODE_ENCODE 1
+#define B64_MODE_DECODE 2
+
 /**
  * Prints public CLI usage.
  * @param name Program executable name.
@@ -20,10 +24,12 @@
  */
 static void b64_cli_usage(const char *name)
 {
-    printf("Usage: %s [text] [options]\n", name);
+    printf("Usage: %s -e [text]\n", name);
+    printf("       %s -d [base64]\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  -d, --decode   Decode Base64 instead of encoding\n");
+    printf("  -e, --encode   Encode as Base64\n");
+    printf("  -d, --decode   Decode Base64\n");
     printf("  -h, --help     Show this help\n");
     printf("  -v, --version  Show version\n");
 }
@@ -87,7 +93,7 @@ int main(int argc, char **argv)
     const char *text = NULL;
     unsigned char *stdin_data = NULL;
     size_t stdin_size = 0;
-    int decode = 0;
+    int mode = B64_MODE_NONE;
 
     if (argc == 2 && (strcmp(argv[1], "-h") == 0 ||
         strcmp(argv[1], "--help") == 0))
@@ -103,8 +109,20 @@ int main(int argc, char **argv)
     }
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--decode") == 0) {
-            decode = 1;
+        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encode") == 0) {
+            if (mode != B64_MODE_NONE) {
+                fprintf(stderr, "b64: choose exactly one of --encode or --decode\n");
+                return 1;
+            }
+            mode = B64_MODE_ENCODE;
+        } else if (strcmp(argv[i], "-d") == 0 ||
+            strcmp(argv[i], "--decode") == 0)
+        {
+            if (mode != B64_MODE_NONE) {
+                fprintf(stderr, "b64: choose exactly one of --encode or --decode\n");
+                return 1;
+            }
+            mode = B64_MODE_DECODE;
         } else if (strcmp(argv[i], "-h") == 0 ||
             strcmp(argv[i], "--help") == 0 ||
             strcmp(argv[i], "-v") == 0 ||
@@ -123,7 +141,12 @@ int main(int argc, char **argv)
         }
     }
 
-    if (decode) {
+    if (mode == B64_MODE_NONE) {
+        fprintf(stderr, "b64: -e/--encode or -d/--decode is required\n");
+        return 1;
+    }
+
+    if (mode == B64_MODE_DECODE) {
         const char *input;
         char *stdin_text = NULL;
         void *decoded;
@@ -153,7 +176,9 @@ int main(int argc, char **argv)
             fprintf(stderr, "b64: invalid base64 input\n");
             return 1;
         }
-        if (decoded_size > 0 && fwrite(decoded, 1, decoded_size, stdout) != decoded_size) {
+        if (decoded_size > 0 &&
+            fwrite(decoded, 1, decoded_size, stdout) != decoded_size)
+        {
             kc_b64_free(decoded);
             fprintf(stderr, "b64: cannot write output\n");
             return 1;
