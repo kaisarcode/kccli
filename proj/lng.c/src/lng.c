@@ -282,7 +282,7 @@ int main(int argc, char **argv)
     }
 
     for (size_t i = 0; i < count; i++) {
-        printf("%s,%.12g\n", results[i].code, results[i].score);
+        printf("%s\t%.12g\n", results[i].code, results[i].score);
     }
 
     kc_lng_free(results);
