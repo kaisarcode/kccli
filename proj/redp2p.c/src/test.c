@@ -101,7 +101,7 @@ static int run_cli(const char *args)
  */
 int main(void)
 {
-    test_total = 16;
+    test_total = 17;
     test_current = 0;
     test_failures = 0;
 
@@ -123,7 +123,9 @@ int main(void)
     result("con positional", "rejects a positional local port",
         run_cli("con test@127.0.0.1:1 9000") != 0);
     result("transport value", "rejects an invalid transport value",
-        run_cli("pub test@127.0.0.1:1 -p 9000 --transport bad") != 0);
+        run_cli("pub test@127.0.0.1:1 -p 9000 -t bad") != 0);
+    result("transport short", "accepts -t as transport option",
+        run_cli("pub bad -t tcp") != 0);
     result("transport old", "rejects legacy transport flags",
         run_cli("pub test@127.0.0.1:1 -p 9000 --udp") != 0);
     result("idx vip", "requires id and password for --vip",
