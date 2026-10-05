@@ -8,20 +8,28 @@ Base64 input. Output is written directly to standard output.
 ## Usage
 
 ```text
-Usage: b64 -e [text]
-       b64 -d [base64]
+Usage: b64 -e [text] [options]
+       b64 -d [base64] [options]
 
 Options:
-  -e, --encode   Encode as Base64
-  -d, --decode   Decode Base64
-  -h, --help     Show this help
-  -v, --version  Show version
+  -e, --encode        Encode as Base64
+  -d, --decode        Decode Base64
+  -i, --input <file>  Read input from file
+  -h, --help          Show this help
+  -v, --version       Show version
 ```
 
 Exactly one of `-e`/`--encode` or `-d`/`--decode` is required.
 
-When a positional argument is present, it has priority over standard input.
-When no positional argument is present, input is read from standard input.
+Input precedence is:
+
+```text
+argument > stdin > -i/--input
+```
+
+A positional argument wins over redirected or piped stdin. Without an argument,
+stdin wins over `-i` when stdin contains input. An empty redirected stdin may
+fall through to the file.
 
 Encode text from an argument:
 
@@ -41,6 +49,12 @@ Encode standard input:
 printf 'hello world' | b64 --encode
 ```
 
+Encode a file:
+
+```bash
+b64 --encode -i payload.bin
+```
+
 Decode from an argument:
 
 ```bash
@@ -53,9 +67,15 @@ Decode standard input:
 printf 'aGVsbG8gd29ybGQ=' | b64 --decode
 ```
 
-Encoding from standard input is binary-safe. Decoded bytes are written raw to
-standard output. Decoding follows the strict canonical RFC 4648 behavior of
-`libb64.c`.
+Decode a file:
+
+```bash
+b64 --decode -i payload.b64
+```
+
+Encoding from standard input and `-i` is binary-safe. Decoded bytes are written
+raw to standard output. Decoding follows the strict canonical RFC 4648 behavior
+of `libb64.c`.
 
 ## Build
 
