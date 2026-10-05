@@ -1146,32 +1146,39 @@ static void redp2p_cli_usage(const char *name)
     printf("Usage: %s <command> [options]\n", name);
     printf("\n");
     printf("Commands:\n");
-    printf("  idx <port> [--seats <N>] [--pow <N>] [--max-consumers <N>]\n");
-    printf("  pub <id>@<index[:port]> -p <port> [--tcp|--udp] [peer options]\n");
-    printf("  con <id>@<index[:port]> -p <port> [--tcp|--udp] [peer options]\n");
+    printf("  idx <port> [options]                    Run an index\n");
+    printf("  pub <id>@<index[:port]> -p <port>       Publish a local service\n");
+    printf("  con <id>@<index[:port]> -p <port>       Expose a published service\n");
     printf("\n");
-    printf("Options:\n");
-    printf("  -p, --port <port> Local service port for pub/con\n");
-    printf("  --tcp             Use TCP transport (default)\n");
-    printf("  --udp             Use UDP transport\n");
-    printf("  -h, --help        Show this help\n");
-    printf("  -v, --version     Show version\n");
-    printf("  --stun <url>      Optional STUN URL\n");
-    printf("  --turn <url>      Optional TURN URL\n");
-    printf("  --turn-user <u>   Optional TURN username\n");
-    printf("  --turn-pass <p>   Optional TURN password\n");
+    printf("idx options:\n");
+    printf("  --seats <N>            Publisher capacity; default unlimited\n");
+    printf("  --pow <N>              Registration PoW bits (0..32)\n");
+    printf("  --max-con <N>          Consumers allowed per publisher\n");
+    printf("  --pass <pass>          Registration password\n");
+    printf("  --vip <id> <pass>      Reserve an id/password pair; repeatable\n");
     printf("\n");
-    printf("Environment:\n");
-    printf("  REDP2P_SEATS          Index publisher capacity; unset means unlimited\n");
-    printf("  REDP2P_POW            Index registration PoW bits (0..32)\n");
-    printf("  REDP2P_PASS           Index/pub registration password\n");
-    printf("  REDP2P_VIP            Reserved index IDs as '<id> <pass> ...'\n");
-    printf("  REDP2P_MAX_CONSUMERS_PER_PUBLISHER\n");
-    printf("  REDP2P_STUN           Optional STUN URL for pub/con\n");
-    printf("  REDP2P_TURN           Optional TURN URL for pub/con\n");
-    printf("  REDP2P_TURN_USER      Optional TURN username for pub/con\n");
-    printf("  REDP2P_TURN_PASS      Optional TURN password for pub/con\n");
-    printf("  REDP2P_FORCE_TURN     1 forces pub/con traffic through TURN; 0 disables\n");
+    printf("pub options:\n");
+    printf("  -p, --port <port>      Local service port\n");
+    printf("  -t, --transport <type> tcp or udp (default: tcp)\n");
+    printf("  --pass <pass>          Index registration password\n");
+    printf("  --stun <url>           Optional STUN URL\n");
+    printf("  --turn <url>           Optional TURN URL\n");
+    printf("  --turn-user <u>        Optional TURN username\n");
+    printf("  --turn-pass <p>        Optional TURN password\n");
+    printf("  --force-turn <0|1>     Disable or require TURN relay\n");
+    printf("\n");
+    printf("con options:\n");
+    printf("  -p, --port <port>      Local service port\n");
+    printf("  -t, --transport <type> tcp or udp (default: tcp)\n");
+    printf("  --stun <url>           Optional STUN URL\n");
+    printf("  --turn <url>           Optional TURN URL\n");
+    printf("  --turn-user <u>        Optional TURN username\n");
+    printf("  --turn-pass <p>        Optional TURN password\n");
+    printf("  --force-turn <0|1>     Disable or require TURN relay\n");
+    printf("\n");
+    printf("Common options:\n");
+    printf("  -h, --help             Show this help\n");
+    printf("  -v, --version          Show version\n");
 }
 
 /**
@@ -1252,11 +1259,13 @@ static int redp2p_cli_idx(int argc, char **argv)
     kc_redp2p_vip_t *vips = NULL;
     char *vip_storage = NULL;
     size_t vip_storage_len = 0;
+    size_t vip_count = 0;
     size_t seats_value = 0;
     const size_t *seats = NULL;
     size_t max_consumers = 0;
     uint16_t port;
     unsigned int pow = 0;
+    const char *pass = getenv("REDP2P_PASS");
     const char *value;
     int status;
 
@@ -1288,39 +1297,75 @@ static int redp2p_cli_idx(int argc, char **argv)
         if (strcmp(argv[i], "--seats") == 0) {
             if (++i >= argc || !redp2p_cli_size(argv[i], &seats_value)) {
                 fprintf(stderr, "redp2p: --seats requires a nonnegative integer\n");
+                free(vips);
                 return 1;
             }
             seats = &seats_value;
         } else if (strcmp(argv[i], "--pow") == 0) {
             if (++i >= argc || !redp2p_cli_uint(argv[i], 32, &pow)) {
                 fprintf(stderr, "redp2p: --pow requires 0..32\n");
+                free(vips);
                 return 1;
             }
-        } else if (strcmp(argv[i], "--max-consumers") == 0) {
+        } else if (strcmp(argv[i], "--max-con") == 0) {
             if (++i >= argc || !redp2p_cli_size(argv[i], &max_consumers)) {
-                fprintf(stderr, "redp2p: --max-consumers requires a nonnegative integer\n");
+                fprintf(stderr, "redp2p: --max-con requires a nonnegative integer\n");
+                free(vips);
                 return 1;
             }
+        } else if (strcmp(argv[i], "--pass") == 0) {
+            if (++i >= argc || !argv[i][0]) {
+                fprintf(stderr, "redp2p: --pass requires a value\n");
+                free(vips);
+                return 1;
+            }
+            pass = argv[i];
+        } else if (strcmp(argv[i], "--vip") == 0) {
+            kc_redp2p_vip_t *next;
+
+            if (i + 2 >= argc || !argv[i + 1][0] || !argv[i + 2][0]) {
+                fprintf(stderr, "redp2p: --vip requires <id> <pass>\n");
+                free(vips);
+                return 1;
+            }
+            next = (kc_redp2p_vip_t *)realloc(vips,
+                (vip_count + 1) * sizeof(*vips));
+            if (!next) {
+                free(vips);
+                return 1;
+            }
+            vips = next;
+            vips[vip_count].id = argv[i + 1];
+            vips[vip_count].pass = argv[i + 2];
+            vip_count++;
+            i += 2;
         } else {
             fprintf(stderr, "redp2p: unknown idx option '%s'\n", argv[i]);
+            free(vips);
             return 1;
         }
     }
+
     memset(&options, 0, sizeof(options));
     options.port = port;
     options.seats = seats;
     options.pow = pow;
-    options.pass = getenv("REDP2P_PASS");
+    options.pass = pass;
     options.max_consumers = max_consumers;
-    value = getenv("REDP2P_VIP");
-    if (value) vip_storage_len = strlen(value) + 1;
-    if (!redp2p_cli_vips(value, &vips,
-        &options.vip_count, &vip_storage))
-    {
-        fprintf(stderr, "redp2p: invalid REDP2P_VIP\n");
-        return 1;
+    if (vip_count > 0) {
+        options.vips = vips;
+        options.vip_count = vip_count;
+    } else {
+        value = getenv("REDP2P_VIP");
+        if (value) vip_storage_len = strlen(value) + 1;
+        if (!redp2p_cli_vips(value, &vips,
+            &options.vip_count, &vip_storage))
+        {
+            fprintf(stderr, "redp2p: invalid REDP2P_VIP\n");
+            return 1;
+        }
+        options.vips = vips;
     }
-    options.vips = vips;
 
     status = kc_redp2p_idx(&idx, &options);
     free(vips);
@@ -1359,18 +1404,19 @@ static int redp2p_cli_pub(int argc, char **argv)
     uint16_t port = 0;
     int protocol = KC_REDP2P_TCP;
     int protocol_set = 0;
+    const char *pass = getenv("REDP2P_PASS");
     const char *stun = getenv("REDP2P_STUN");
     const char *turn = getenv("REDP2P_TURN");
     const char *turn_user = getenv("REDP2P_TURN_USER");
     const char *turn_pass = getenv("REDP2P_TURN_PASS");
-    int force_turn;
+    int force_turn = 0;
+    int force_turn_set = 0;
     int status;
 
     if (argc < 3 || !redp2p_cli_spec(argv[2], id, index)) {
         fprintf(stderr,
             "redp2p: usage: %s pub <id>@<index[:port]> -p <port>"
-            " [--tcp|--udp] [peer options]\n",
-            argv[0]);
+            " [options]\n", argv[0]);
         return 1;
     }
     for (int i = 3; i < argc; i++) {
@@ -1379,16 +1425,28 @@ static int redp2p_cli_pub(int argc, char **argv)
                 fprintf(stderr, "redp2p: -p/--port requires a valid port\n");
                 return 1;
             }
-        } else if (strcmp(argv[i], "--tcp") == 0 ||
-            strcmp(argv[i], "--udp") == 0)
+        } else if (strcmp(argv[i], "-t") == 0 ||
+            strcmp(argv[i], "--transport") == 0)
         {
-            if (protocol_set) {
-                fprintf(stderr, "redp2p: choose only one of --tcp or --udp\n");
+            if (protocol_set || ++i >= argc) {
+                fprintf(stderr, "redp2p: -t/--transport requires tcp or udp\n");
                 return 1;
             }
-            protocol = strcmp(argv[i], "--tcp") == 0 ?
-                KC_REDP2P_TCP : KC_REDP2P_UDP;
+            if (strcmp(argv[i], "tcp") == 0)
+                protocol = KC_REDP2P_TCP;
+            else if (strcmp(argv[i], "udp") == 0)
+                protocol = KC_REDP2P_UDP;
+            else {
+                fprintf(stderr, "redp2p: -t/--transport requires tcp or udp\n");
+                return 1;
+            }
             protocol_set = 1;
+        } else if (strcmp(argv[i], "--pass") == 0) {
+            if (++i >= argc || !argv[i][0]) {
+                fprintf(stderr, "redp2p: --pass requires a value\n");
+                return 1;
+            }
+            pass = argv[i];
         } else if (strcmp(argv[i], "--stun") == 0) {
             if (++i >= argc || !argv[i][0]) {
                 fprintf(stderr, "redp2p: --stun requires a URL\n");
@@ -1413,6 +1471,15 @@ static int redp2p_cli_pub(int argc, char **argv)
                 return 1;
             }
             turn_pass = argv[i];
+        } else if (strcmp(argv[i], "--force-turn") == 0) {
+            if (++i >= argc ||
+                (strcmp(argv[i], "0") != 0 && strcmp(argv[i], "1") != 0))
+            {
+                fprintf(stderr, "redp2p: --force-turn requires 0 or 1\n");
+                return 1;
+            }
+            force_turn = strcmp(argv[i], "1") == 0;
+            force_turn_set = 1;
         } else {
             fprintf(stderr, "redp2p: unknown pub option '%s'\n", argv[i]);
             return 1;
@@ -1422,7 +1489,7 @@ static int redp2p_cli_pub(int argc, char **argv)
         fprintf(stderr, "redp2p: pub requires -p/--port <port>\n");
         return 1;
     }
-    if (!redp2p_cli_force_turn(&force_turn)) {
+    if (!force_turn_set && !redp2p_cli_force_turn(&force_turn)) {
         fprintf(stderr, "redp2p: REDP2P_FORCE_TURN must be 0 or 1\n");
         return 1;
     }
@@ -1433,7 +1500,7 @@ static int redp2p_cli_pub(int argc, char **argv)
     }
     if (force_turn && !turn) {
         fprintf(stderr,
-            "redp2p: REDP2P_FORCE_TURN=1 requires --turn or REDP2P_TURN\n");
+            "redp2p: forced TURN requires --turn or REDP2P_TURN\n");
         return 1;
     }
     if (force_turn)
@@ -1454,7 +1521,7 @@ static int redp2p_cli_pub(int argc, char **argv)
     options.id = id;
     options.index = index;
     options.protocol = protocol;
-    options.pass = getenv("REDP2P_PASS");
+    options.pass = pass;
     options.stun = stun;
     options.turn = turn;
     options.turn_user = turn_user;
@@ -1504,14 +1571,14 @@ static int redp2p_cli_con(int argc, char **argv)
     const char *turn = getenv("REDP2P_TURN");
     const char *turn_user = getenv("REDP2P_TURN_USER");
     const char *turn_pass = getenv("REDP2P_TURN_PASS");
-    int force_turn;
+    int force_turn = 0;
+    int force_turn_set = 0;
     int result;
 
     if (argc < 3 || !redp2p_cli_spec(argv[2], id, index)) {
         fprintf(stderr,
             "redp2p: usage: %s con <id>@<index[:port]> -p <port>"
-            " [--tcp|--udp] [peer options]\n",
-            argv[0]);
+            " [options]\n", argv[0]);
         return 1;
     }
     for (int i = 3; i < argc; i++) {
@@ -1520,15 +1587,21 @@ static int redp2p_cli_con(int argc, char **argv)
                 fprintf(stderr, "redp2p: -p/--port requires a valid port\n");
                 return 1;
             }
-        } else if (strcmp(argv[i], "--tcp") == 0 ||
-            strcmp(argv[i], "--udp") == 0)
+        } else if (strcmp(argv[i], "-t") == 0 ||
+            strcmp(argv[i], "--transport") == 0)
         {
-            if (protocol_set) {
-                fprintf(stderr, "redp2p: choose only one of --tcp or --udp\n");
+            if (protocol_set || ++i >= argc) {
+                fprintf(stderr, "redp2p: -t/--transport requires tcp or udp\n");
                 return 1;
             }
-            protocol = strcmp(argv[i], "--tcp") == 0 ?
-                KC_REDP2P_TCP : KC_REDP2P_UDP;
+            if (strcmp(argv[i], "tcp") == 0)
+                protocol = KC_REDP2P_TCP;
+            else if (strcmp(argv[i], "udp") == 0)
+                protocol = KC_REDP2P_UDP;
+            else {
+                fprintf(stderr, "redp2p: -t/--transport requires tcp or udp\n");
+                return 1;
+            }
             protocol_set = 1;
         } else if (strcmp(argv[i], "--stun") == 0) {
             if (++i >= argc || !argv[i][0]) {
@@ -1554,6 +1627,15 @@ static int redp2p_cli_con(int argc, char **argv)
                 return 1;
             }
             turn_pass = argv[i];
+        } else if (strcmp(argv[i], "--force-turn") == 0) {
+            if (++i >= argc ||
+                (strcmp(argv[i], "0") != 0 && strcmp(argv[i], "1") != 0))
+            {
+                fprintf(stderr, "redp2p: --force-turn requires 0 or 1\n");
+                return 1;
+            }
+            force_turn = strcmp(argv[i], "1") == 0;
+            force_turn_set = 1;
         } else {
             fprintf(stderr, "redp2p: unknown con option '%s'\n", argv[i]);
             return 1;
@@ -1563,7 +1645,7 @@ static int redp2p_cli_con(int argc, char **argv)
         fprintf(stderr, "redp2p: con requires -p/--port <port>\n");
         return 1;
     }
-    if (!redp2p_cli_force_turn(&force_turn)) {
+    if (!force_turn_set && !redp2p_cli_force_turn(&force_turn)) {
         fprintf(stderr, "redp2p: REDP2P_FORCE_TURN must be 0 or 1\n");
         return 1;
     }
@@ -1574,7 +1656,7 @@ static int redp2p_cli_con(int argc, char **argv)
     }
     if (force_turn && !turn) {
         fprintf(stderr,
-            "redp2p: REDP2P_FORCE_TURN=1 requires --turn or REDP2P_TURN\n");
+            "redp2p: forced TURN requires --turn or REDP2P_TURN\n");
         return 1;
     }
     if (force_turn)
