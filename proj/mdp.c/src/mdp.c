@@ -13,6 +13,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #define MDP_MODE_HTML 0
 #define MDP_MODE_BODY 1
 #define MDP_MODE_META 2
@@ -93,6 +98,13 @@ int main(int argc, char **argv)
     const char *output;
     kc_mdp_t *mdp = NULL;
     int mode = MDP_MODE_HTML;
+
+#ifdef _WIN32
+    if (_setmode(_fileno(stdout), _O_BINARY) == -1) {
+        fprintf(stderr, "mdp: cannot configure stdout\n");
+        return 1;
+    }
+#endif
 
     if (argc == 2 && (strcmp(argv[1], "-h") == 0 ||
         strcmp(argv[1], "--help") == 0))
