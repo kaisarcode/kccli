@@ -25,6 +25,11 @@
 #define B64_MODE_ENCODE 1
 #define B64_MODE_DECODE 2
 
+/**
+ * Prints public CLI usage.
+ * @param name Program executable name.
+ * @return None.
+ */
 static void b64_cli_usage(const char *name)
 {
     printf("Usage: %s -e [text] [options]\n", name);
@@ -38,6 +43,13 @@ static void b64_cli_usage(const char *name)
     printf("  -v, --version       Show version\n");
 }
 
+/**
+ * Reads all bytes from one stream.
+ * @param stream Input stream.
+ * @param out Receives allocated data.
+ * @param out_size Receives byte count.
+ * @return Zero on success, nonzero on failure.
+ */
 static int b64_cli_read_stream(
     FILE *stream,
     unsigned char **out,
@@ -84,6 +96,13 @@ static int b64_cli_read_stream(
     return 0;
 }
 
+/**
+ * Reads one input file as raw bytes.
+ * @param path Input file path.
+ * @param out Receives allocated data.
+ * @param out_size Receives byte count.
+ * @return Zero on success, nonzero on failure.
+ */
 static int b64_cli_read_file(
     const char *path,
     unsigned char **out,
@@ -100,6 +119,10 @@ static int b64_cli_read_file(
     return status;
 }
 
+/**
+ * Reports whether standard input is attached to an interactive terminal.
+ * @return Nonzero when stdin is interactive.
+ */
 static int b64_cli_stdin_is_tty(void)
 {
 #ifdef _WIN32
@@ -113,6 +136,12 @@ static int b64_cli_stdin_is_tty(void)
 #endif
 }
 
+/**
+ * Runs the b64 CLI.
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return Process exit code.
+ */
 int main(int argc, char **argv)
 {
     const char *text = NULL;
