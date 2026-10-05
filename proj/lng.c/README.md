@@ -3,10 +3,17 @@
 `lng` is a command-line frontend for `liblng.c` language detection.
 
 It accepts one text argument, standard input, or a file, then prints one ranked
-result per line as headerless CSV:
+result per line as headerless TSV:
 
 ```text
-<code>,<score>
+<code>	<score>
+```
+
+For example:
+
+```text
+en	0.99999
+es	0.87231
 ```
 
 Scores are the heuristic ranking values returned by `liblng`; they are not
