@@ -20,12 +20,13 @@ static void kc_cli_help(void) {
     printf("Usage: menu <command> [arguments]\n");
     printf("\n");
     printf("Commands:\n");
-    printf("  menu add <id> <name> <command> [options]\n");
+    printf("  menu add <id> <command> [options]\n");
     printf("      Add an application menu entry\n");
     printf("  menu delete <id>\n");
     printf("      Delete an application menu entry\n");
     printf("\n");
     printf("Add options:\n");
+    printf("  --name <name>         Application name (defaults to id)\n");
     printf("  --description <text>  Application description\n");
     printf("  --icon <path>         Application icon path\n");
     printf("  --category <name>     Application menu category\n");
@@ -53,18 +54,24 @@ static int kc_cli_add(int argc, char **argv) {
     kc_menu_entry_t entry;
     int i;
 
-    if (argc < 5) {
-        fprintf(stderr, "menu: add requires <id> <name> <command>\n");
+    if (argc < 4) {
+        fprintf(stderr, "menu: add requires <id> <command>\n");
         return 1;
     }
 
     memset(&entry, 0, sizeof(entry));
     entry.id = argv[2];
-    entry.name = argv[3];
-    entry.command = argv[4];
+    entry.name = entry.id;
+    entry.command = argv[3];
 
-    i = 5;
+    i = 4;
     while (i < argc) {
+        if (strcmp(argv[i], "--name") == 0) {
+            if (i + 1 >= argc) return 1;
+            entry.name = argv[i + 1];
+            i += 2;
+            continue;
+        }
         if (strcmp(argv[i], "--description") == 0) {
             if (i + 1 >= argc) return 1;
             entry.description = argv[i + 1];
