@@ -38,65 +38,115 @@ make test wine
 
 ## CLI
 
-Start an index:
+### Index
+
+```text
+redp2p idx <port> [options]
+```
+
+Options:
+
+```text
+--seats <N>            Publisher capacity; default unlimited
+--pow <N>              Registration PoW bits (0..32)
+--max-consumers <N>    Consumers allowed per publisher
+--pass <pass>          Registration password
+--vip <id> <pass>      Reserve an id/password pair; repeatable
+```
+
+Examples:
 
 ```bash
 redp2p idx 9876
 redp2p idx 9876 --seats 128 --pow 16
+redp2p idx 9876 --pass secret --vip admin vip-secret
 ```
 
-Publish a local TCP service. TCP is the default transport:
+### Publisher
+
+```text
+redp2p pub <id>@<index[:port]> -p <port> [options]
+```
+
+Options:
+
+```text
+-p, --port <port>      Local service port
+--transport <type>     tcp or udp (default: tcp)
+--pass <pass>          Index registration password
+--stun <url>           Optional STUN URL
+--turn <url>           Optional TURN URL
+--turn-user <u>        Optional TURN username
+--turn-pass <p>        Optional TURN password
+--force-turn <0|1>     Disable or require TURN relay
+```
+
+Examples:
 
 ```bash
 redp2p pub web@idx.example.com:9876 -p 8080
 redp2p pub web@idx.example.com:9876 --port 8080 --transport tcp
-```
-
-Publish a local UDP service:
-
-```bash
 redp2p pub game@idx.example.com:9876 -p 7777 --transport udp
-```
-
-Peer options may be combined with either transport:
-
-```bash
-redp2p pub web@idx.example.com:9876 -p 8080 \
+redp2p pub web@idx.example.com:9876 -p 8080 --pass secret \
   --turn turn:turn.example.com:3478 \
-  --turn-user user --turn-pass secret
+  --turn-user user --turn-pass secret --force-turn 1
 ```
 
-Expose one announced publisher through a local TCP port. TCP is also the
-default consumer transport:
+### Consumer
+
+```text
+redp2p con <id>@<index[:port]> -p <port> [options]
+```
+
+Options:
+
+```text
+-p, --port <port>      Local service port
+--transport <type>     tcp or udp (default: tcp)
+--stun <url>           Optional STUN URL
+--turn <url>           Optional TURN URL
+--turn-user <u>        Optional TURN username
+--turn-pass <p>        Optional TURN password
+--force-turn <0|1>     Disable or require TURN relay
+```
+
+Examples:
 
 ```bash
 redp2p con web@idx.example.com:9876 -p 9000
 redp2p con web@idx.example.com:9876 --port 9000 --transport tcp
-```
-
-Expose it through a local UDP port:
-
-```bash
 redp2p con game@idx.example.com:9876 -p 9000 --transport udp
 ```
 
-The CLI accepts `REDP2P_SEATS`, `REDP2P_POW`, `REDP2P_PASS`, `REDP2P_VIP`,
-`REDP2P_MAX_CONSUMERS_PER_PUBLISHER`, `REDP2P_STUN`, `REDP2P_TURN`,
-`REDP2P_TURN_USER`, `REDP2P_TURN_PASS`, and `REDP2P_FORCE_TURN` as operator
-configuration.
+Common options are `-h` / `--help` and `-v` / `--version`.
+
+## Environment compatibility
+
+Command-line options are the public CLI surface. The following environment
+variables remain supported as fallback/operator configuration for compatibility:
+
+| Environment | CLI equivalent | Commands |
+| --- | --- | --- |
+| `REDP2P_SEATS` | `--seats <N>` | `idx` |
+| `REDP2P_POW` | `--pow <N>` | `idx` |
+| `REDP2P_PASS` | `--pass <pass>` | `idx`, `pub` |
+| `REDP2P_VIP` | `--vip <id> <pass>` | `idx` |
+| `REDP2P_MAX_CONSUMERS_PER_PUBLISHER` | `--max-consumers <N>` | `idx` |
+| `REDP2P_STUN` | `--stun <url>` | `pub`, `con` |
+| `REDP2P_TURN` | `--turn <url>` | `pub`, `con` |
+| `REDP2P_TURN_USER` | `--turn-user <u>` | `pub`, `con` |
+| `REDP2P_TURN_PASS` | `--turn-pass <p>` | `pub`, `con` |
+| `REDP2P_FORCE_TURN` | `--force-turn <0|1>` | `pub`, `con` |
+
+When both an environment value and its command-line equivalent are supplied,
+the command-line value takes precedence.
 
 For `pub` and `con`, `-p` / `--port` is required. `--transport` accepts `tcp`
-or `udp`; when omitted, TCP is used. The peer options are `--stun`, `--turn`,
-`--turn-user`, and `--turn-pass`. Direct peer connectivity remains preferred;
-TURN is used by libredp2p as a relay fallback. Set `REDP2P_FORCE_TURN=1` to
-require the relay path. The CLI validates the switch, requires TURN
-configuration when it is enabled, and reports that the forced relay mode is
-active.
+or `udp`; when omitted, TCP is used. Direct peer connectivity remains
+preferred; TURN is used by libredp2p as a relay fallback unless forced.
 
 `idx`, `pub`, and `con` processes run until SIGINT or SIGTERM and then close
 their handle.
-
-Common options are `-h` / `--help` and `-v` / `--version`.
 
 ---
 
