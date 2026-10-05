@@ -84,7 +84,7 @@ static void redp2p_cli_public_usage(const char *name)
     printf("idx options:\n");
     printf("  --seats <N>            Publisher capacity; default unlimited\n");
     printf("  --pow <N>              Registration PoW bits (0..32)\n");
-    printf("  --max-consumers <N>    Consumers allowed per publisher\n");
+    printf("  --max-con <N>          Consumers allowed per publisher\n");
     printf("  --pass <pass>          Registration password\n");
     printf("  --vip <id> <pass>      Reserve an id/password pair; repeatable\n");
     printf("\n");
@@ -163,6 +163,23 @@ int main(int argc, char **argv)
             free(vip);
             free(next);
             return 1;
+        }
+        if (strcmp(argv[i], "--max-consumers") == 0) {
+            fprintf(stderr, "redp2p: use --max-con <N>\n");
+            free(vip);
+            free(next);
+            return 1;
+        }
+        if (strcmp(argv[i], "--max-con") == 0) {
+            if (strcmp(command, "idx") != 0 || ++i >= argc || !argv[i][0]) {
+                fprintf(stderr, "redp2p: --max-con requires <N> for idx\n");
+                free(vip);
+                free(next);
+                return 1;
+            }
+            next[out++] = "--max-consumers";
+            next[out++] = argv[i];
+            continue;
         }
         if (strcmp(argv[i], "--transport") == 0) {
             if (!redp2p_cli_peer_command(command) || transport_set ||
