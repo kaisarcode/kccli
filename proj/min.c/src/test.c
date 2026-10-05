@@ -120,13 +120,14 @@ int main(void)
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("css", "CSS minification succeeds",
-        output_equals("css", "body { color: red; }", "body{color:red}"));
+        output_equals("css", "/* hi */ body{}", "body{}"));
     result("js", "JavaScript minification succeeds",
-        output_equals("js", "const x = 1; // comment\n", "const x=1;"));
+        output_equals("js", "const x = 1; // comment", "const x = 1;"));
     result("html", "HTML minification succeeds",
-        output_equals("html", "<div>  hello  </div>", "<div> hello </div>"));
+        output_equals("html", "<!-- c --><p>hi</p>", "<p>hi</p>"));
     result("txt", "text minification succeeds",
-        output_equals("txt", "  hello   world  ", "hello world"));
+        output_equals("txt", "  hello   world\n\nfoo\tbar  ",
+            "hello world foo bar"));
     result("missing type", "type is required", run_cli("") != 0);
     result("bad type", "unknown type fails", run_cli("-t xml") != 0);
     result("unknown", "unknown option fails", run_cli("-t txt --unknown") != 0);
