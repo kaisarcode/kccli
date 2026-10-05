@@ -16,6 +16,8 @@
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
+#else
+#include <unistd.h>
 #endif
 
 #define MDP_MODE_HTML 0
@@ -32,18 +34,20 @@ static void mdp_cli_usage(const char *name)
     printf("Usage: %s [text] [options]\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  --body         Print Markdown body without frontmatter\n");
-    printf("  --meta         Print raw frontmatter\n");
-    printf("  -h, --help     Show this help\n");
-    printf("  -v, --version  Show version\n");
+    printf("  -i, --input <file>  Read Markdown from file when stdin is absent\n");
+    printf("  --body              Print Markdown body without frontmatter\n");
+    printf("  --meta              Print raw frontmatter\n");
+    printf("  -h, --help          Show this help\n");
+    printf("  -v, --version       Show version\n");
 }
 
 /**
- * Reads all bytes from standard input as a NUL-terminated string.
+ * Reads all bytes from one stream as a NUL-terminated string.
+ * @param file Input stream.
  * @param out Receives allocated text.
  * @return Zero on success, nonzero on failure.
  */
-static int mdp_cli_read_stdin(char **out)
+static int mdp_cli_read_stream(FILE *file, char **out)
 {
     char *buffer = NULL;
     size_t size = 0;
@@ -52,7 +56,7 @@ static int mdp_cli_read_stdin(char **out)
     size_t count;
 
     *out = NULL;
-    while ((count = fread(chunk, 1, sizeof(chunk), stdin)) > 0) {
+    while ((count = fread(chunk, 1, sizeof(chunk), file)) > 0) {
         size_t required = size + count + 1;
         char *next;
 
@@ -71,7 +75,7 @@ static int mdp_cli_read_stdin(char **out)
         memcpy(buffer + size, chunk, count);
         size += count;
     }
-    if (ferror(stdin)) {
+    if (ferror(file)) {
         free(buffer);
         return 1;
     }
@@ -85,6 +89,47 @@ static int mdp_cli_read_stdin(char **out)
 }
 
 /**
+ * Reads all bytes from one file path.
+ * @param path Input file path.
+ * @param out Receives allocated text.
+ * @return Zero on success, nonzero on failure.
+ */
+static int mdp_cli_read_file(const char *path, char **out)
+{
+    FILE *file;
+    int rc;
+
+    file = fopen(path, "rb");
+    if (!file) return 1;
+    rc = mdp_cli_read_stream(file, out);
+    fclose(file);
+    return rc;
+}
+
+/**
+ * Reports whether redirected stdin contains input.
+ * @return Nonzero when stdin should take precedence over file input.
+ */
+static int mdp_cli_stdin_has_input(void)
+{
+    int value;
+
+#ifdef _WIN32
+    if (_isatty(_fileno(stdin))) return 0;
+#else
+    if (isatty(STDIN_FILENO)) return 0;
+#endif
+
+    value = fgetc(stdin);
+    if (value == EOF) {
+        clearerr(stdin);
+        return 0;
+    }
+    if (ungetc(value, stdin) == EOF) return 0;
+    return 1;
+}
+
+/**
  * Runs the mdp CLI.
  * @param argc Argument count.
  * @param argv Argument vector.
@@ -93,7 +138,8 @@ static int mdp_cli_read_stdin(char **out)
 int main(int argc, char **argv)
 {
     const char *text = NULL;
-    char *stdin_text = NULL;
+    const char *input_path = NULL;
+    char *owned_input = NULL;
     const char *input;
     const char *output;
     kc_mdp_t *mdp = NULL;
@@ -120,7 +166,17 @@ int main(int argc, char **argv)
     }
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--body") == 0) {
+        if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "mdp: --input requires a file\n");
+                return 1;
+            }
+            if (input_path != NULL) {
+                fprintf(stderr, "mdp: only one input file is accepted\n");
+                return 1;
+            }
+            input_path = argv[i];
+        } else if (strcmp(argv[i], "--body") == 0) {
             if (mode != MDP_MODE_HTML) {
                 fprintf(stderr, "mdp: choose only one output mode\n");
                 return 1;
@@ -152,20 +208,26 @@ int main(int argc, char **argv)
 
     if (text) {
         input = text;
+    } else if (input_path != NULL && !mdp_cli_stdin_has_input()) {
+        if (mdp_cli_read_file(input_path, &owned_input)) {
+            fprintf(stderr, "mdp: cannot read input file\n");
+            return 1;
+        }
+        input = owned_input;
     } else {
-        if (mdp_cli_read_stdin(&stdin_text)) {
+        if (mdp_cli_read_stream(stdin, &owned_input)) {
             fprintf(stderr, "mdp: cannot read stdin\n");
             return 1;
         }
-        input = stdin_text;
+        input = owned_input;
     }
 
     if (kc_mdp_open(&mdp, input) != KC_MDP_OK) {
-        free(stdin_text);
+        free(owned_input);
         fprintf(stderr, "mdp: cannot parse markdown\n");
         return 1;
     }
-    free(stdin_text);
+    free(owned_input);
 
     if (mode == MDP_MODE_BODY) {
         output = kc_mdp_body(mdp);
