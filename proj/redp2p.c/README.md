@@ -72,7 +72,7 @@ Options:
 
 ```text
 -p, --port <port>      Local service port
---transport <type>     tcp or udp (default: tcp)
+-t, --transport <type> tcp or udp (default: tcp)
 --pass <pass>          Index registration password
 --stun <url>           Optional STUN URL
 --turn <url>           Optional TURN URL
@@ -85,7 +85,7 @@ Examples:
 
 ```bash
 redp2p pub web@idx.example.com:9876 -p 8080
-redp2p pub web@idx.example.com:9876 --port 8080 --transport tcp
+redp2p pub web@idx.example.com:9876 --port 8080 -t tcp
 redp2p pub game@idx.example.com:9876 -p 7777 --transport udp
 redp2p pub web@idx.example.com:9876 -p 8080 --pass secret \
   --turn turn:turn.example.com:3478 \
@@ -102,7 +102,7 @@ Options:
 
 ```text
 -p, --port <port>      Local service port
---transport <type>     tcp or udp (default: tcp)
+-t, --transport <type> tcp or udp (default: tcp)
 --stun <url>           Optional STUN URL
 --turn <url>           Optional TURN URL
 --turn-user <u>        Optional TURN username
@@ -114,7 +114,7 @@ Examples:
 
 ```bash
 redp2p con web@idx.example.com:9876 -p 9000
-redp2p con web@idx.example.com:9876 --port 9000 --transport tcp
+redp2p con web@idx.example.com:9876 --port 9000 -t tcp
 redp2p con game@idx.example.com:9876 -p 9000 --transport udp
 ```
 
@@ -141,8 +141,8 @@ variables remain supported as fallback/operator configuration for compatibility:
 When both an environment value and its command-line equivalent are supplied,
 the command-line value takes precedence.
 
-For `pub` and `con`, `-p` / `--port` is required. `--transport` accepts `tcp`
-or `udp`; when omitted, TCP is used. Direct peer connectivity remains
+For `pub` and `con`, `-p` / `--port` is required. `-t` / `--transport` accepts
+`tcp` or `udp`; when omitted, TCP is used. Direct peer connectivity remains
 preferred; TURN is used by libredp2p as a relay fallback unless forced.
 
 `idx`, `pub`, and `con` processes run until SIGINT or SIGTERM and then close
