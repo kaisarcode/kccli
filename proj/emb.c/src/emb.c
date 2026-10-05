@@ -13,6 +13,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 /**
  * Prints public CLI usage.
  * @param name Program executable name.
@@ -23,17 +29,20 @@ static void emb_cli_usage(const char *name)
     printf("Usage: %s [text] [options]\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  -d, --dimension  Print embedding dimension\n");
-    printf("  -h, --help       Show this help\n");
-    printf("  -v, --version    Show version\n");
+    printf("  -i, --input <file>  Read text from file\n");
+    printf("  -d, --dimension     Print embedding dimension\n");
+    printf("  -h, --help          Show this help\n");
+    printf("  -v, --version       Show version\n");
 }
 
 /**
- * Reads all standard input into a NUL-terminated string.
+ * Reads all bytes from one stream as a NUL-terminated string.
+ * @param stream Input stream.
  * @param out Receives allocated input string.
+ * @param out_size Receives byte count when non-NULL.
  * @return Zero on success, nonzero on failure.
  */
-static int emb_cli_read_stdin(char **out)
+static int emb_cli_read_stream(FILE *stream, char **out, size_t *out_size)
 {
     char *buffer = NULL;
     size_t size = 0;
@@ -42,7 +51,8 @@ static int emb_cli_read_stdin(char **out)
     size_t count;
 
     *out = NULL;
-    while ((count = fread(chunk, 1, sizeof(chunk), stdin)) > 0) {
+    if (out_size) *out_size = 0;
+    while ((count = fread(chunk, 1, sizeof(chunk), stream)) > 0) {
         size_t required = size + count + 1;
         char *next;
 
@@ -61,7 +71,7 @@ static int emb_cli_read_stdin(char **out)
         memcpy(buffer + size, chunk, count);
         size += count;
     }
-    if (ferror(stdin)) {
+    if (ferror(stream)) {
         free(buffer);
         return 1;
     }
@@ -71,7 +81,43 @@ static int emb_cli_read_stdin(char **out)
     }
     buffer[size] = '\0';
     *out = buffer;
+    if (out_size) *out_size = size;
     return 0;
+}
+
+/**
+ * Reads one input file.
+ * @param path Input file path.
+ * @param out Receives allocated string.
+ * @return Zero on success, nonzero on failure.
+ */
+static int emb_cli_read_file(const char *path, char **out)
+{
+    FILE *file;
+    int status;
+
+    file = fopen(path, "rb");
+    if (!file) return 1;
+    status = emb_cli_read_stream(file, out, NULL);
+    fclose(file);
+    return status;
+}
+
+/**
+ * Reports whether standard input is attached to an interactive terminal.
+ * @return Nonzero when stdin is interactive.
+ */
+static int emb_cli_stdin_is_tty(void)
+{
+#ifdef _WIN32
+    HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+
+    if (handle == INVALID_HANDLE_VALUE || handle == NULL) return 0;
+    return GetConsoleMode(handle, &mode) != 0;
+#else
+    return isatty(STDIN_FILENO);
+#endif
 }
 
 /**
@@ -83,7 +129,9 @@ static int emb_cli_read_stdin(char **out)
 int main(int argc, char **argv)
 {
     const char *text = NULL;
-    char *stdin_text = NULL;
+    const char *input_path = NULL;
+    char *owned_input = NULL;
+    const char *input = NULL;
     float *vector = NULL;
     size_t count = 0;
     int dimension = 0;
@@ -108,7 +156,17 @@ int main(int argc, char **argv)
     }
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0 ||
+        if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
+            if (++i >= argc || !argv[i][0]) {
+                fprintf(stderr, "emb: --input requires a file\n");
+                return 1;
+            }
+            if (input_path != NULL) {
+                fprintf(stderr, "emb: only one input file is accepted\n");
+                return 1;
+            }
+            input_path = argv[i];
+        } else if (strcmp(argv[i], "-d") == 0 ||
             strcmp(argv[i], "--dimension") == 0)
         {
             dimension = 1;
@@ -137,17 +195,36 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (text == NULL) {
-        if (emb_cli_read_stdin(&stdin_text)) {
+    if (!emb_cli_stdin_is_tty()) {
+        size_t stdin_size = 0;
+
+        if (emb_cli_read_stream(stdin, &owned_input, &stdin_size)) {
             fprintf(stderr, "emb: cannot read stdin\n");
             return 1;
         }
-        text = stdin_text;
+        if (stdin_size > 0) input = owned_input;
+    }
+    if (!input && text) input = text;
+    if (!input && input_path) {
+        free(owned_input);
+        owned_input = NULL;
+        if (emb_cli_read_file(input_path, &owned_input)) {
+            fprintf(stderr, "emb: cannot read input file\n");
+            return 1;
+        }
+        input = owned_input;
+    }
+    if (!input) {
+        if (!owned_input && emb_cli_read_stream(stdin, &owned_input, NULL)) {
+            fprintf(stderr, "emb: cannot read stdin\n");
+            return 1;
+        }
+        input = owned_input;
     }
 
-    if (kc_emb_embed(text, &vector, &count) != KC_EMB_OK) {
+    if (kc_emb_embed(input, &vector, &count) != KC_EMB_OK) {
         fprintf(stderr, "emb: embedding failed\n");
-        free(stdin_text);
+        free(owned_input);
         return 1;
     }
 
@@ -158,6 +235,6 @@ int main(int argc, char **argv)
     putchar('\n');
 
     kc_emb_free(vector);
-    free(stdin_text);
+    free(owned_input);
     return 0;
 }
