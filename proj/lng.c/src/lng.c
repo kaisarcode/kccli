@@ -64,6 +64,7 @@ static int lng_cli_parse_limit(const char *text, size_t *out)
     char *end = NULL;
     unsigned long long value;
 
+    if (text[0] == '-' || text[0] == '+') return 1;
     errno = 0;
     value = strtoull(text, &end, 10);
     if (errno != 0 || end == text || *end != '\0' || value == 0) return 1;
