@@ -20,21 +20,20 @@
  */
 static void min_cli_usage(const char *name)
 {
-    printf("Usage: %s -t <type> [file]\n", name);
+    printf("Usage: %s [text] [options]\n", name);
     printf("\n");
     printf("Options:\n");
-    printf("  -t, --type <type>  css, js, html, or txt\n");
+    printf("  -t, --type <type>  css, js, html, or txt (default: txt)\n");
     printf("  -h, --help         Show this help\n");
     printf("  -v, --version      Show version\n");
 }
 
 /**
- * Reads all bytes from one stream as a NUL-terminated string.
- * @param file Input stream.
+ * Reads all bytes from standard input as a NUL-terminated string.
  * @param out Receives allocated string.
  * @return Zero on success, nonzero on failure.
  */
-static int min_cli_read_stream(FILE *file, char **out)
+static int min_cli_read_stdin(char **out)
 {
     char *buffer = NULL;
     size_t size = 0;
@@ -43,7 +42,7 @@ static int min_cli_read_stream(FILE *file, char **out)
     size_t count;
 
     *out = NULL;
-    while ((count = fread(chunk, 1, sizeof(chunk), file)) > 0) {
+    while ((count = fread(chunk, 1, sizeof(chunk), stdin)) > 0) {
         size_t required = size + count + 1;
         char *next;
 
@@ -62,7 +61,7 @@ static int min_cli_read_stream(FILE *file, char **out)
         memcpy(buffer + size, chunk, count);
         size += count;
     }
-    if (ferror(file)) {
+    if (ferror(stdin)) {
         free(buffer);
         return 1;
     }
@@ -73,25 +72,6 @@ static int min_cli_read_stream(FILE *file, char **out)
     buffer[size] = '\0';
     *out = buffer;
     return 0;
-}
-
-/**
- * Reads all input from a path or standard input.
- * @param path Optional input path; NULL or "-" reads stdin.
- * @param out Receives allocated text.
- * @return Zero on success, nonzero on failure.
- */
-static int min_cli_read_input(const char *path, char **out)
-{
-    FILE *file;
-    int rc;
-
-    if (!path || strcmp(path, "-") == 0) return min_cli_read_stream(stdin, out);
-    file = fopen(path, "rb");
-    if (!file) return 1;
-    rc = min_cli_read_stream(file, out);
-    fclose(file);
-    return rc;
 }
 
 /**
@@ -117,9 +97,10 @@ static char *min_cli_minify(const char *type, const char *input)
  */
 int main(int argc, char **argv)
 {
-    const char *type = NULL;
-    const char *path = NULL;
-    char *input = NULL;
+    const char *type = "txt";
+    const char *text = NULL;
+    const char *input;
+    char *stdin_input = NULL;
     char *output;
 
     if (argc == 2 && (strcmp(argv[1], "-h") == 0 ||
@@ -152,31 +133,33 @@ int main(int argc, char **argv)
         } else if (argv[i][0] == '-' && strcmp(argv[i], "-") != 0) {
             fprintf(stderr, "min: unknown option '%s'\n", argv[i]);
             return 1;
-        } else if (path != NULL) {
-            fprintf(stderr, "min: only one input file is accepted\n");
+        } else if (text != NULL) {
+            fprintf(stderr, "min: only one text argument is accepted; quote spaces\n");
             return 1;
         } else {
-            path = argv[i];
+            text = argv[i];
         }
     }
 
-    if (!type) {
-        fprintf(stderr, "min: -t/--type is required\n");
-        return 1;
-    }
     if (strcmp(type, "css") != 0 && strcmp(type, "js") != 0 &&
         strcmp(type, "html") != 0 && strcmp(type, "txt") != 0)
     {
         fprintf(stderr, "min: type must be css, js, html, or txt\n");
         return 1;
     }
-    if (min_cli_read_input(path, &input)) {
-        fprintf(stderr, "min: cannot read input\n");
-        return 1;
+
+    if (text) {
+        input = text;
+    } else {
+        if (min_cli_read_stdin(&stdin_input)) {
+            fprintf(stderr, "min: cannot read stdin\n");
+            return 1;
+        }
+        input = stdin_input;
     }
 
     output = min_cli_minify(type, input);
-    free(input);
+    free(stdin_input);
     if (!output) {
         fprintf(stderr, "min: minification failed\n");
         return 1;
