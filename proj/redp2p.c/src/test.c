@@ -101,7 +101,7 @@ static int run_cli(const char *args)
  */
 int main(void)
 {
-    test_total = 8;
+    test_total = 10;
     test_current = 0;
     test_failures = 0;
 
@@ -112,14 +112,18 @@ int main(void)
         run_cli("unknown") != 0);
     result("idx", "rejects an invalid index port",
         run_cli("idx 0") != 0);
-    result("pub", "requires a publisher transport and local port",
+    result("pub port", "requires -p or --port",
         run_cli("pub test@127.0.0.1:1") != 0);
-    result("con", "rejects the old consumer protocol syntax",
-        run_cli("con test@127.0.0.1:1 --tcp 9000") != 0);
+    result("con port", "requires -p or --port",
+        run_cli("con test@127.0.0.1:1") != 0);
+    result("con positional", "rejects a positional local port",
+        run_cli("con test@127.0.0.1:1 9000") != 0);
+    result("transport", "rejects simultaneous TCP and UDP selection",
+        run_cli("pub test@127.0.0.1:1 -p 9000 --tcp --udp") != 0);
     result("pub turn", "rejects TURN credentials without a TURN URL",
-        run_cli("pub test@127.0.0.1:1 --tcp 9000 --turn-user user") != 0);
+        run_cli("pub test@127.0.0.1:1 -p 9000 --turn-user user") != 0);
     result("con turn", "rejects TURN credentials without a TURN URL",
-        run_cli("con test@127.0.0.1:1 9000 --turn-pass secret") != 0);
+        run_cli("con test@127.0.0.1:1 -p 9000 --turn-pass secret") != 0);
 
     printf("\n%d passed, %d failed\n",
         test_total - test_failures, test_failures);
