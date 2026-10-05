@@ -1,6 +1,6 @@
 /**
  * test.c - mdp CLI contract tests.
- * Summary: Validates Markdown rendering, views, and stdin behavior.
+ * Summary: Validates Markdown rendering, views, and input precedence.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -17,6 +17,24 @@
 
 static int test_total = 0;
 static int test_failed = 0;
+
+/**
+ * Writes one text fixture file.
+ * @param path Output file path.
+ * @param text Text to write.
+ * @return Nonzero on success.
+ */
+static int write_text_file(const char *path, const char *text)
+{
+    FILE *file = fopen(path, "wb");
+    size_t size = strlen(text);
+    int ok;
+
+    if (!file) return 0;
+    ok = fwrite(text, 1, size, file) == size;
+    fclose(file);
+    return ok;
+}
 
 /**
  * Executes the CLI and compares captured stdout exactly.
@@ -40,14 +58,7 @@ static int output_equals(
     int status;
 
     if (stdin_text) {
-        file = fopen(input_path, "wb");
-        if (!file) return 0;
-        if (fwrite(stdin_text, 1, strlen(stdin_text), file) != strlen(stdin_text)) {
-            fclose(file);
-            remove(input_path);
-            return 0;
-        }
-        fclose(file);
+        if (!write_text_file(input_path, stdin_text)) return 0;
     }
 
 #ifdef _WIN32
@@ -112,7 +123,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/9] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/11] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
@@ -123,6 +134,8 @@ static void result(const char *name, const char *detail, int ok)
 int main(void)
 {
     const char *document = "---\ntitle: Home\n---\n# Hello";
+    const char *file_path = "mdp-cli-file.md";
+    int fixture_ok;
 
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
@@ -130,8 +143,19 @@ int main(void)
         output_equals("Hello", NULL, "<p>Hello</p>\n"));
     result("html stdin", "stdin renders HTML when argument is absent",
         output_equals("", "# Hello", "<h1>Hello</h1>\n"));
-    result("argument priority", "argument takes priority over stdin",
-        output_equals("Hello", "ignored", "<p>Hello</p>\n"));
+
+    fixture_ok = write_text_file(file_path, "# File");
+    result("input file", "-i reads file when higher-priority input is absent",
+        fixture_ok && output_equals("-i mdp-cli-file.md", NULL,
+            "<h1>File</h1>\n"));
+    result("stdin priority", "stdin takes priority over -i",
+        fixture_ok && output_equals("-i mdp-cli-file.md", "# Stdin",
+            "<h1>Stdin</h1>\n"));
+    result("argument priority", "argument takes priority over stdin and -i",
+        fixture_ok && output_equals("-i mdp-cli-file.md Hello", "# Stdin",
+            "<p>Hello</p>\n"));
+    remove(file_path);
+
     result("body", "--body returns Markdown body",
         output_equals("--body", document, "# Hello"));
     result("meta", "--meta returns raw frontmatter",
