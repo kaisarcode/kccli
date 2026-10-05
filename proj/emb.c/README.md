@@ -2,9 +2,8 @@
 
 `emb` is a command-line frontend for `libemb.c` fixed-model text embeddings.
 
-It accepts one text argument or reads text from standard input. Successful
-embedding output is CSV without a header: one vector per line, with float
-values separated by commas.
+It accepts one text argument, standard input, or a file and prints one
+headerless CSV vector per successful embedding.
 
 The embedding dimension is fixed by the model embedded in `libemb.c`; callers
 do not choose it.
@@ -15,10 +14,21 @@ do not choose it.
 Usage: emb [text] [options]
 
 Options:
-  -d, --dimension  Print embedding dimension
-  -h, --help       Show this help
-  -v, --version    Show version
+  -i, --input <file>  Read text from file
+  -d, --dimension     Print embedding dimension
+  -h, --help          Show this help
+  -v, --version       Show version
 ```
+
+Input precedence is:
+
+```text
+argument > stdin > -i/--input
+```
+
+A positional argument wins over redirected or piped stdin. Without an argument,
+stdin wins over `-i` when stdin contains input. An empty redirected stdin may
+fall through to the file.
 
 Embed one text:
 
@@ -30,6 +40,12 @@ Read text from standard input:
 
 ```bash
 printf 'The quick brown fox' | emb
+```
+
+Read text from a file:
+
+```bash
+emb -i document.txt
 ```
 
 Output is one headerless CSV row:
