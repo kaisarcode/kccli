@@ -32,12 +32,12 @@ static void redp2p_cli_public_usage(const char *name)
     printf("Options:\n");
     printf("  -p, --port <port>    Local service port for pub/con\n");
     printf("  --transport <type>   tcp or udp (default: tcp)\n");
-    printf("  -h, --help           Show this help\n");
-    printf("  -v, --version        Show version\n");
     printf("  --stun <url>         Optional STUN URL\n");
     printf("  --turn <url>         Optional TURN URL\n");
     printf("  --turn-user <u>      Optional TURN username\n");
     printf("  --turn-pass <p>      Optional TURN password\n");
+    printf("  -h, --help           Show this help\n");
+    printf("  -v, --version        Show version\n");
     printf("\n");
     printf("Environment:\n");
     printf("  REDP2P_SEATS          Index publisher capacity; unset means unlimited\n");
