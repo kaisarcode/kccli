@@ -21,6 +21,11 @@
 #include <unistd.h>
 #endif
 
+/**
+ * Prints public CLI usage.
+ * @param name Program executable name.
+ * @return None.
+ */
 static void lng_cli_usage(const char *name)
 {
     printf("Usage: %s [text] [options]\n", name);
@@ -33,6 +38,12 @@ static void lng_cli_usage(const char *name)
     printf("  -v, --version        Show version\n");
 }
 
+/**
+ * Parses one threshold value.
+ * @param text Input string.
+ * @param out Parsed value.
+ * @return Zero on success, nonzero on failure.
+ */
 static int lng_cli_parse_threshold(const char *text, double *out)
 {
     char *end = NULL;
@@ -49,6 +60,12 @@ static int lng_cli_parse_threshold(const char *text, double *out)
     return 0;
 }
 
+/**
+ * Parses one positive result limit.
+ * @param text Input string.
+ * @param out Parsed value.
+ * @return Zero on success, nonzero on failure.
+ */
 static int lng_cli_parse_limit(const char *text, size_t *out)
 {
     char *end = NULL;
@@ -63,6 +80,13 @@ static int lng_cli_parse_limit(const char *text, size_t *out)
     return 0;
 }
 
+/**
+ * Reads all bytes from one stream as a NUL-terminated string.
+ * @param stream Input stream.
+ * @param out Receives allocated string.
+ * @param out_size Receives byte count when non-NULL.
+ * @return Zero on success, nonzero on failure.
+ */
 static int lng_cli_read_stream(FILE *stream, char **out, size_t *out_size)
 {
     char *buffer = NULL;
@@ -106,6 +130,12 @@ static int lng_cli_read_stream(FILE *stream, char **out, size_t *out_size)
     return 0;
 }
 
+/**
+ * Reads one input file.
+ * @param path Input file path.
+ * @param out Receives allocated string.
+ * @return Zero on success, nonzero on failure.
+ */
 static int lng_cli_read_file(const char *path, char **out)
 {
     FILE *file;
@@ -118,6 +148,10 @@ static int lng_cli_read_file(const char *path, char **out)
     return status;
 }
 
+/**
+ * Reports whether standard input is attached to an interactive terminal.
+ * @return Nonzero when stdin is interactive.
+ */
 static int lng_cli_stdin_is_tty(void)
 {
 #ifdef _WIN32
@@ -131,6 +165,12 @@ static int lng_cli_stdin_is_tty(void)
 #endif
 }
 
+/**
+ * Runs the lng CLI.
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return Process exit code.
+ */
 int main(int argc, char **argv)
 {
     kc_lng_options_t options;
