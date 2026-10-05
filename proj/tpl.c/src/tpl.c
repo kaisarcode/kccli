@@ -19,6 +19,11 @@
 #include <unistd.h>
 #endif
 
+/**
+ * Prints public CLI usage.
+ * @param name Program executable name.
+ * @return None.
+ */
 static void tpl_cli_usage(const char *name)
 {
     printf("Usage: %s [template] [options]\n", name);
@@ -31,6 +36,13 @@ static void tpl_cli_usage(const char *name)
     printf("  -V, --version           Show version\n");
 }
 
+/**
+ * Reads all bytes from one stream as a NUL-terminated string.
+ * @param stream Input stream.
+ * @param out Receives allocated string.
+ * @param out_size Receives byte count when non-NULL.
+ * @return Zero on success, nonzero on failure.
+ */
 static int tpl_cli_read_stream(FILE *stream, char **out, size_t *out_size)
 {
     char *buffer = NULL;
@@ -74,6 +86,12 @@ static int tpl_cli_read_stream(FILE *stream, char **out, size_t *out_size)
     return 0;
 }
 
+/**
+ * Reads one template source from a file.
+ * @param path File path.
+ * @param out Receives allocated template source.
+ * @return Zero on success, nonzero on failure.
+ */
 static int tpl_cli_read_file(const char *path, char **out)
 {
     FILE *file;
@@ -86,6 +104,10 @@ static int tpl_cli_read_file(const char *path, char **out)
     return status;
 }
 
+/**
+ * Reports whether standard input is attached to an interactive terminal.
+ * @return Nonzero when stdin is interactive.
+ */
 static int tpl_cli_stdin_is_tty(void)
 {
 #ifdef _WIN32
@@ -99,6 +121,12 @@ static int tpl_cli_stdin_is_tty(void)
 #endif
 }
 
+/**
+ * Copies one literal template argument into owned storage.
+ * @param text Literal template text.
+ * @param out Receives allocated copy.
+ * @return Zero on success, nonzero on allocation failure.
+ */
 static int tpl_cli_copy_text(const char *text, char **out)
 {
     size_t size = strlen(text) + 1;
@@ -109,6 +137,12 @@ static int tpl_cli_copy_text(const char *text, char **out)
     return 0;
 }
 
+/**
+ * Runs the tpl CLI.
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return Process exit code.
+ */
 int main(int argc, char **argv)
 {
     const char *template_text = NULL;
