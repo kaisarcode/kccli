@@ -45,9 +45,10 @@ static void mdp_cli_usage(const char *name)
  * Reads all bytes from one stream as a NUL-terminated string.
  * @param file Input stream.
  * @param out Receives allocated text.
+ * @param out_size Receives byte count.
  * @return Zero on success, nonzero on failure.
  */
-static int mdp_cli_read_stream(FILE *file, char **out)
+static int mdp_cli_read_stream(FILE *file, char **out, size_t *out_size)
 {
     char *buffer = NULL;
     size_t size = 0;
@@ -56,6 +57,7 @@ static int mdp_cli_read_stream(FILE *file, char **out)
     size_t count;
 
     *out = NULL;
+    if (out_size) *out_size = 0;
     while ((count = fread(chunk, 1, sizeof(chunk), file)) > 0) {
         size_t required = size + count + 1;
         char *next;
@@ -85,6 +87,7 @@ static int mdp_cli_read_stream(FILE *file, char **out)
     }
     buffer[size] = '\0';
     *out = buffer;
+    if (out_size) *out_size = size;
     return 0;
 }
 
@@ -101,32 +104,22 @@ static int mdp_cli_read_file(const char *path, char **out)
 
     file = fopen(path, "rb");
     if (!file) return 1;
-    rc = mdp_cli_read_stream(file, out);
+    rc = mdp_cli_read_stream(file, out, NULL);
     fclose(file);
     return rc;
 }
 
 /**
- * Reports whether redirected stdin contains input.
- * @return Nonzero when stdin should take precedence over file input.
+ * Reports whether standard input is attached to a terminal.
+ * @return Nonzero when stdin is interactive.
  */
-static int mdp_cli_stdin_has_input(void)
+static int mdp_cli_stdin_is_tty(void)
 {
-    int value;
-
 #ifdef _WIN32
-    if (_isatty(_fileno(stdin))) return 0;
+    return _isatty(_fileno(stdin));
 #else
-    if (isatty(STDIN_FILENO)) return 0;
+    return isatty(STDIN_FILENO);
 #endif
-
-    value = fgetc(stdin);
-    if (value == EOF) {
-        clearerr(stdin);
-        return 0;
-    }
-    if (ungetc(value, stdin) == EOF) return 0;
-    return 1;
 }
 
 /**
@@ -208,14 +201,32 @@ int main(int argc, char **argv)
 
     if (text) {
         input = text;
-    } else if (input_path != NULL && !mdp_cli_stdin_has_input()) {
+    } else if (input_path != NULL && !mdp_cli_stdin_is_tty()) {
+        size_t stdin_size = 0;
+
+        if (mdp_cli_read_stream(stdin, &owned_input, &stdin_size)) {
+            fprintf(stderr, "mdp: cannot read stdin\n");
+            return 1;
+        }
+        if (stdin_size > 0) {
+            input = owned_input;
+        } else {
+            free(owned_input);
+            owned_input = NULL;
+            if (mdp_cli_read_file(input_path, &owned_input)) {
+                fprintf(stderr, "mdp: cannot read input file\n");
+                return 1;
+            }
+            input = owned_input;
+        }
+    } else if (input_path != NULL) {
         if (mdp_cli_read_file(input_path, &owned_input)) {
             fprintf(stderr, "mdp: cannot read input file\n");
             return 1;
         }
         input = owned_input;
     } else {
-        if (mdp_cli_read_stream(stdin, &owned_input)) {
+        if (mdp_cli_read_stream(stdin, &owned_input, NULL)) {
             fprintf(stderr, "mdp: cannot read stdin\n");
             return 1;
         }
