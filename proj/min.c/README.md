@@ -11,14 +11,24 @@ to standard output.
 Usage: min [text] [options]
 
 Options:
-  -t, --type <type>  css, js, html, or txt (default: txt)
-  -h, --help         Show this help
-  -v, --version      Show version
+  -i, --input <file>  Read input from file
+  -t, --type <type>   css, js, html, or txt (default: txt)
+  -h, --help          Show this help
+  -v, --version       Show version
 ```
 
-The positional argument is literal source text. When it is present, it has
-priority over standard input. When it is omitted, input is read from standard
-input.
+The positional argument is literal source text. File input is selected with
+`-i` or `--input`.
+
+Input precedence is:
+
+```text
+argument > stdin > -i/--input
+```
+
+A positional argument wins over redirected or piped stdin. Without an argument,
+stdin wins over `-i` when stdin contains input. An empty redirected stdin may
+fall through to the file.
 
 Generic text is the default mode:
 
@@ -32,10 +42,16 @@ Output:
 fdfsdfsd sdfsd ff sd fsdfd
 ```
 
-The same default applies to standard input:
+Read from standard input:
 
 ```bash
 printf '  hello   world  ' | min
+```
+
+Read from a file:
+
+```bash
+min -i input.txt
 ```
 
 Select another minifier with `-t` or `--type`:
@@ -44,6 +60,7 @@ Select another minifier with `-t` or `--type`:
 min -t css "body { color: red; }"
 min -t js "const x = 1; // comment"
 min -t html "<!-- comment --><p>hello</p>"
+min -t css -i style.css
 ```
 
 The four modes map directly to `kc_min_css()`, `kc_min_js()`,
