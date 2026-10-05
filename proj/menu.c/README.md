@@ -42,7 +42,6 @@ Usage: menu <id> [command] [options]
 
 Commands:
   menu <id> <cmd>       Register or replace a menu entry
-  menu -d <id>          Remove a menu entry
   menu <id> -d          Remove a menu entry
 
 Options:
