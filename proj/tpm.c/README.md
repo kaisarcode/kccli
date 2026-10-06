@@ -1,10 +1,7 @@
 # tpm
 
-`tpm` is a command-line frontend for `libtpm.c` text profile matching.
-
-It builds a profile from representative map text, scores one input text against
-that profile, and prints the resulting similarity score as a single number in
-the range `0..1`:
+`tpm` compares input text with a representative text profile and prints a
+similarity score as a single number in the range `0..1`:
 
 ```text
 0.927314814815
@@ -25,14 +22,14 @@ Options:
   -v, --version        Show version
 ```
 
-`<map>` is the representative text used to build the `libtpm` profile. It is a
-literal positional value, not a filename. Quote it when it contains spaces:
+`<map>` is the representative text used to build the profile. It is a literal
+positional value, not a filename. Quote it when it contains spaces:
 
 ```bash
 tpm "the quick brown fox jumps over the lazy dog" "the quick brown fox"
 ```
 
-The input text follows the standard KCCLI content precedence:
+If input text is available from more than one source, `tpm` uses this order:
 
 ```text
 text argument > stdin > -i/--input
@@ -56,16 +53,12 @@ Use a different n-gram size:
 tpm "the quick brown fox jumps over the lazy dog" "the quick brown fox" --ngram 4
 ```
 
-The n-gram size defaults to `3` and must be between `1` and `8`, matching the
-public `libtpm.c` contract.
+The n-gram size defaults to `3` and must be between `1` and `8`.
 
-An empty input is valid and produces a score of `0`. A successfully created
-empty profile is also valid according to `libtpm.c`.
+An empty input is valid and produces a score of `0`. An empty profile is also
+valid and produces a score of `0`.
 
 ## Build
-
-The CLI links against the precompiled static `libtpm.c` artifacts in
-`kclib/dist`.
 
 ```bash
 make
