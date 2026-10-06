@@ -1,10 +1,7 @@
 # hnsw
 
-`hnsw` is a command-line frontend for `libhnsw.c`.
-
-It builds one in-memory HNSW index from a vector dataset, runs one query, prints
-the matches, and exits. It does not add persistence, storage, or a database
-layer that the library itself does not provide.
+`hnsw` builds an in-memory HNSW index from a vector dataset, runs one query,
+prints the matches, and exits.
 
 ## Usage
 
@@ -25,17 +22,13 @@ Options:
   -v, --version            Show version
 ```
 
-The vector dataset has exactly two logical columns per row, separated by one
-tab character:
+The vector dataset has exactly two columns per row, separated by one tab:
 
 ```text
 <id><TAB><vector>
 ```
 
-The vector column is a comma-separated list of floats. The identifier is a
-separate field and is never interpreted as part of the vector.
-
-For example:
+The vector is a comma-separated list of floats. For example:
 
 ```text
 alice	1,0,0
@@ -43,10 +36,10 @@ bob	0,1,0
 carol	0,0,1
 ```
 
-The positional dataset argument is literal dataset content, not a filename.
-File input is explicit through `-i` or `--input`.
+The positional dataset argument is literal content, not a filename. File input
+is selected with `-i` or `--input`.
 
-Input precedence follows the KCCLI content convention:
+If vector data is available from more than one source, `hnsw` uses this order:
 
 ```text
 argument > stdin > -i/--input
@@ -76,10 +69,8 @@ Output is headerless CSV:
 <id>,<score>
 ```
 
-The CLI creates the index, adds every input row, calls `kc_hnsw_build()`, calls
-`kc_hnsw_search()`, prints the results, and releases the index in one process.
-It deliberately does not provide save/load commands because `libhnsw.c` is an
-in-memory library.
+The index exists only for the current invocation. There are no save/load
+commands.
 
 Available metrics are:
 
@@ -92,15 +83,10 @@ l2
 `inner_product` is also accepted as an alias for `inner`.
 
 For cosine and inner product, `--threshold` is a minimum accepted score. For
-L2 it is a maximum accepted squared distance. If omitted, the CLI applies an
-unbounded threshold appropriate to the selected metric.
-
-The tuning options map directly to `kc_hnsw_options_t` and otherwise retain the
-library defaults.
+L2 it is a maximum accepted squared distance. If omitted, the threshold is
+unbounded for the selected metric.
 
 ## Build
-
-The CLI links against precompiled static `libhnsw.c` artifacts in `kclib/dist`.
 
 ```bash
 make
