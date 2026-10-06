@@ -1,8 +1,8 @@
 # tpl
 
-`tpl` is a command-line frontend for `libtpl.c` template rendering.
+`tpl` renders templates with variables and optional includes.
 
-It loads one template source, applies an isolated variable set, and writes the
+It loads one template source, applies the provided variables, and writes the
 rendered result directly to standard output.
 
 ## Usage
@@ -21,7 +21,7 @@ Options:
 A positional argument is literal template text. A template file is selected
 only with `-i` or `--input`.
 
-Input precedence is:
+If template input is available from more than one source, `tpl` uses this order:
 
 ```text
 argument > stdin > -i/--input
@@ -55,20 +55,14 @@ Set a custom include root:
 tpl -i page.tpl --root ./views
 ```
 
-`--var` is repeatable. Variables are passed to one `kc_tpl_render()` call as an
-isolated `kc_tpl_var_t` array.
+`--var` is repeatable. The output is written unchanged to standard output.
+Rendering errors are written to standard error and return a nonzero process
+status.
 
-The output is written unchanged to standard output. Rendering errors are written
-to standard error and return a nonzero process status.
-
-The template syntax, escaping, includes, blocks, conditionals, and foreach
-behavior are implemented by `libtpl.c`; the CLI does not add another template
-language or preprocessing layer.
+Supported template features include escaping, includes, blocks, conditionals,
+and foreach loops.
 
 ## Build
-
-The CLI links against the precompiled static `libtpl.c` artifacts in
-`kclib/dist`.
 
 ```bash
 make
