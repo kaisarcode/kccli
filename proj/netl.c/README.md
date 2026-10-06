@@ -1,59 +1,101 @@
-# netl.c - Incoming Network Listener CLI
+# netl.c - Resident Network Listener CLI
 
-`netl` listens for incoming TCP or UDP traffic and dispatches it to a local
-command.
+`netl` manages named resident TCP or UDP listeners backed by `libnetl.c`.
 
-The CLI intentionally exposes a small terminal-oriented surface over
-`libnetl.c`. It does not project the library callbacks or peer-management API.
+A listener is registered once, remains active after the command returns, and
+dispatches incoming traffic to the configured local command.
 
 ## Usage
 
 ```text
-Usage: netl <port> <command...> [options]
+Usage: netl <id> <port> <command...>
+
+Commands:
+  netl <id> <port> <cmd>  Register or replace a listener
+  netl -l [id]             List listeners
+  netl <id> -d             Remove a listener
 
 Options:
-  -t, --transport <type>  tcp or udp (default: tcp)
-  -h, --help              Show this help
-  -v, --version           Show version
+  -t, --transport <type>   tcp or udp (default: tcp)
+  -l, --list               List listeners
+  -d, --delete             Remove a listener
+  -h, --help               Show this help
+  -v, --version            Show version
 ```
 
-TCP is used when `--transport` is omitted.
+Arguments beginning with `-` or `--` are CLI options and are not positional
+arguments. Options that take a value consume the following argument.
 
-Options are not positional. `-t` / `--transport` may appear anywhere in the
-command line and its value is the following argument.
+## Register a listener
 
-Examples:
+TCP is the default transport:
 
 ```bash
-netl 8080 ./handler.sh
-netl 8080 -t tcp ./handler.sh
-netl 5353 ./handler.sh --transport udp
+netl web 8080 ./handler.sh
 ```
 
-If the configured command itself contains arguments beginning with `-`, pass
-the command as one quoted argument so those tokens remain part of the command:
+Use UDP explicitly:
 
 ```bash
-netl 8080 "./handler.sh --production"
+netl dns 5353 -t udp ./handler.sh
 ```
 
-## Command behavior
+Registration creates or replaces the named resident listener and returns the
+terminal immediately.
 
-For TCP, one command process is started for each accepted connection. Incoming
-connection bytes are written to the command's standard input and command
-standard output is sent back to that same peer. The process remains associated
-with the connection until either side closes.
+For TCP, one command process is associated with each connection. Bytes received
+from the peer are written to the command's standard input, and command standard
+output is sent back to the same peer.
 
-For UDP, one command process is started for each datagram and the datagram is
-written to its standard input. Command output is not automatically sent back to
-the UDP peer.
+For UDP, each datagram starts one command and the datagram is written to that
+command's standard input.
 
-`netl` remains active until interrupted or terminated. It does not create a
-persistent registration or background service.
+The command execution behavior follows the earlier standalone `netl` CLI, while
+the named resident lifecycle follows the same administrative model used by
+other resident KCCLI tools.
+
+## List listeners
+
+List all registrations:
+
+```bash
+netl -l
+```
+
+List one registration:
+
+```bash
+netl -l web
+```
+
+Each row has a fixed machine-readable schema:
+
+```text
+<id><TAB><port><TAB><transport><TAB><cmd>
+```
+
+Example:
+
+```text
+web	8080	tcp	./handler.sh
+dns	5353	udp	./dns-handler.sh
+```
+
+## Remove a listener
+
+```bash
+netl web -d
+```
+
+This stops the resident listener process and removes its registration.
+
+## Runtime state
+
+`netl` keeps only the private metadata needed to administer its resident
+processes. `KC_NETL_DIR` is available as an advanced runtime-directory override,
+primarily for isolated tests.
 
 ## Build
-
-The CLI links against the precompiled `libnetl.c` artifacts in `kclib/dist`.
 
 ```bash
 make
@@ -67,17 +109,18 @@ make all
 
 ## Tests
 
-Run the native CLI contract and TCP dispatch test:
-
 ```bash
 make test
 ```
 
-Run the x86_64 Windows contract through Wine:
+Run the Windows contract through Wine:
 
 ```bash
 make test wine
 ```
+
+The tests exercise the real CLI, including creation of a resident listener,
+fixed list output, and deletion.
 
 ## License
 
