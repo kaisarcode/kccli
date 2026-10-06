@@ -370,8 +370,14 @@ package_project() {
     local project_base target_dir status changed stale_changed
 
     project_dir="${project_dir%/}"
-    [ -d "$project_dir/bin" ] || return 1
     project_base=$(basename "$project_dir")
+
+    echo "Processing $project_base..."
+    if [ ! -d "$project_dir/bin" ]; then
+        echo "    [=] No build artifacts."
+        return 1
+    fi
+
     changed=0
 
     for target_dir in "$project_dir"/bin/*/*; do
@@ -384,9 +390,6 @@ package_project() {
                 continue
                 ;;
             1)
-                if [ "$changed" -eq 0 ]; then
-                    echo "Processing $project_base..."
-                fi
                 sync_target "$project_dir" "$target_dir"
                 changed=1
                 ;;
@@ -406,6 +409,7 @@ package_project() {
         return 0
     fi
 
+    echo "    [=] Distribution current."
     return 1
 }
 
