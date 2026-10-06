@@ -58,11 +58,7 @@ Options:
 <id><TAB><user><TAB><cmd>
 ```
 
-The user column is the registration user reported by `libinit.c`; it is not
-wrapped in brackets.
-
-Linux, macOS, and Windows behavior follows the linked `libinit.c`
-implementation.
+The user column is the registration user and is not wrapped in brackets.
 
 ---
 
