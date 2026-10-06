@@ -1,6 +1,6 @@
 /**
  * test.c - netl CLI contract tests.
- * Summary: Validates listener dispatch and command-line behavior.
+ * Summary: Validates resident listener administration and network behavior.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -28,10 +28,7 @@ typedef SOCKET netl_test_fd_t;
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <signal.h>
 #include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 typedef int netl_test_fd_t;
@@ -99,6 +96,56 @@ static int run_cli(const char *args)
 }
 
 /**
+ * Execute the CLI and capture standard output.
+ * @param args Arguments appended after the executable.
+ * @param buffer Output buffer.
+ * @param capacity Buffer capacity.
+ * @return Nonzero on success.
+ */
+static int capture_output(
+    const char *args,
+    char *buffer,
+    size_t capacity
+)
+{
+    const char *path = "netl-cli-output.txt";
+    char command[4096];
+    FILE *file;
+    size_t size;
+
+#ifdef _WIN32
+    snprintf(
+        command,
+        sizeof(command),
+        "\"\"%s\" %s > %s 2>NUL\"",
+        KC_CLI_PATH,
+        args ? args : "",
+        path
+    );
+#else
+    snprintf(
+        command,
+        sizeof(command),
+        "\"%s\" %s > %s 2>/dev/null",
+        KC_CLI_PATH,
+        args ? args : "",
+        path
+    );
+#endif
+    if (system(command) != 0) {
+        (void)remove(path);
+        return 0;
+    }
+    file = fopen(path, "rb");
+    if (!file) return 0;
+    size = fread(buffer, 1, capacity - 1U, file);
+    fclose(file);
+    (void)remove(path);
+    buffer[size] = '\0';
+    return 1;
+}
+
+/**
  * Sleep for a short test interval.
  * @param milliseconds Delay in milliseconds.
  * @return None.
@@ -117,7 +164,33 @@ static void test_sleep(unsigned long milliseconds)
 }
 
 /**
- * Reserve and release one local TCP port for the listener test.
+ * Remove the isolated runtime directory.
+ * @return None.
+ */
+static void clear_runtime(void)
+{
+#ifdef _WIN32
+    (void)system("rmdir /S /Q netl-cli-runtime >NUL 2>&1");
+#else
+    (void)system("rm -rf netl-cli-runtime");
+#endif
+}
+
+/**
+ * Configure an isolated runtime directory.
+ * @return Nonzero on success.
+ */
+static int configure_runtime(void)
+{
+#ifdef _WIN32
+    return _putenv_s("KC_NETL_DIR", "netl-cli-runtime") == 0;
+#else
+    return setenv("KC_NETL_DIR", "netl-cli-runtime", 1) == 0;
+#endif
+}
+
+/**
+ * Reserve and release one local TCP port.
  * @return Available port, or zero on failure.
  */
 static unsigned short test_port(void)
@@ -151,103 +224,8 @@ static unsigned short test_port(void)
     return port;
 }
 
-#ifdef _WIN32
-typedef PROCESS_INFORMATION netl_test_process_t;
-#else
-typedef pid_t netl_test_process_t;
-#endif
-
 /**
- * Start a TCP netl process for the integration case.
- * @param port Listener port.
- * @param process Output process handle.
- * @return Nonzero on success.
- */
-static int test_start_listener(
-    unsigned short port,
-    netl_test_process_t *process
-)
-{
-    char port_text[16];
-
-    snprintf(port_text, sizeof(port_text), "%u", (unsigned int)port);
-#ifdef _WIN32
-    {
-        STARTUPINFOA startup;
-        char command[4096];
-
-        memset(&startup, 0, sizeof(startup));
-        memset(process, 0, sizeof(*process));
-        startup.cb = sizeof(startup);
-        snprintf(
-            command,
-            sizeof(command),
-            "\"%s\" %s cmd /C more -t tcp",
-            KC_CLI_PATH,
-            port_text
-        );
-        if (!CreateProcessA(
-                NULL,
-                command,
-                NULL,
-                NULL,
-                FALSE,
-                CREATE_NO_WINDOW,
-                NULL,
-                NULL,
-                &startup,
-                process
-            )) {
-            return 0;
-        }
-        CloseHandle(process->hThread);
-        process->hThread = NULL;
-        return 1;
-    }
-#else
-    *process = fork();
-    if (*process < 0) return 0;
-    if (*process == 0) {
-        execl(
-            KC_CLI_PATH,
-            KC_CLI_PATH,
-            port_text,
-            "cat",
-            "-t",
-            "tcp",
-            (char *)NULL
-        );
-        _exit(127);
-    }
-    return 1;
-#endif
-}
-
-/**
- * Stop one integration listener process.
- * @param process Process handle.
- * @return None.
- */
-static void test_stop_listener(netl_test_process_t *process)
-{
-#ifdef _WIN32
-    if (process->hProcess) {
-        (void)TerminateProcess(process->hProcess, 0);
-        (void)WaitForSingleObject(process->hProcess, 2000);
-        CloseHandle(process->hProcess);
-        process->hProcess = NULL;
-    }
-#else
-    if (*process > 0) {
-        (void)kill(*process, SIGTERM);
-        (void)waitpid(*process, NULL, 0);
-        *process = 0;
-    }
-#endif
-}
-
-/**
- * Connect to the local integration listener with retries.
+ * Connect to one local TCP port with retries.
  * @param port Listener port.
  * @return Connected socket, or invalid socket on failure.
  */
@@ -280,52 +258,30 @@ static netl_test_fd_t test_connect(unsigned short port)
 }
 
 /**
- * Validate the real TCP listener and command bridge.
- * @return Nonzero on success.
+ * Check that one local TCP port no longer accepts connections.
+ * @param port Listener port.
+ * @return Nonzero when closed.
  */
-static int test_tcp_dispatch(void)
+static int test_closed(unsigned short port)
 {
-    unsigned short port;
-    netl_test_process_t process;
+    struct sockaddr_in address;
     netl_test_fd_t fd;
-    int ok;
+    int rc;
 
-#ifdef _WIN32
-    memset(&process, 0, sizeof(process));
-#else
-    process = 0;
-#endif
-    port = test_port();
-    if (port == 0U || !test_start_listener(port, &process)) return 0;
-    fd = test_connect(port);
-    if (fd == NETL_TEST_INVALID) {
-        test_stop_listener(&process);
-        return 0;
-    }
-
-    ok = send(fd, "ping\n", 5, 0) == 5;
-#ifndef _WIN32
-    if (ok) {
-        char buffer[5];
-        size_t used;
-
-        used = 0U;
-        while (used < sizeof(buffer)) {
-            ssize_t amount;
-
-            amount = recv(fd, buffer + used, sizeof(buffer) - used, 0);
-            if (amount <= 0) {
-                ok = 0;
-                break;
-            }
-            used += (size_t)amount;
-        }
-        if (ok && memcmp(buffer, "ping\n", sizeof(buffer)) != 0) ok = 0;
-    }
-#endif
+    test_sleep(100UL);
+    memset(&address, 0, sizeof(address));
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_port = htons(port);
+    fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd == NETL_TEST_INVALID) return 1;
+    rc = connect(
+        fd,
+        (const struct sockaddr *)&address,
+        (socklen_t)sizeof(address)
+    );
     NETL_TEST_CLOSE(fd);
-    test_stop_listener(&process);
-    return ok;
+    return rc != 0;
 }
 
 /**
@@ -334,6 +290,16 @@ static int test_tcp_dispatch(void)
  */
 int main(void)
 {
+    char create_args[256];
+    char expected[512];
+    char output[1024];
+    unsigned short port;
+    netl_test_fd_t fd;
+    int runtime_ok;
+    int create_ok;
+    int list_ok;
+    int delete_ok;
+
 #ifdef _WIN32
     WSADATA data;
 
@@ -344,21 +310,84 @@ int main(void)
 
     result("help", "--help succeeds", run_cli("--help") == 0);
     result("version", "--version succeeds", run_cli("--version") == 0);
-    result("missing", "missing port fails", run_cli("") != 0);
-    result("command", "missing command fails", run_cli("8080") != 0);
-    result("unknown", "unknown option fails",
-        run_cli("8080 true --unknown") != 0);
-    result("port", "invalid port fails", run_cli("70000 true") != 0);
-    result("transport", "invalid transport fails",
-        run_cli("8080 true -t raw") != 0);
-    result("transport value", "missing transport value fails",
-        run_cli("8080 true -t") != 0);
-    result("tcp", "TCP listener dispatches to the configured command",
-        test_tcp_dispatch());
+    result("missing", "missing listener id fails", run_cli("") != 0);
+    result(
+        "command",
+        "creation without command fails",
+        run_cli("sample 8080") != 0
+    );
+    result(
+        "unknown",
+        "unknown option fails",
+        run_cli("sample 8080 true --unknown") != 0
+    );
+    result(
+        "bad id",
+        "invalid listener id fails",
+        run_cli("bad/name -d") != 0
+    );
 
-    printf("\n%d passed, %d failed\n",
+    runtime_ok = configure_runtime();
+    clear_runtime();
+    port = runtime_ok ? test_port() : 0U;
+#ifdef _WIN32
+    snprintf(
+        create_args,
+        sizeof(create_args),
+        "sample %u more",
+        (unsigned int)port
+    );
+    snprintf(
+        expected,
+        sizeof(expected),
+        "sample\t%u\ttcp\tmore\n",
+        (unsigned int)port
+    );
+#else
+    snprintf(
+        create_args,
+        sizeof(create_args),
+        "sample %u cat",
+        (unsigned int)port
+    );
+    snprintf(
+        expected,
+        sizeof(expected),
+        "sample\t%u\ttcp\tcat\n",
+        (unsigned int)port
+    );
+#endif
+
+    create_ok = runtime_ok && port != 0U && run_cli(create_args) == 0;
+    fd = create_ok ? test_connect(port) : NETL_TEST_INVALID;
+    if (fd != NETL_TEST_INVALID) NETL_TEST_CLOSE(fd);
+    result(
+        "create",
+        "registers a resident TCP listener",
+        create_ok && fd != NETL_TEST_INVALID
+    );
+
+    list_ok = capture_output("-l sample", output, sizeof(output)) &&
+        strcmp(output, expected) == 0;
+    result(
+        "list",
+        "list emits id, port, transport, and command",
+        list_ok
+    );
+
+    delete_ok = run_cli("sample -d") == 0 && test_closed(port);
+    result(
+        "delete",
+        "removes the resident listener",
+        delete_ok
+    );
+    clear_runtime();
+
+    printf(
+        "\n%d passed, %d failed\n",
         NETL_TEST_COUNT - test_failures,
-        test_failures);
+        test_failures
+    );
 #ifdef _WIN32
     WSACleanup();
 #endif
