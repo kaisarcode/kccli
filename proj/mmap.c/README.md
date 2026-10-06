@@ -1,6 +1,6 @@
 # mmap
 
-`mmap` is a command-line frontend for `libmmap.c` persistent binary values.
+`mmap` stores persistent binary values in backing files.
 
 It operates on one backing file at a time. Values are binary-safe: `get` writes
 stored bytes directly to standard output, and `set` reads bytes from a file or
@@ -51,17 +51,10 @@ Delete the value and backing file:
 mmap del state.bin
 ```
 
-`set` maps the CLI operation to `kc_mmap_set()` followed by `kc_mmap_save()`.
-This is intentional: an in-memory-only update has no useful lifetime in a
-single-process command invocation.
-
 A missing value causes `get` to return a nonzero exit status. A stored zero-byte
 value causes `get` to succeed while writing zero bytes.
 
 ## Build
-
-The CLI links against the precompiled static `libmmap.c` artifacts in
-`kclib/dist`.
 
 ```bash
 make
