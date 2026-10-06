@@ -14,9 +14,12 @@ Commands:
   confirm <confirmation>    Confirm a joined invitation
   seal <uid> [message]      Protect data for a remote UID
   unseal <uid> [data]       Restore data addressed to a local UID
-  revoke <uid>              Revoke a relationship or invitation
+  -l [uid]                  List relationships and invitations
+  <uid> -d                  Delete a relationship or invitation
 
 Options:
+  -l, --list                List relationships and invitations
+  -d, --delete              Delete a relationship or invitation
   -i, --input <file>        Read seal/unseal input from file
   -h, --help                Show this help
   -v, --version             Show version
@@ -69,6 +72,30 @@ trust confirm '<confirmation>'
 The two endpoints use different UIDs for the same relationship. Each endpoint
 uses the UID that identifies the remote endpoint when sealing data.
 
+## Listing trust
+
+List all locally known remote UIDs:
+
+```bash
+trust -l
+```
+
+List one UID:
+
+```bash
+trust -l "$UID"
+```
+
+Each row has three tab-separated fields:
+
+```text
+<uid><TAB><status><TAB><created>
+```
+
+`status` is `pending` for an unconfirmed invitation and `confirmed` for an
+established relationship. `created` is the Unix timestamp of the persisted
+state record.
+
 ## Protecting data
 
 Protect a text argument:
@@ -103,15 +130,15 @@ argument > stdin > -i/--input
 
 Standard input, file input, and command output are binary-safe.
 
-## Revoking trust
+## Deleting trust
 
-Revoke an established relationship or a pending invitation:
+Delete an established relationship or a pending invitation:
 
 ```bash
-trust revoke "$UID"
+trust "$UID" -d
 ```
 
-After revocation, that UID can no longer be used locally for the removed trust
+After deletion, that UID can no longer be used locally for the removed trust
 relationship.
 
 ## Build
