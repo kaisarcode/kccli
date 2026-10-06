@@ -8,12 +8,12 @@ API or its behavior.
 ## Usage
 
 ```text
-Usage: wch <id> <path> <cmd> [options]
+Usage: wch <id> <path> <command...>
 
 Commands:
-  wch <id> <path> <cmd>  Create or replace a watcher
-  wch -l [id]            List watchers
-  wch <id> -d            Delete a watcher
+  wch <id> <path> <command...>  Register or replace a watcher
+  wch -l [id]                    List watchers
+  wch <id> -d                    Delete a watcher
 
 Options:
   -r, --recursive    Watch directories recursively
@@ -23,31 +23,40 @@ Options:
   -v, --version      Show version
 ```
 
-## Create a watcher
+## Register a watcher
 
-Define the watcher in one command:
+Register or replace a resident watcher:
 
 ```bash
 wch source ./src ./handler.sh
 ```
 
-The watcher is resident. The CLI returns immediately after creating or replacing
-the registration; it does not keep the terminal open.
+The command returns the terminal immediately after the watcher is registered or
+replaced. `wch` does not remain attached to the terminal and does not stream
+watch events to standard output.
 
-Watch directories recursively:
+The configured command is executed by `libwch.c` when filesystem events occur.
+The command may contain multiple positional arguments; `wch` stores them as one
+command string.
+
+For example:
 
 ```bash
-wch source ./src ./handler.sh -r
+wch source ./src ./handler.sh rebuild
 ```
 
-Commands containing spaces must be quoted as one CLI argument:
+Watch directories recursively with either option form:
 
 ```bash
-wch source ./src "./handler.sh --reload"
+wch source ./src -r ./handler.sh
 ```
 
-The configured command is executed by `libwch.c` when an event occurs, using the
-existing library command contract.
+```bash
+wch source ./src ./handler.sh --recursive
+```
+
+Options are not positional, so `-r` or `--recursive` may appear anywhere in the
+command line without changing the meaning of `id`, `path`, or `command...`.
 
 ## List watchers
 
@@ -63,11 +72,13 @@ List one watcher:
 wch -l source
 ```
 
-Each row contains only the watcher identifier, watched path, and command:
+Both forms use the same fixed, tab-separated output schema:
 
 ```text
 <id><TAB><path><TAB><cmd>
 ```
+
+No runtime state or additional configuration fields are printed.
 
 ## Delete a watcher
 
