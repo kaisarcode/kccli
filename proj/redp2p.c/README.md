@@ -28,9 +28,7 @@ Run the native CLI tests:
 make test
 ```
 
-The native test run includes the CLI argument contract.
-
-Run the x86_64 Windows CLI contract through Wine:
+Run the x86_64 Windows CLI tests through Wine:
 
 ```sh
 make test wine
@@ -122,8 +120,7 @@ Common options are `-h` / `--help` and `-v` / `--version`.
 
 ## Environment compatibility
 
-Command-line options are the public CLI surface. The following environment
-variables remain supported as fallback/operator configuration for compatibility:
+The following environment variables can be used as fallbacks:
 
 | Environment | CLI equivalent | Commands |
 | --- | --- | --- |
@@ -142,11 +139,10 @@ When both an environment value and its command-line equivalent are supplied,
 the command-line value takes precedence.
 
 For `pub` and `con`, `-p` / `--port` is required. `-t` / `--transport` accepts
-`tcp` or `udp`; when omitted, TCP is used. Direct peer connectivity remains
-preferred; TURN is used by libredp2p as a relay fallback unless forced.
+`tcp` or `udp`; when omitted, TCP is used. Direct peer connectivity is
+preferred; TURN is used as a relay fallback unless forced.
 
-`idx`, `pub`, and `con` processes run until SIGINT or SIGTERM and then close
-their handle.
+`idx`, `pub`, and `con` processes run until SIGINT or SIGTERM.
 
 ---
 
