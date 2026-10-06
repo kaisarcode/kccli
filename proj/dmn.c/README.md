@@ -1,6 +1,6 @@
 # dmn.c - Local Daemon Manager CLI
 
-`dmn` manages named resident processes through `libdmn.c`.
+`dmn` manages named resident processes.
 
 Creating a daemon returns immediately. The configured process remains resident
 and can be addressed later by its id. Registering the same id again updates the
@@ -69,9 +69,9 @@ dmn worker -d
 ```
 
 Command arguments are joined into one command string when the daemon is
-registered. As elsewhere in KCCLI, tokens beginning with `-` or `--` are CLI
-options rather than positional command arguments. Quote a complete shell command
-when it needs its own option-like arguments.
+registered. Tokens beginning with `-` or `--` are CLI options rather than
+positional command arguments. Quote a complete shell command when it needs its
+own option-like arguments.
 
 ## Listing
 
@@ -87,10 +87,10 @@ the CLI output.
 ## Data exchange
 
 `dmn <id>` opens the registered daemon, reads one request from stdin until EOF,
-performs one complete `libdmn` exchange, and writes the response to stdout.
+and writes the response to stdout.
 
-The EOT framing used internally by `libdmn` is not exposed by the CLI. Users do
-not need to append or strip the EOT marker themselves.
+The framing used for request boundaries is handled internally. Users do not
+need to append or strip framing bytes themselves.
 
 ## Lifecycle
 
