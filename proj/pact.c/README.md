@@ -1,7 +1,7 @@
 # pact
 
-`pact` establishes persistent trust relationships between endpoints and protects
-binary messages exchanged between them.
+`pact` establishes persistent trusted relationships between endpoints and
+protects binary messages exchanged between them.
 
 ## Usage
 
