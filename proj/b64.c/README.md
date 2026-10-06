@@ -1,9 +1,7 @@
 # b64
 
-`b64` is a command-line frontend for `libb64.c`.
-
-It encodes binary/text input as RFC 4648 Base64 or decodes strict canonical
-Base64 input. Output is written directly to standard output.
+`b64` encodes binary or text input as RFC 4648 Base64 and decodes strict
+canonical Base64 input. Output is written directly to standard output.
 
 ## Usage
 
@@ -21,7 +19,7 @@ Options:
 
 Exactly one of `-e`/`--encode` or `-d`/`--decode` is required.
 
-Input precedence is:
+If input is available from more than one source, `b64` uses this order:
 
 ```text
 argument > stdin > -i/--input
@@ -74,13 +72,9 @@ b64 --decode -i payload.b64
 ```
 
 Encoding from standard input and `-i` is binary-safe. Decoded bytes are written
-raw to standard output. Decoding follows the strict canonical RFC 4648 behavior
-of `libb64.c`.
+raw to standard output. Decoding accepts strict canonical RFC 4648 input.
 
 ## Build
-
-The CLI links against the precompiled static `libb64.c` artifacts in
-`kclib/dist`.
 
 ```bash
 make
