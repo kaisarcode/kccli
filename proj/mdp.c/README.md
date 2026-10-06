@@ -1,9 +1,7 @@
 # mdp
 
-`mdp` is a command-line frontend for `libmdp.c`.
-
-It parses Markdown, exposes raw frontmatter and body views, and renders the body
-as an HTML fragment.
+`mdp` parses Markdown, exposes raw frontmatter and body views, and renders the
+body as an HTML fragment.
 
 ## Usage
 
@@ -20,7 +18,7 @@ Options:
 
 HTML output is the default.
 
-Input precedence is:
+If Markdown is available from more than one source, `mdp` uses this order:
 
 ```text
 positional argument > stdin > -i/--input
@@ -69,13 +67,10 @@ Print raw frontmatter:
 printf '%s\n' '---' 'title: Home' '---' '# Hello' | mdp --meta
 ```
 
-`--body` and `--meta` are mutually exclusive. Without either option, the CLI
-calls `kc_mdp_html()` and writes the resulting HTML fragment directly to
-standard output.
+`--body` and `--meta` are mutually exclusive. Without either option, the HTML
+fragment is written directly to standard output.
 
 ## Build
-
-The CLI links against precompiled static `libmdp.c` artifacts in `kclib/dist`.
 
 ```bash
 make
