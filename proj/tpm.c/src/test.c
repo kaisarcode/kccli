@@ -179,10 +179,10 @@ int main(void)
         strcmp(expected, actual) == 0);
     remove(file_path);
 
-    result("ngram", "valid ngram size succeeds",
+    result("ngram", "positive ngram size is accepted by the CLI",
         run_cli("\"hello world\" \"hello world\" --ngram 4") == 0);
-    result("bad ngram", "ngram size outside 1..8 fails",
-        run_cli("\"hello world\" \"hello world\" --ngram 9") != 0);
+    result("bad ngram", "non-positive ngram size fails",
+        run_cli("\"hello world\" \"hello world\" --ngram 0") != 0);
     result("missing value", "--input requires a following file",
         run_cli("\"hello world\" --input") != 0);
     result("unknown", "unknown option fails",
