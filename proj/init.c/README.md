@@ -52,6 +52,15 @@ Options:
   -v, --version        Show version
 ```
 
+`init -l` and `init -l <id>` use the same fixed, tab-separated output schema:
+
+```text
+<id><TAB><user><TAB><cmd>
+```
+
+The user column is the registration user reported by `libinit.c`; it is not
+wrapped in brackets.
+
 Linux, macOS, and Windows behavior follows the linked `libinit.c`
 implementation.
 
