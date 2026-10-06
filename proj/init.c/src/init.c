@@ -150,18 +150,12 @@ static void kc_cli_elevate(int argc, char **argv) {
 static void kc_cli_print_entry(const kc_init_entry_t *entry) {
     if (!entry || !entry->name) return;
 
-    if (entry->user && entry->user[0]) {
-        printf(
-            "%s\t[%s]\t%s\n",
-            entry->name,
-            entry->user,
-            entry->cmd ? entry->cmd : ""
-        );
-    } else if (entry->cmd && entry->cmd[0]) {
-        printf("%s\t%s\n", entry->name, entry->cmd);
-    } else {
-        printf("%s\n", entry->name);
-    }
+    printf(
+        "%s\t%s\t%s\n",
+        entry->name,
+        entry->user ? entry->user : "",
+        entry->cmd ? entry->cmd : ""
+    );
 }
 
 /**
