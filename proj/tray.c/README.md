@@ -1,7 +1,6 @@
 # tray CLI
 
-`tray` is the command-line projection of `libtray.c`. It creates one persistent
-native system tray icon and an ordered menu.
+`tray` creates one persistent native system tray icon and an ordered menu.
 
 ## Usage
 
@@ -46,16 +45,13 @@ With an icon:
 tray --icon ./app.png --tooltip "App" --quit "Exit"
 ```
 
-Platform icon behavior follows `libtray.c`:
+Platform icon behavior:
 
 - Windows expects `.ico` file paths.
 - Linux accepts icon file paths or icon names.
 - macOS accepts icon file paths or named AppKit images.
 
 ## Build
-
-The CLI links against the precompiled static artifacts from
-`kclib/dist/libtray.c`.
 
 ```bash
 make
@@ -67,7 +63,7 @@ Build all supported targets:
 make all
 ```
 
-Configured targets match the library:
+Configured targets:
 
 ```text
 x86_64/linux
@@ -77,8 +73,8 @@ aarch64/macos
 ```
 
 Linux builds require GTK 3 development files. Windows uses the native system
-tray APIs. macOS uses Cocoa/AppKit and the CLI services the AppKit event loop on
-the main thread while the tray is active.
+tray APIs. macOS uses Cocoa/AppKit and services the AppKit event loop on the
+main thread while the tray is active.
 
 ## Tests
 
@@ -86,8 +82,8 @@ the main thread while the tray is active.
 make test
 ```
 
-The CLI tests validate the argument contract without requiring an interactive
-tray session.
+The tests validate the argument contract without requiring an interactive tray
+session.
 
 Windows parser tests can be run through Wine:
 
