@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define WCH_CLI_BUF 4096
+
 /**
  * Reports whether one watcher name is valid for the CLI.
  * @param name Watcher name.
@@ -36,18 +38,48 @@ static int wch_cli_valid_name(const char *name)
 }
 
 /**
+ * Appends one argument to a command string.
+ * @param out Output command buffer.
+ * @param cap Output buffer capacity.
+ * @param pos Current output length.
+ * @param arg Argument to append.
+ * @return Zero on success, nonzero on overflow.
+ */
+static int wch_cli_append_arg(
+    char *out,
+    size_t cap,
+    size_t *pos,
+    const char *arg
+)
+{
+    size_t size;
+
+    if (!out || !pos || !arg || cap == 0U) return 1;
+    size = strlen(arg);
+    if (*pos != 0U) {
+        if (*pos + 1U >= cap) return 1;
+        out[(*pos)++] = ' ';
+    }
+    if (size >= cap - *pos) return 1;
+    memcpy(out + *pos, arg, size);
+    *pos += size;
+    out[*pos] = '\0';
+    return 0;
+}
+
+/**
  * Prints public CLI usage.
  * @param name Program executable name.
  * @return None.
  */
 static void wch_cli_usage(const char *name)
 {
-    printf("Usage: %s <id> <path> <cmd> [options]\n", name);
+    printf("Usage: %s <id> <path> <command...>\n", name);
     printf("\n");
     printf("Commands:\n");
-    printf("  %s <id> <path> <cmd>  Create or replace a watcher\n", name);
-    printf("  %s -l [id]            List watchers\n", name);
-    printf("  %s <id> -d            Delete a watcher\n", name);
+    printf("  %s <id> <path> <command...>  Register or replace a watcher\n", name);
+    printf("  %s -l [id]                    List watchers\n", name);
+    printf("  %s <id> -d                    Delete a watcher\n", name);
     printf("\n");
     printf("Options:\n");
     printf("  -r, --recursive    Watch directories recursively\n");
@@ -136,56 +168,84 @@ int main(int argc, char **argv)
 {
     const char *name = NULL;
     const char *path = NULL;
-    const char *command = NULL;
+    char command[WCH_CLI_BUF];
+    size_t command_pos = 0U;
+    int positional = 0;
     int recursive = 0;
     int list = 0;
     int remove = 0;
+    int help = 0;
+    int version = 0;
     int i;
 
-    if (argc == 2 &&
-        (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
-        wch_cli_usage(argv[0]);
-        return 0;
-    }
-    if (argc == 2 &&
-        (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0)) {
-        wch_cli_version();
-        return 0;
-    }
+    command[0] = '\0';
 
     for (i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-r") == 0 ||
-            strcmp(argv[i], "--recursive") == 0) {
-            recursive = 1;
-        } else if (strcmp(argv[i], "-l") == 0 ||
-            strcmp(argv[i], "--list") == 0) {
-            list = 1;
-        } else if (strcmp(argv[i], "-d") == 0 ||
-            strcmp(argv[i], "--delete") == 0) {
-            remove = 1;
-        } else if (argv[i][0] == '-') {
-            return 1;
-        } else if (!name) {
+        if (argv[i][0] == '-') {
+            if (strcmp(argv[i], "-r") == 0 ||
+                strcmp(argv[i], "--recursive") == 0) {
+                recursive = 1;
+            } else if (strcmp(argv[i], "-l") == 0 ||
+                strcmp(argv[i], "--list") == 0) {
+                list = 1;
+            } else if (strcmp(argv[i], "-d") == 0 ||
+                strcmp(argv[i], "--delete") == 0) {
+                remove = 1;
+            } else if (strcmp(argv[i], "-h") == 0 ||
+                strcmp(argv[i], "--help") == 0) {
+                help = 1;
+            } else if (strcmp(argv[i], "-v") == 0 ||
+                strcmp(argv[i], "--version") == 0) {
+                version = 1;
+            } else {
+                return 1;
+            }
+            continue;
+        }
+
+        positional++;
+        if (positional == 1) {
             name = argv[i];
-        } else if (!path) {
+        } else if (positional == 2) {
             path = argv[i];
-        } else if (!command) {
-            command = argv[i];
-        } else {
+        } else if (wch_cli_append_arg(
+                command,
+                sizeof(command),
+                &command_pos,
+                argv[i]
+            ) != 0) {
+            fprintf(stderr, "wch: command is too long\n");
             return 1;
         }
     }
 
+    if (help) {
+        wch_cli_usage(argv[0]);
+        return 0;
+    }
+    if (version) {
+        wch_cli_version();
+        return 0;
+    }
+
     if (list) {
-        if (remove || recursive || path || command) return 1;
+        if (remove || recursive || positional > 1) return 1;
         if (name && !wch_cli_valid_name(name)) return 1;
         return wch_cli_list(name);
     }
+
     if (!name || !wch_cli_valid_name(name)) return 1;
+
     if (remove) {
-        if (path || command || recursive) return 1;
+        if (recursive || positional != 1) return 1;
         return kc_wch_delete(name) == KC_WCH_OK ? 0 : 1;
     }
-    if (!path || !command) return 1;
+
+    if (!path) return 1;
+    if (command_pos == 0U) {
+        fprintf(stderr, "wch: missing command\n");
+        return 1;
+    }
+
     return wch_cli_create(name, path, command, recursive);
 }
