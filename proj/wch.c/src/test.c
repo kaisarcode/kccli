@@ -110,6 +110,25 @@ static int capture_output(
 }
 
 /**
+ * Checks one captured single-line output value.
+ * @param output Captured output.
+ * @param expected Expected line without newline.
+ * @return Nonzero when the line matches exactly.
+ */
+static int output_matches(const char *output, const char *expected)
+{
+    size_t size;
+
+    if (!output || !expected) return 0;
+    size = strlen(output);
+    while (size > 0U &&
+        (output[size - 1U] == '\n' || output[size - 1U] == '\r')) {
+        size--;
+    }
+    return strlen(expected) == size && strncmp(output, expected, size) == 0;
+}
+
+/**
  * Prints one contract-test result.
  * @param name Test name.
  * @param detail Behavior under test.
@@ -168,11 +187,11 @@ int main(void)
 {
     char output[4096];
 #ifdef _WIN32
-    const char *create_args = "sample . rem";
-    const char *list_prefix = "sample\t.\trem";
+    const char *create_args = "sample . --recursive rem";
+    const char *expected_list = "sample\t.\trem";
 #else
-    const char *create_args = "sample . true";
-    const char *list_prefix = "sample\t.\ttrue";
+    const char *create_args = "sample . --recursive true";
+    const char *expected_list = "sample\t.\ttrue";
 #endif
 
     result("help", "--help succeeds", run_cli("--help") == 0);
@@ -181,12 +200,12 @@ int main(void)
     result(
         "cmd",
         "creation without command fails",
-        run_cli("sample .") != 0
+        run_cli("sample . --recursive") != 0
     );
     result(
         "unknown",
         "unknown option fails",
-        run_cli("sample --unknown") != 0
+        run_cli("sample . true --unknown") != 0
     );
     result(
         "bad name",
@@ -200,21 +219,21 @@ int main(void)
     if (setenv("KC_WCH_DIR", "wch-cli-runtime", 1) != 0) {
 #endif
         result("create", "watcher creation succeeds", 0);
-        result("list", "list emits id, path, and command", 0);
+        result("list", "list emits fixed id, path, and command columns", 0);
         result("delete", "watcher deletion succeeds", 0);
     } else {
         clear_runtime();
         result(
             "create",
-            "watcher creation succeeds",
+            "watcher creation succeeds with a non-positional option",
             run_cli(create_args) == 0
         );
         test_delay();
         result(
             "list",
-            "list emits id, path, and command",
+            "list emits fixed id, path, and command columns",
             capture_output("-l sample", output, sizeof(output)) &&
-            strncmp(output, list_prefix, strlen(list_prefix)) == 0
+            output_matches(output, expected_list)
         );
         result(
             "delete",
