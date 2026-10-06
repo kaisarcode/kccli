@@ -204,9 +204,9 @@ static void cleanup(void)
  */
 int main(void)
 {
-    char invite_line[8192];
-    char join_line[8192];
-    char confirm_uid[256];
+    char invite_line[8192] = {0};
+    char join_line[8192] = {0};
+    char confirm_uid[256] = {0};
     char invite_copy[8192];
     char join_copy[8192];
     char *alice_uid;
