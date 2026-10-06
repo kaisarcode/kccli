@@ -1,7 +1,6 @@
 # menu.c - Native Application Menu CLI
 
-`menu` manages native application-menu entries from the command line through
-`libmenu.c`.
+`menu` manages native application-menu entries from the command line.
 
 It adds application launchers and deletes them by identifier. Linux uses the
 current user's XDG application menu and Windows uses the current user's Start
