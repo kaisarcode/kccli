@@ -155,6 +155,64 @@ Avoid duplicated public syntaxes in help. If the parser accepts both prefix and
 suffix placement for compatibility or convenience, document one canonical
 form unless showing both is necessary to understand distinct behavior.
 
+## Managed instance pattern
+
+Some KCCLI tools manage named instances that continue to exist independently
+of the command invocation, or otherwise remain addressable by a stable
+identifier after creation. Examples include startup registrations, resident
+watchers, and resident network listeners.
+
+When a CLI follows this model, use the same lifecycle shape unless the
+underlying command genuinely requires something different:
+
+```text
+<name> <id> <creation-or-configuration arguments...>
+<name> -l [id]
+<name> <id> -d
+```
+
+The create form creates a new instance or updates the existing instance with
+the same `id`. There must not be two simultaneously managed instances with the
+same identifier.
+
+For resident instances, successful creation or update must return the terminal
+after the instance has been registered or started. Do not require the user to
+keep the creating shell process attached merely to keep the instance alive.
+
+`-l, --list` lists all managed instances. An optional positional `id` filters
+the same listing operation to one instance. Listing one instance and listing
+all instances must use the same column schema and column meanings.
+
+`-d, --delete` removes the named instance. When the instance owns a resident
+process, listener, watcher, or equivalent runtime resource, deletion must stop
+that runtime instance and remove its managed state. Users should not need to
+find PIDs manually or use unrelated OS process-management commands for normal
+lifecycle operations.
+
+List output should be simple, deterministic, and machine-parseable. Prefer
+fixed tab-separated columns:
+
+```text
+<column-1><TAB><column-2><TAB>...<TAB><column-N>
+```
+
+Every row from the same CLI must have the same number of columns with the same
+meaning. Do not vary the schema based on optional metadata, runtime state, or
+the contents of one entry. Do not add brackets or other decoration around
+individual field values when plain values are sufficient.
+
+Expose only fields that form the useful public CLI contract. Do not dump every
+field or status bit available from the underlying library merely because it is
+available. Runtime-only details such as PIDs, internal running flags, callback
+state, or implementation metadata should stay hidden unless they are genuinely
+part of the user-facing contract.
+
+Tests for managed-instance CLIs should cover the real lifecycle where practical:
+create or update, list, and delete. For resident instances, verify observable
+runtime behavior after creation and verify that deletion actually stops the
+instance. Keep Linux and Windows contract coverage aligned when both platforms
+support the same lifecycle.
+
 ## Content input convention
 
 For CLIs whose primary operation consumes one block of text or data, prefer the
