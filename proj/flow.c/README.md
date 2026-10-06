@@ -1,9 +1,7 @@
 # flow
 
-`flow` is the kccli command-line projection of `libflow.c`.
-
-It opens an existing `.flow` document, applies temporary ordered overrides,
-starts one run, and writes the successful output to stdout.
+`flow` opens a `.flow` document, applies temporary ordered overrides, runs it,
+and writes successful output to stdout.
 
 ## Usage
 
@@ -19,13 +17,12 @@ Options:
   -v, --version            Show version
 ```
 
-`--set` and `--unset` may be repeated. Their order is preserved exactly and is
-passed to the opened flow in that same order.
+`--set` and `--unset` may be repeated. Their order is preserved.
 
 If `--entry` is omitted, the declared flow entries are used.
 
 If `--input` is omitted, the run receives no input buffer. Use `-i -` to read
-input from stdin, which makes the CLI convenient in pipelines:
+input from stdin:
 
 ```bash
 printf 'hello' | flow example.flow -i -
@@ -37,13 +34,13 @@ A binary input file can be supplied directly:
 flow example.flow --input payload.bin
 ```
 
-Successful flow output is written unchanged to stdout. Diagnostics are written
-to stderr.
+Successful output is written unchanged to stdout. Diagnostics are written to
+stderr.
 
 ## Overrides
 
-Overrides are local to this invocation and do not modify the source `.flow`
-file.
+Overrides apply only to the current invocation and do not modify the source
+`.flow` file.
 
 ```bash
 flow example.flow \
@@ -64,20 +61,13 @@ flow example.flow --entry build
 
 ## Cancellation
 
-`Ctrl+C` and termination signals request `kc_flow_run_stop()`.
-
-Cancellation is cooperative, matching `libflow.c`: the command currently
-running is not killed. The current step completes and the run stops before
+`Ctrl+C` and termination signals request cancellation. The command currently
+running is not killed; the current step completes and the run stops before
 starting another step.
 
 A cooperatively stopped flow exits with status `130`.
 
 ## Build
-
-The CLI links directly against the precompiled static `libflow.c` artifact from
-`kclib/dist`.
-
-Build the native target:
 
 ```bash
 make
@@ -91,31 +81,21 @@ make all
 
 ## Tests
 
-Run native CLI contract tests:
-
 ```bash
 make test
 ```
 
-Run the Windows contract tests through Wine:
+Run the Windows tests through Wine:
 
 ```bash
 make test wine
 ```
 
-From the kccli repository root the project is also discovered automatically:
-
-```bash
-./scripts/build.sh flow
-./scripts/test.sh flow
-```
-
 ## Platforms
 
-The kccli project follows the desktop/server targets provided by the distributed
-`libflow.c` static artifacts, including Linux, Windows, and macOS targets.
+Configured desktop/server targets include Linux, Windows, and macOS.
 
-No external runtime services are required by the CLI itself.
+No external runtime services are required.
 
 ## License
 
