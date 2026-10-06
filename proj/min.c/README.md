@@ -1,9 +1,7 @@
 # min
 
-`min` is a command-line frontend for `libmin.c`.
-
-It minifies CSS, JavaScript, HTML, or generic text and writes the result directly
-to standard output.
+`min` minifies CSS, JavaScript, HTML, or generic text and writes the result
+directly to standard output.
 
 ## Usage
 
@@ -20,7 +18,7 @@ Options:
 The positional argument is literal source text. File input is selected with
 `-i` or `--input`.
 
-Input precedence is:
+If input is available from more than one source, `min` uses this order:
 
 ```text
 argument > stdin > -i/--input
@@ -63,14 +61,7 @@ min -t html "<!-- comment --><p>hello</p>"
 min -t css -i style.css
 ```
 
-The four modes map directly to `kc_min_css()`, `kc_min_js()`,
-`kc_min_html()`, and `kc_min_txt()`. Minification behavior is defined by
-`libmin.c`; the CLI does not add another parser or transformation layer.
-
 ## Build
-
-The CLI links against the precompiled static `libmin.c` artifacts in
-`kclib/dist`.
 
 ```bash
 make
