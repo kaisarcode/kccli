@@ -1,9 +1,7 @@
 # lng
 
-`lng` is a command-line frontend for `liblng.c` language detection.
-
-It accepts one text argument, standard input, or a file, then prints one ranked
-result per line as headerless TSV:
+`lng` detects the language of input text and prints ranked results as
+headerless TSV:
 
 ```text
 <code>	<score>
@@ -16,8 +14,7 @@ en	0.99999
 es	0.87231
 ```
 
-Scores are the heuristic ranking values returned by `liblng`; they are not
-calibrated probabilities.
+Scores are heuristic ranking values, not calibrated probabilities.
 
 ## Usage
 
@@ -32,7 +29,7 @@ Options:
   -v, --version        Show version
 ```
 
-Input precedence is:
+If text is available from more than one source, `lng` uses this order:
 
 ```text
 argument > stdin > -i/--input
@@ -75,13 +72,10 @@ lng "Hello world" --threshold 0.1
 An empty input is valid and produces no output. Zero matches are also a
 successful result.
 
-`--limit` must be greater than zero. `liblng` clamps limits above 32 to 32.
+`--limit` must be greater than zero; values above 32 are limited to 32.
 `--threshold` must be finite and between 0 and 1 inclusive.
 
 ## Build
-
-The CLI links against the precompiled static `liblng.c` artifacts in
-`kclib/dist`.
 
 ```bash
 make
