@@ -340,7 +340,7 @@ int main(void)
     snprintf(
         expected,
         sizeof(expected),
-        "sample\t%u\ttcp\tmore\n",
+        "sample\t%u\ttcp\tmore\r\n",
         (unsigned int)port
     );
 #else
