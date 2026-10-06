@@ -31,7 +31,7 @@ static void tpm_cli_usage(const char *name)
     printf("\n");
     printf("Options:\n");
     printf("  -i, --input <file>   Read input text from file\n");
-    printf("  -n, --ngram <N>      N-gram size 1..8 (default: 3)\n");
+    printf("  -n, --ngram <N>      N-gram size (default: 3)\n");
     printf("  -h, --help           Show this help\n");
     printf("  -v, --version        Show version\n");
 }
@@ -49,7 +49,7 @@ static int tpm_cli_parse_ngram(const char *text, int *out)
 
     errno = 0;
     value = strtol(text, &end, 10);
-    if (errno != 0 || end == text || *end != '\0' || value < 1 || value > 8) {
+    if (errno != 0 || end == text || *end != '\0' || value < 1) {
         return 1;
     }
     *out = (int)value;
@@ -188,7 +188,7 @@ int main(int argc, char **argv)
             strcmp(argv[i], "--ngram") == 0)
         {
             if (++i >= argc || tpm_cli_parse_ngram(argv[i], &ngram_size)) {
-                fprintf(stderr, "tpm: ngram must be an integer in range 1..8\n");
+                fprintf(stderr, "tpm: ngram must be a positive integer\n");
                 return 1;
             }
             has_ngram = 1;
