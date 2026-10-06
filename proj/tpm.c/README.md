@@ -17,7 +17,7 @@ Usage: tpm <map> [text] [options]
 
 Options:
   -i, --input <file>   Read input text from file
-  -n, --ngram <N>      N-gram size 1..8 (default: 3)
+  -n, --ngram <N>      N-gram size (default: 3)
   -h, --help           Show this help
   -v, --version        Show version
 ```
@@ -53,7 +53,7 @@ Use a different n-gram size:
 tpm "the quick brown fox jumps over the lazy dog" "the quick brown fox" --ngram 4
 ```
 
-The n-gram size defaults to `3` and must be between `1` and `8`.
+The n-gram size defaults to `3` and must be a positive integer.
 
 An empty input is valid and produces a score of `0`. An empty profile is also
 valid and produces a score of `0`.
