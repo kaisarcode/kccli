@@ -138,6 +138,80 @@ static int run_cli(const char *args) {
 }
 
 /**
+ * Execute the CLI and capture standard output.
+ * @param args Arguments appended after the executable.
+ * @param buffer Output buffer.
+ * @param buffer_size Output buffer capacity.
+ * @return Nonzero on success.
+ */
+static int capture_output(
+    const char *args,
+    char *buffer,
+    size_t buffer_size
+) {
+    const char *output_path = "init-cli-output.txt";
+    char command[8192];
+    FILE *file;
+    size_t size;
+
+#ifdef _WIN32
+    if ((size_t)snprintf(
+            command,
+            sizeof(command),
+            "\"\"%s\" %s > %s 2>NUL\"",
+            KC_CLI_PATH,
+            args ? args : "",
+            output_path
+        ) >= sizeof(command)) {
+        return 0;
+    }
+#else
+    if ((size_t)snprintf(
+            command,
+            sizeof(command),
+            "\"%s\" %s > %s 2>/dev/null",
+            KC_CLI_PATH,
+            args ? args : "",
+            output_path
+        ) >= sizeof(command)) {
+        return 0;
+    }
+#endif
+    if (system(command) != 0) {
+        remove(output_path);
+        return 0;
+    }
+    file = fopen(output_path, "rb");
+    if (!file) return 0;
+    size = fread(buffer, 1, buffer_size - 1U, file);
+    fclose(file);
+    remove(output_path);
+    buffer[size] = '\0';
+    return 1;
+}
+
+/**
+ * Join a fixture path.
+ * @param out Output path buffer.
+ * @param cap Output capacity.
+ * @param dir Fixture directory.
+ * @param name File name.
+ * @return Zero on success, nonzero on overflow.
+ */
+static int fixture_path(
+    char *out,
+    size_t cap,
+    const char *dir,
+    const char *name
+) {
+#ifdef _WIN32
+    return (size_t)snprintf(out, cap, "%s\\%s", dir, name) < cap ? 0 : 1;
+#else
+    return (size_t)snprintf(out, cap, "%s/%s", dir, name) < cap ? 0 : 1;
+#endif
+}
+
+/**
  * Create an isolated metadata directory and export KC_INIT_DIR.
  * @param out Destination path.
  * @param cap Destination capacity.
@@ -169,12 +243,48 @@ static int fixture_create(char *out, size_t cap) {
 }
 
 /**
+ * Write one fixture file.
+ * @param dir Fixture directory.
+ * @param name File name.
+ * @param value File contents.
+ * @return Zero on success, nonzero on failure.
+ */
+static int fixture_write(
+    const char *dir,
+    const char *name,
+    const char *value
+) {
+    char path[1024];
+    FILE *file;
+
+    if (fixture_path(path, sizeof(path), dir, name) != 0) return 1;
+    file = fopen(path, "wb");
+    if (!file) return 1;
+    fputs(value, file);
+    fclose(file);
+    return 0;
+}
+
+/**
  * Remove the isolated metadata directory.
  * @param dir Directory path.
  * @return None.
  */
 static void fixture_remove(const char *dir) {
+    static const char *files[] = {
+        "sample",
+        "sample.user",
+        "sample.backend"
+    };
+    char path[1024];
+    size_t i;
+
     if (!dir || !dir[0]) return;
+    for (i = 0U; i < sizeof(files) / sizeof(files[0]); i++) {
+        if (fixture_path(path, sizeof(path), dir, files[i]) == 0) {
+            (void)remove(path);
+        }
+    }
 #ifdef _WIN32
     (void)RemoveDirectoryA(dir);
 #else
@@ -187,10 +297,12 @@ static void fixture_remove(const char *dir) {
  * @return Process status.
  */
 int main(void) {
+    const char *expected = "sample\ttester\techo init-test";
+    char output[4096];
     char dir[1024] = {0};
     int fixture_ok;
 
-    test_total = 4;
+    test_total = 5;
     test_current = 0;
     test_failures = 0;
 
@@ -199,9 +311,23 @@ int main(void) {
         run_cli("--version") == 0);
     result("errors", "rejects an unknown option", run_cli("--unknown") != 0);
 
-    fixture_ok = fixture_create(dir, sizeof(dir)) == 0;
-    result("list", "lists an isolated empty namespace",
-        fixture_ok && run_cli("--list") == 0);
+    fixture_ok = fixture_create(dir, sizeof(dir)) == 0 &&
+        fixture_write(dir, "sample", "echo init-test") == 0 &&
+        fixture_write(dir, "sample.user", "tester") == 0 &&
+        fixture_write(dir, "sample.backend", "1") == 0;
+
+    result(
+        "list",
+        "list emits fixed id, user, and command columns",
+        fixture_ok && capture_output("-l", output, sizeof(output)) &&
+        strncmp(output, expected, strlen(expected)) == 0
+    );
+    result(
+        "list one",
+        "list-one uses the same fixed column schema",
+        fixture_ok && capture_output("-l sample", output, sizeof(output)) &&
+        strncmp(output, expected, strlen(expected)) == 0
+    );
     fixture_remove(dir);
 
     printf("\n%d passed, %d failed\n",
