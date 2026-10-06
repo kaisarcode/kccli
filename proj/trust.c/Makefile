@@ -92,7 +92,7 @@ define linux_target
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
-		src/trust.c "$$library" -o "$$out"; \
+		src/trust.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
 
@@ -142,7 +142,7 @@ define windows_target
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
-		src/trust.c "$$library" -lbcrypt -o "$$out"; \
+		src/trust.c "$$library" -lbcrypt -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
 
@@ -171,7 +171,7 @@ define macos_target
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
 		-mmacosx-version-min="$$min" -I"$$target" src/trust.c "$$library" \
-		-o "$$out"; \
+		-o "$$out" || exit 1; \
 	echo "OK $(1)/macos"
 endef
 
