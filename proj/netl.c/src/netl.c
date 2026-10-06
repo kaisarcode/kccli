@@ -1314,10 +1314,10 @@ static int netl_cli_serve(const char *dir, const char *name)
     }
 
 #ifdef _WIN32
-    for (;;) Sleep(INFINITE);
-#else
-    while (!netl_cli_stop) netl_cli_sleep();
+    (void)signal(SIGINT, netl_cli_signal);
+    (void)signal(SIGTERM, netl_cli_signal);
 #endif
+    while (!netl_cli_stop) netl_cli_sleep();
 
     kc_netl_close(listener);
     netl_cli_cleanup(&state);
