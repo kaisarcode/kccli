@@ -1,6 +1,6 @@
 /**
  * test.c - trust CLI contract tests.
- * Summary: Validates trust establishment, message protection, and revocation.
+ * Summary: Validates trust establishment, listing, protection, and deletion.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -37,7 +37,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/10] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/12] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
@@ -178,6 +178,30 @@ static int split_tsv(char *line, char **first, char **second)
 }
 
 /**
+ * Checks one trust list row.
+ * @param line Captured TSV row.
+ * @param uid Expected UID.
+ * @param status Expected status.
+ * @return Nonzero when the row matches.
+ */
+static int list_row_matches(const char *line, const char *uid, const char *status)
+{
+    char prefix[512];
+    const char *created;
+
+    if (!line || !uid || !status) return 0;
+    snprintf(prefix, sizeof(prefix), "%s\t%s\t", uid, status);
+    if (strncmp(line, prefix, strlen(prefix)) != 0) return 0;
+    created = line + strlen(prefix);
+    if (!*created) return 0;
+    while (*created) {
+        if (*created < '0' || *created > '9') return 0;
+        created++;
+    }
+    return 1;
+}
+
+/**
  * Removes test state and temporary files.
  * @return None.
  */
@@ -206,6 +230,7 @@ int main(void)
 {
     char invite_line[8192] = {0};
     char join_line[8192] = {0};
+    char list_line[8192] = {0};
     char confirm_uid[256] = {0};
     char invite_copy[8192];
     char join_copy[8192];
@@ -243,6 +268,12 @@ int main(void)
         code = NULL;
     }
 
+    if (alice_uid) snprintf(args, sizeof(args), "-l \"%s\"", alice_uid);
+    else snprintf(args, sizeof(args), "-l invalid");
+    result("list-pending", "list reports a pending invitation",
+        capture_text(store_a, args, list_line, sizeof(list_line)) &&
+        list_row_matches(list_line, alice_uid, "pending"));
+
     if (code) {
         snprintf(args, sizeof(args), "join \"%s\"", code);
     } else {
@@ -267,6 +298,12 @@ int main(void)
         capture_text(store_a, args, confirm_uid, sizeof(confirm_uid)) &&
         alice_uid && strcmp(confirm_uid, alice_uid) == 0);
 
+    if (alice_uid) snprintf(args, sizeof(args), "-l \"%s\"", alice_uid);
+    else snprintf(args, sizeof(args), "-l invalid");
+    result("list-confirmed", "list reports a confirmed relationship",
+        capture_text(store_a, args, list_line, sizeof(list_line)) &&
+        list_row_matches(list_line, alice_uid, "confirmed"));
+
     result("uids", "join and invite endpoint uids differ",
         alice_uid && bob_uid && strcmp(alice_uid, bob_uid) != 0);
 
@@ -290,9 +327,9 @@ int main(void)
         recovered_size == sizeof(payload) &&
         memcmp(recovered, payload, sizeof(payload)) == 0);
 
-    if (alice_uid) snprintf(args, sizeof(args), "revoke \"%s\"", alice_uid);
-    else snprintf(args, sizeof(args), "revoke invalid");
-    result("revoke", "revoke removes the relationship",
+    if (alice_uid) snprintf(args, sizeof(args), "\"%s\" -d", alice_uid);
+    else snprintf(args, sizeof(args), "invalid -d");
+    result("delete", "delete removes the relationship",
         run_cli(store_a, args, NULL, NULL) == 0 &&
         run_cli(store_a, args, NULL, NULL) != 0);
 
