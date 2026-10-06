@@ -101,6 +101,23 @@ menu <id> <cmd>
 redp2p pub <id>@<index> ...
 ```
 
+Arguments beginning with `-` or `--` are options, not positional arguments,
+regardless of where they appear in the command line. Parsers must separate
+options from positional arguments consistently instead of assigning option
+tokens to positional slots based on their location.
+
+When an option takes a value, the value is always the following argument:
+
+```text
+-p 8080
+--port 8080
+```
+
+Do not use or accept `--key=value` syntax. The argument following a value-taking
+option belongs to that option and must not also be interpreted as a positional
+argument. Boolean or action flags such as `--recursive`, `--list`, `--delete`,
+`--help`, and `--version` do not take a value.
+
 Prefer named options for configuration values, especially when several values
 of the same primitive type would otherwise become ambiguous.
 
@@ -160,7 +177,7 @@ This means:
 - when a positional content argument is present, use it and do not read stdin or
     the file supplied through `-i`;
 - otherwise, if stdin is redirected or piped and contains input, use stdin;
-- otherwise, if `-i, --input <file>` is present, read the input from that file;
+- otherwise, if `-i, --input <file>` is present, read input from that file;
 - an empty redirected stdin may fall through to `-i` when a file was supplied,
     rather than masking the file with no content.
 
