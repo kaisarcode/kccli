@@ -1,9 +1,9 @@
 # wvw.c - Native WebView CLI
 
-`wvw` opens one native WebView window using `libwvw`.
+`wvw` opens one native WebView window.
 
-The URL is the primary positional argument. Window configuration is exposed as
-command-line options and maps directly to `kc_wvw_options_t`.
+The URL is the primary positional argument. Window configuration is provided
+through command-line options.
 
 ## Build
 
@@ -13,7 +13,7 @@ Build the native host target:
 make
 ```
 
-Build every target supported by `libwvw`:
+Build all configured targets:
 
 ```sh
 make all
@@ -33,20 +33,19 @@ WebView2 at runtime. macOS uses WebKit/Cocoa/Foundation.
 
 ## Tests
 
-Run the native CLI contract tests:
+Run the native CLI tests:
 
 ```sh
 make test
 ```
 
-Run the x86_64 Windows contract tests through Wine:
+Run the x86_64 Windows tests through Wine:
 
 ```sh
 make test wine
 ```
 
-The contract tests validate argument handling without requiring a real WebView
-to be opened.
+The tests validate argument handling without opening a real WebView.
 
 ## CLI
 
@@ -75,13 +74,13 @@ Options:
 -v, --version           Show version
 ```
 
-The process remains alive while the WebView instance is active and closes the
-window cleanly on SIGINT or SIGTERM.
+The process remains alive while the WebView is active and closes the window on
+SIGINT or SIGTERM.
 
 ## Transparency
 
-`libwvw` uses the alpha byte of an eight-digit background color. Use `00` alpha
-for a fully transparent background.
+Use the alpha byte of an eight-digit background color. `00` is fully
+transparent.
 
 For example:
 
@@ -156,33 +155,6 @@ Start hidden:
 ```bash
 wvw https://example.com --hidden
 ```
-
-## Library mapping
-
-The CLI maps its startup options directly to these public `libwvw` fields:
-
-```text
-url             -> options.url
-title           -> options.title
-background      -> options.background
-icon            -> options.icon
-width           -> options.width
-height          -> options.height
-x               -> options.posx
-y               -> options.posy
-fullscreen      -> options.fullscreen
-borderless      -> options.borderless
-always-on-top   -> options.always_on_top
-click-through   -> options.click_through
-no-focus        -> options.no_focus
-hidden          -> options.hidden
-unlist          -> options.unlist
-```
-
-Runtime library operations such as navigate, show/hide, minimize/maximize,
-setters/getters, bridge callbacks, and bridge events act on an already-open
-`kc_wvw_t` handle. They are library APIs rather than startup configuration, so
-they are not represented as artificial one-shot CLI flags.
 
 ---
 
