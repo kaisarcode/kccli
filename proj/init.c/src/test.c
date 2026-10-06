@@ -191,6 +191,24 @@ static int capture_output(
 }
 
 /**
+ * Check one captured single-line output value.
+ * @param output Captured output.
+ * @param expected Expected line without newline.
+ * @return Nonzero when the line matches exactly.
+ */
+static int output_matches(const char *output, const char *expected) {
+    size_t size;
+
+    if (!output || !expected) return 0;
+    size = strlen(output);
+    while (size > 0U &&
+            (output[size - 1U] == '\n' || output[size - 1U] == '\r')) {
+        size--;
+    }
+    return strlen(expected) == size && strncmp(output, expected, size) == 0;
+}
+
+/**
  * Join a fixture path.
  * @param out Output path buffer.
  * @param cap Output capacity.
@@ -320,13 +338,13 @@ int main(void) {
         "list",
         "list emits fixed id, user, and command columns",
         fixture_ok && capture_output("-l", output, sizeof(output)) &&
-        strncmp(output, expected, strlen(expected)) == 0
+        output_matches(output, expected)
     );
     result(
         "list one",
         "list-one uses the same fixed column schema",
         fixture_ok && capture_output("-l sample", output, sizeof(output)) &&
-        strncmp(output, expected, strlen(expected)) == 0
+        output_matches(output, expected)
     );
     fixture_remove(dir);
 
