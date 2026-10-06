@@ -139,15 +139,22 @@ update_project_checksums() {
 # @return 0 on success.
 build_project() {
     local project_dir="$1"
-    local project_name
+    local project_name status
 
     project_dir="${project_dir%/}"
     project_name=$(basename "$project_dir")
     echo "Building $project_name..."
+
+    status=0
     (
         cd "$project_dir"
         make all
-    )
+    ) || status=$?
+
+    if [ "$status" -ne 0 ]; then
+        return "$status"
+    fi
+
     update_project_checksums "$project_dir"
 }
 
@@ -155,7 +162,8 @@ build_project() {
 # @param target Logical kccli name or all.
 # @return 0 on success.
 main() {
-    local script_dir root_dir proj_dir target project_dir
+    local script_dir root_dir proj_dir target project_dir project_name
+    local failed_projects
 
     [ "$#" -eq 1 ] || {
         usage
@@ -173,10 +181,19 @@ main() {
     }
 
     if [ "$target" = "all" ]; then
+        failed_projects=""
         for project_dir in "$proj_dir"/*.c; do
             [ -d "$project_dir" ] || continue
-            build_project "$project_dir"
+            if ! build_project "$project_dir"; then
+                project_name=$(basename "$project_dir")
+                failed_projects="$failed_projects $project_name"
+            fi
         done
+
+        if [ -n "$failed_projects" ]; then
+            echo "error: failed projects:$failed_projects" >&2
+            return 1
+        fi
         return 0
     fi
 
