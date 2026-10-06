@@ -1,6 +1,6 @@
 # netl.c - Resident Network Listener CLI
 
-`netl` manages named resident TCP or UDP listeners backed by `libnetl.c`.
+`netl` manages named resident TCP or UDP listeners.
 
 A listener is registered once, remains active after the command returns, and
 dispatches incoming traffic to the configured local command.
@@ -23,8 +23,8 @@ Options:
   -v, --version            Show version
 ```
 
-Arguments beginning with `-` or `--` are CLI options and are not positional
-arguments. Options that take a value consume the following argument.
+Arguments beginning with `-` or `--` are options, not positional arguments.
+Options that take a value consume the following argument.
 
 ## Register a listener
 
@@ -49,10 +49,6 @@ output is sent back to the same peer.
 
 For UDP, each datagram starts one command and the datagram is written to that
 command's standard input.
-
-The command execution behavior follows the earlier standalone `netl` CLI, while
-the named resident lifecycle follows the same administrative model used by
-other resident KCCLI tools.
 
 ## List listeners
 
@@ -91,9 +87,7 @@ This stops the resident listener process and removes its registration.
 
 ## Runtime state
 
-`netl` keeps only the private metadata needed to administer its resident
-processes. `KC_NETL_DIR` is available as an advanced runtime-directory override,
-primarily for isolated tests.
+`KC_NETL_DIR` can override the runtime state directory when needed.
 
 ## Build
 
@@ -113,14 +107,11 @@ make all
 make test
 ```
 
-Run the Windows contract through Wine:
+Run the Windows tests through Wine:
 
 ```bash
 make test wine
 ```
-
-The tests exercise the real CLI, including creation of a resident listener,
-fixed list output, and deletion.
 
 ## License
 
