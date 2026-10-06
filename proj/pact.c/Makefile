@@ -1,5 +1,5 @@
 ## Makefile
-## Summary: Builds the trust CLI against precompiled static artifacts.
+## Summary: Builds the pact CLI against precompiled static artifacts.
 ##
 ## Author:  KaisarCode
 ## Website: https://kaisarcode.com
@@ -8,7 +8,7 @@
 SHELL := /bin/sh
 
 KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-TRUST_DIST_DIR := $(KCLIB_DIST_DIR)/libtrust.c
+PACT_DIST_DIR := $(KCLIB_DIST_DIR)/libpact.c
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -83,16 +83,16 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(TRUST_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libtrust.h"; \
-	library="$$target/libtrust.a"; \
-	out='$(BIN_DIR)/$(1)/linux/trust'; \
-	[ -f "$$header" ] || { echo "kccli: missing libtrust header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libtrust static library: $$library" >&2; exit 1; }; \
+	@target='$(PACT_DIST_DIR)/$(1)/linux'; \
+	header="$$target/libpact.h"; \
+	library="$$target/libpact.a"; \
+	out='$(BIN_DIR)/$(1)/linux/pact'; \
+	[ -f "$$header" ] || { echo "kccli: missing libpact header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libpact static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
-		src/trust.c "$$library" -o "$$out" || exit 1; \
+		src/pact.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
 
@@ -133,16 +133,16 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define windows_target
-	@target='$(TRUST_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libtrust.h"; \
-	library="$$target/libtrust.a"; \
-	out='$(BIN_DIR)/$(1)/windows/trust.exe'; \
-	[ -f "$$header" ] || { echo "kccli: missing libtrust header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libtrust static library: $$library" >&2; exit 1; }; \
+	@target='$(PACT_DIST_DIR)/$(1)/windows'; \
+	header="$$target/libpact.h"; \
+	library="$$target/libpact.a"; \
+	out='$(BIN_DIR)/$(1)/windows/pact.exe'; \
+	[ -f "$$header" ] || { echo "kccli: missing libpact header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libpact static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
-		src/trust.c "$$library" -lbcrypt -o "$$out" || exit 1; \
+		src/pact.c "$$library" -lbcrypt -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
 
@@ -153,12 +153,12 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(TRUST_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libtrust.h"; \
-	library="$$target/libtrust.a"; \
-	out='$(BIN_DIR)/$(1)/macos/trust'; \
-	[ -f "$$header" ] || { echo "kccli: missing libtrust header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libtrust static library: $$library" >&2; exit 1; }; \
+	@target='$(PACT_DIST_DIR)/$(1)/macos'; \
+	header="$$target/libpact.h"; \
+	library="$$target/libpact.a"; \
+	out='$(BIN_DIR)/$(1)/macos/pact'; \
+	[ -f "$$header" ] || { echo "kccli: missing libpact header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libpact static library: $$library" >&2; exit 1; }; \
 	[ -x '$(2)' ] || { echo "kccli: missing macOS cross-compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/macos'; \
 	min='$(MACOSX_DEPLOYMENT_TARGET)'; \
@@ -170,7 +170,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/trust.c "$$library" \
+		-mmacosx-version-min="$$min" -I"$$target" src/pact.c "$$library" \
 		-o "$$out" || exit 1; \
 	echo "OK $(1)/macos"
 endef
@@ -187,9 +187,9 @@ test:
 		command -v $(WINE) >/dev/null 2>&1 || { echo "kccli: missing Wine runtime: $(WINE)" >&2; exit 1; }; \
 		command -v $(WINE_X86_64_CC) >/dev/null 2>&1 || { echo "kccli: missing Windows compiler: $(WINE_X86_64_CC)" >&2; exit 1; }; \
 		mkdir -p '$(BUILD_DIR)/test-wine'; \
-		cp '$(BIN_DIR)/x86_64/windows/trust.exe' '$(BUILD_DIR)/test-wine/trust.exe'; \
+		cp '$(BIN_DIR)/x86_64/windows/pact.exe' '$(BUILD_DIR)/test-wine/pact.exe'; \
 		$(WINE_X86_64_CC) -std=c11 -O2 -Wall -Wextra -Werror \
-			-DKC_CLI_PATH=\"trust.exe\" src/test.c \
+			-DKC_CLI_PATH=\"pact.exe\" src/test.c \
 			-o '$(BUILD_DIR)/test-wine/kccli_test.exe'; \
 		cd '$(BUILD_DIR)/test-wine' && WINEDEBUG=-all $(WINE) kccli_test.exe; \
 	else \
@@ -200,7 +200,7 @@ test:
 		$(MAKE) --no-print-directory '$(NATIVE_TARGET)'; \
 		mkdir -p '$(BUILD_DIR)/test'; \
 		$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
-			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/trust$(NATIVE_EXE_EXT)\" \
+			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/pact$(NATIVE_EXE_EXT)\" \
 			src/test.c -o '$(BUILD_DIR)/test/kccli_test'; \
 		'$(BUILD_DIR)/test/kccli_test'; \
 	fi

@@ -1,12 +1,12 @@
-# trust
+# pact
 
-`trust` establishes persistent trust relationships between endpoints and protects
+`pact` establishes persistent trust relationships between endpoints and protects
 binary messages exchanged between them.
 
 ## Usage
 
 ```text
-Usage: trust <command> [arguments] [options]
+Usage: pact <command> [arguments] [options]
 
 Commands:
   invite                    Create a one-use invitation
@@ -33,7 +33,7 @@ the same local state automatically.
 Create an invitation:
 
 ```bash
-trust invite
+pact invite
 ```
 
 The output has two tab-separated fields:
@@ -48,7 +48,7 @@ to the other endpoint using any transport you choose.
 The invited endpoint joins with that code:
 
 ```bash
-trust join '<code>'
+pact join '<code>'
 ```
 
 The output is also tab-separated:
@@ -63,11 +63,11 @@ confirmation back to the endpoint that created the invitation.
 The inviter completes the relationship:
 
 ```bash
-trust confirm '<confirmation>'
+pact confirm '<confirmation>'
 ```
 
 `confirm` prints the same invited-endpoint UID originally returned by
-`trust invite`.
+`pact invite`.
 
 The two endpoints use different UIDs for the same relationship. Each endpoint
 uses the UID that identifies the remote endpoint when sealing data.
@@ -77,13 +77,13 @@ uses the UID that identifies the remote endpoint when sealing data.
 List all locally known remote UIDs:
 
 ```bash
-trust -l
+pact -l
 ```
 
 List one UID:
 
 ```bash
-trust -l "$UID"
+pact -l "$UID"
 ```
 
 Each row has three tab-separated fields:
@@ -101,25 +101,25 @@ state record.
 Protect a text argument:
 
 ```bash
-trust seal "$UID" "hello"
+pact seal "$UID" "hello"
 ```
 
 Protect binary data from standard input:
 
 ```bash
-cat message.bin | trust seal "$UID" > protected.bin
+cat message.bin | pact seal "$UID" > protected.bin
 ```
 
 Or read it from a file:
 
 ```bash
-trust seal "$UID" -i message.bin > protected.bin
+pact seal "$UID" -i message.bin > protected.bin
 ```
 
 Restore protected data:
 
 ```bash
-trust unseal "$UID" -i protected.bin > message.bin
+pact unseal "$UID" -i protected.bin > message.bin
 ```
 
 For `seal` and `unseal`, input is selected in this order:
@@ -135,7 +135,7 @@ Standard input, file input, and command output are binary-safe.
 Delete an established relationship or a pending invitation:
 
 ```bash
-trust "$UID" -d
+pact "$UID" -d
 ```
 
 After deletion, that UID can no longer be used locally for the removed trust

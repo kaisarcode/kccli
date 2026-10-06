@@ -1,5 +1,5 @@
 /**
- * test.c - trust CLI contract tests.
+ * test.c - pact CLI contract tests.
  * Summary: Validates trust establishment, listing, protection, and deletion.
  *
  * Author:  KaisarCode
@@ -18,7 +18,7 @@
 #endif
 
 #ifndef KC_CLI_PATH
-#define KC_CLI_PATH "trust"
+#define KC_CLI_PATH "pact"
 #endif
 
 static int test_total = 0;
@@ -111,16 +111,16 @@ static int run_cli(
 
 #ifdef _WIN32
     snprintf(command, sizeof(command),
-        "set \"KC_TRUST_DIR=%s\" && \"%s\" %s %s %s 2>NUL",
+        "set \"KC_PACT_DIR=%s\" && \"%s\" %s %s %s 2>NUL",
         store, KC_CLI_PATH, args ? args : "",
-        input ? "< trust-cli-input.bin" : "",
-        output ? "> trust-cli-output.bin" : "> NUL");
+        input ? "< pact-cli-input.bin" : "",
+        output ? "> pact-cli-output.bin" : "> NUL");
 #else
     snprintf(command, sizeof(command),
-        "KC_TRUST_DIR=\"%s\" \"%s\" %s %s %s 2>/dev/null",
+        "KC_PACT_DIR=\"%s\" \"%s\" %s %s %s 2>/dev/null",
         store, KC_CLI_PATH, args ? args : "",
-        input ? "< trust-cli-input.bin" : "",
-        output ? "> trust-cli-output.bin" : "> /dev/null");
+        input ? "< pact-cli-input.bin" : "",
+        output ? "> pact-cli-output.bin" : "> /dev/null");
 #endif
 
     return system(command);
@@ -144,12 +144,12 @@ static int capture_text(
     unsigned char bytes[8192];
     size_t size;
 
-    if (run_cli(store, args, NULL, "trust-cli-output.bin") != 0) return 0;
-    if (!read_file("trust-cli-output.bin", bytes, sizeof(bytes) - 1, &size)) {
-        remove("trust-cli-output.bin");
+    if (run_cli(store, args, NULL, "pact-cli-output.bin") != 0) return 0;
+    if (!read_file("pact-cli-output.bin", bytes, sizeof(bytes) - 1, &size)) {
+        remove("pact-cli-output.bin");
         return 0;
     }
-    remove("trust-cli-output.bin");
+    remove("pact-cli-output.bin");
     if (size >= capacity) return 0;
     memcpy(buffer, bytes, size);
     buffer[size] = '\0';
@@ -218,12 +218,12 @@ static void cleanup(void)
         "rm -rf \"%s\" \"%s\"", store_a, store_b);
 #endif
     system(command);
-    remove("trust-cli-input.bin");
-    remove("trust-cli-output.bin");
+    remove("pact-cli-input.bin");
+    remove("pact-cli-output.bin");
 }
 
 /**
- * Runs all trust CLI contract tests.
+ * Runs all pact CLI contract tests.
  * @return Zero when all tests pass.
  */
 int main(void)
@@ -248,8 +248,8 @@ int main(void)
     unsigned long pid = (unsigned long)getpid();
 #endif
 
-    snprintf(store_a, sizeof(store_a), "trust-cli-a-%lu", pid);
-    snprintf(store_b, sizeof(store_b), "trust-cli-b-%lu", pid);
+    snprintf(store_a, sizeof(store_a), "pact-cli-a-%lu", pid);
+    snprintf(store_b, sizeof(store_b), "pact-cli-b-%lu", pid);
     cleanup();
 
     result("help", "--help succeeds", run_cli(store_a, "--help", NULL, NULL) == 0);
@@ -307,22 +307,22 @@ int main(void)
     result("uids", "join and invite endpoint uids differ",
         alice_uid && bob_uid && strcmp(alice_uid, bob_uid) != 0);
 
-    if (!write_file("trust-cli-input.bin", payload, sizeof(payload))) {
+    if (!write_file("pact-cli-input.bin", payload, sizeof(payload))) {
         cleanup();
         return 1;
     }
     if (alice_uid) snprintf(args, sizeof(args), "seal \"%s\"", alice_uid);
     else snprintf(args, sizeof(args), "seal invalid");
     result("seal", "seal accepts binary stdin",
-        run_cli(store_a, args, "trust-cli-input.bin", "trust-cli-output.bin") == 0);
+        run_cli(store_a, args, "pact-cli-input.bin", "pact-cli-output.bin") == 0);
 
-    remove("trust-cli-input.bin");
-    rename("trust-cli-output.bin", "trust-cli-input.bin");
+    remove("pact-cli-input.bin");
+    rename("pact-cli-output.bin", "pact-cli-input.bin");
     if (alice_uid) snprintf(args, sizeof(args), "unseal \"%s\"", alice_uid);
     else snprintf(args, sizeof(args), "unseal invalid");
     result("unseal", "unseal restores exact binary plaintext",
-        run_cli(store_b, args, "trust-cli-input.bin", "trust-cli-output.bin") == 0 &&
-        read_file("trust-cli-output.bin", recovered, sizeof(recovered),
+        run_cli(store_b, args, "pact-cli-input.bin", "pact-cli-output.bin") == 0 &&
+        read_file("pact-cli-output.bin", recovered, sizeof(recovered),
             &recovered_size) &&
         recovered_size == sizeof(payload) &&
         memcmp(recovered, payload, sizeof(payload)) == 0);
