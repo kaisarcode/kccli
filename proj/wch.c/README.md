@@ -1,9 +1,6 @@
 # wch
 
-`wch` is a command-line frontend for `libwch.c` resident filesystem watchers.
-
-It provides a terminal-friendly interface without changing the public `libwch`
-API or its behavior.
+`wch` manages resident filesystem watchers.
 
 ## Usage
 
@@ -35,9 +32,8 @@ The command returns the terminal immediately after the watcher is registered or
 replaced. `wch` does not remain attached to the terminal and does not stream
 watch events to standard output.
 
-The configured command is executed by `libwch.c` when filesystem events occur.
-The command may contain multiple positional arguments; `wch` stores them as one
-command string.
+The configured command is executed when filesystem events occur. It may contain
+multiple positional arguments; `wch` stores them as one command string.
 
 For example:
 
@@ -86,11 +82,9 @@ No runtime state or additional configuration fields are printed.
 wch source -d
 ```
 
-Deleting a watcher stops and removes the resident watcher through `libwch.c`.
+Deleting a watcher stops and removes it.
 
 ## Build
-
-The CLI links against the precompiled `libwch.c` artifacts in `kclib/dist`.
 
 ```bash
 make
@@ -102,9 +96,7 @@ Build all configured desktop targets:
 make all
 ```
 
-Linux and macOS link the static `libwch` artifact. Windows uses the `libwch.dll`
-import library and packages the DLL beside `wch.exe`, preserving the resident
-watcher implementation provided by `libwch.c`.
+On Windows, `libwch.dll` is packaged beside `wch.exe`.
 
 ## Tests
 
