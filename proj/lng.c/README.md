@@ -4,14 +4,14 @@
 headerless TSV:
 
 ```text
-<code>	<score>
+<code>  <score>
 ```
 
 For example:
 
 ```text
-en	0.99999
-es	0.87231
+en  0.99999
+es  0.87231
 ```
 
 Scores are heuristic ranking values, not calibrated probabilities.
@@ -99,6 +99,10 @@ Windows tests can be run through Wine:
 make test wine
 ```
 
+---
+
 ## License
 
-GNU General Public License version 3 or later.
+[![GPLv3](https://www.gnu.org/graphics/gplv3-127x51.png)](https://www.gnu.org/licenses/gpl-3.0.html)
+
+This project is distributed under the **GNU General Public License version 3 (GPLv3)**.

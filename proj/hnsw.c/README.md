@@ -31,9 +31,9 @@ The vector dataset has exactly two columns per row, separated by one tab:
 The vector is a comma-separated list of floats. For example:
 
 ```text
-alice	1,0,0
-bob	0,1,0
-carol	0,0,1
+alice   1,0,0
+bob 0,1,0
+carol   0,0,1
 ```
 
 The positional dataset argument is literal content, not a filename. File input
@@ -110,6 +110,10 @@ Windows tests can be run through Wine:
 make test wine
 ```
 
+---
+
 ## License
 
-GNU General Public License version 3 or later.
+[![GPLv3](https://www.gnu.org/graphics/gplv3-127x51.png)](https://www.gnu.org/licenses/gpl-3.0.html)
+
+This project is distributed under the **GNU General Public License version 3 (GPLv3)**.

@@ -97,6 +97,10 @@ Configured desktop/server targets include Linux, Windows, and macOS.
 
 No external runtime services are required.
 
+---
+
 ## License
 
-GNU General Public License version 3.
+[![GPLv3](https://www.gnu.org/graphics/gplv3-127x51.png)](https://www.gnu.org/licenses/gpl-3.0.html)
+
+This project is distributed under the **GNU General Public License version 3 (GPLv3)**.
