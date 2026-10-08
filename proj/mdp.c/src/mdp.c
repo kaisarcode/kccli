@@ -1,6 +1,6 @@
 /**
  * mdp.c - Markdown parser command-line interface.
- * Summary: Renders Markdown HTML, body, or metadata with libmdp.
+ * Summary: Renders Markdown HTML, ANSI, body, or metadata with libmdp.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -22,8 +22,9 @@
 #endif
 
 #define MDP_MODE_HTML 0
-#define MDP_MODE_BODY 1
-#define MDP_MODE_META 2
+#define MDP_MODE_ANSI 1
+#define MDP_MODE_BODY 2
+#define MDP_MODE_META 3
 
 /**
  * Prints public CLI usage.
@@ -36,6 +37,7 @@ static void mdp_cli_usage(const char *name)
     printf("\n");
     printf("Options:\n");
     printf("  -i, --input <file>  Read Markdown from file when stdin is absent\n");
+    printf("  --ansi              Render Markdown for ANSI terminals\n");
     printf("  --body              Print Markdown body without frontmatter\n");
     printf("  --meta              Print raw frontmatter\n");
     printf("  -h, --help          Show this help\n");
@@ -174,6 +176,12 @@ int main(int argc, char **argv)
                 return 1;
             }
             input_path = argv[i];
+        } else if (strcmp(argv[i], "--ansi") == 0) {
+            if (mode != MDP_MODE_HTML) {
+                fprintf(stderr, "mdp: choose only one output mode\n");
+                return 1;
+            }
+            mode = MDP_MODE_ANSI;
         } else if (strcmp(argv[i], "--body") == 0) {
             if (mode != MDP_MODE_HTML) {
                 fprintf(stderr, "mdp: choose only one output mode\n");
@@ -245,7 +253,9 @@ int main(int argc, char **argv)
     }
     free(owned_input);
 
-    if (mode == MDP_MODE_BODY) {
+    if (mode == MDP_MODE_ANSI) {
+        output = kc_mdp_ansi(mdp);
+    } else if (mode == MDP_MODE_BODY) {
         output = kc_mdp_body(mdp);
     } else if (mode == MDP_MODE_META) {
         output = kc_mdp_meta(mdp);
