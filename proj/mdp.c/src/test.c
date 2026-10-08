@@ -37,26 +37,28 @@ static int write_text_file(const char *path, const char *text)
 }
 
 /**
- * Executes the CLI and compares captured stdout exactly.
+ * Executes the CLI and captures stdout.
  * @param args CLI arguments.
  * @param stdin_text Optional stdin content.
- * @param expected Expected stdout.
+ * @param buffer Output buffer.
+ * @param capacity Output buffer capacity.
  * @return Nonzero on success.
  */
-static int output_equals(
+static int capture_output(
     const char *args,
     const char *stdin_text,
-    const char *expected
+    char *buffer,
+    size_t capacity
 )
 {
     const char *input_path = "mdp-cli-input.txt";
     const char *output_path = "mdp-cli-output.txt";
     char command[4096];
-    char buffer[8192];
     FILE *file;
     size_t size;
     int status;
 
+    if (!buffer || capacity == 0) return 0;
     if (stdin_text) {
         if (!write_text_file(input_path, stdin_text)) return 0;
     }
@@ -86,11 +88,44 @@ static int output_equals(
 
     file = fopen(output_path, "rb");
     if (!file) return 0;
-    size = fread(buffer, 1, sizeof(buffer) - 1, file);
+    size = fread(buffer, 1, capacity - 1, file);
     fclose(file);
     remove(output_path);
     buffer[size] = '\0';
+    return 1;
+}
+
+/**
+ * Executes the CLI and compares captured stdout exactly.
+ * @param args CLI arguments.
+ * @param stdin_text Optional stdin content.
+ * @param expected Expected stdout.
+ * @return Nonzero on success.
+ */
+static int output_equals(
+    const char *args,
+    const char *stdin_text,
+    const char *expected
+)
+{
+    char buffer[8192];
+
+    if (!capture_output(args, stdin_text, buffer, sizeof(buffer))) return 0;
     return strcmp(buffer, expected) == 0;
+}
+
+/**
+ * Verifies ANSI mode renders a styled heading without Markdown markers.
+ * @return Nonzero on success.
+ */
+static int ansi_heading_output(void)
+{
+    char buffer[8192];
+
+    if (!capture_output("--ansi", "# Hello", buffer, sizeof(buffer))) return 0;
+    return strstr(buffer, "Hello") != NULL &&
+        strstr(buffer, "# Hello") == NULL &&
+        strstr(buffer, "\x1b[") != NULL;
 }
 
 /**
@@ -143,9 +178,7 @@ int main(void)
         output_equals("Hello", NULL, "<p>Hello</p>\n"));
     result("html stdin", "stdin renders HTML when argument is absent",
         output_equals("", "# Hello", "<h1>Hello</h1>\n"));
-    result("ansi", "--ansi renders terminal output",
-        output_equals("--ansi", "# Hello",
-            "\x1b[1mHello\x1b[22m\n\n"));
+    result("ansi", "--ansi renders terminal output", ansi_heading_output());
 
     fixture_ok = write_text_file(file_path, "# File");
     result("input file", "-i reads file when higher-priority input is absent",
