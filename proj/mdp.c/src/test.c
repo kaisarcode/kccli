@@ -123,7 +123,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_total++;
     if (!ok) test_failed++;
-    printf("[%d/11] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
+    printf("[%d/12] [%s] %s: %s\n", test_total, ok ? "PASS" : "FAIL",
         name, detail);
 }
 
@@ -143,6 +143,9 @@ int main(void)
         output_equals("Hello", NULL, "<p>Hello</p>\n"));
     result("html stdin", "stdin renders HTML when argument is absent",
         output_equals("", "# Hello", "<h1>Hello</h1>\n"));
+    result("ansi", "--ansi renders terminal output",
+        output_equals("--ansi", "# Hello",
+            "\x1b[1m\x1b[4mHello\x1b[24m\x1b[22m\n"));
 
     fixture_ok = write_text_file(file_path, "# File");
     result("input file", "-i reads file when higher-priority input is absent",
@@ -160,7 +163,8 @@ int main(void)
         output_equals("--body", document, "# Hello"));
     result("meta", "--meta returns raw frontmatter",
         output_equals("--meta", document, "title: Home"));
-    result("exclusive", "body and meta modes are mutually exclusive",
+    result("exclusive", "output modes are mutually exclusive",
+        run_cli("--ansi --body Hello") != 0 &&
         run_cli("--body --meta Hello") != 0);
     result("unknown", "unknown option fails",
         run_cli("--unknown Hello") != 0);
