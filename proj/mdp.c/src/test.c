@@ -145,7 +145,7 @@ int main(void)
         output_equals("", "# Hello", "<h1>Hello</h1>\n"));
     result("ansi", "--ansi renders terminal output",
         output_equals("--ansi", "# Hello",
-            "\x1b[36m\x1b[1mHello\x1b[22m\x1b[39m\n\n"));
+            "\x1b[1mHello\x1b[22m\n\n"));
 
     fixture_ok = write_text_file(file_path, "# File");
     result("input file", "-i reads file when higher-priority input is absent",
