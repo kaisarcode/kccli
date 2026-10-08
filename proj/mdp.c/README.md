@@ -1,7 +1,7 @@
 # mdp
 
 `mdp` parses Markdown, exposes raw frontmatter and body views, and renders the
-body as an HTML fragment.
+body as either HTML or ANSI terminal output.
 
 ## Usage
 
@@ -10,13 +10,15 @@ Usage: mdp [text] [options]
 
 Options:
   -i, --input <file>  Read Markdown from file when stdin is absent
+  --ansi              Render Markdown for ANSI terminals
   --body              Print Markdown body without frontmatter
   --meta              Print raw frontmatter
   -h, --help          Show this help
   -v, --version       Show version
 ```
 
-HTML output is the default.
+HTML output is the default. Use `--ansi` when the rendered Markdown will be
+shown directly in a terminal.
 
 If Markdown is available from more than one source, `mdp` uses this order:
 
@@ -31,16 +33,28 @@ When no positional argument is present, redirected stdin takes priority over
 `-i/--input`. The input file is used only when no higher-priority input is
 available.
 
-Render Markdown passed as an argument:
+Render Markdown passed as an argument to HTML:
 
 ```bash
 mdp "# Hello"
+```
+
+Render Markdown for the terminal:
+
+```bash
+mdp --ansi "# Hello"
 ```
 
 Render Markdown from standard input:
 
 ```bash
 printf '# Hello' | mdp
+```
+
+Render terminal output from standard input:
+
+```bash
+printf '# Hello' | mdp --ansi
 ```
 
 Render a Markdown file:
@@ -67,8 +81,8 @@ Print raw frontmatter:
 printf '%s\n' '---' 'title: Home' '---' '# Hello' | mdp --meta
 ```
 
-`--body` and `--meta` are mutually exclusive. Without either option, the HTML
-fragment is written directly to standard output.
+`--ansi`, `--body`, and `--meta` are mutually exclusive. Without an output-mode
+option, the HTML fragment is written directly to standard output.
 
 ## Build
 
