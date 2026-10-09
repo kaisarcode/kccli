@@ -15,6 +15,7 @@ OSXCROSS_ROOT ?= $(XDG_DATA_HOME)/osxcross/target
 MACOSX_DEPLOYMENT_TARGET ?= 11.0
 DETECTED_MACOSX_SDK := $(shell ls -d "$(OSXCROSS_ROOT)"/SDK/MacOSX*.sdk 2>/dev/null | sort -V | tail -n 1)
 MACOSX_SDK ?= $(DETECTED_MACOSX_SDK)
+OSXCROSS_INSTALL_NAME_TOOL := $(shell find "$(OSXCROSS_ROOT)/bin" -maxdepth 1 \( -type f -o -type l \) -name '*-install_name_tool' 2>/dev/null | sort | tail -n 1)
 OSXCROSS_X86_64_CC := $(OSXCROSS_ROOT)/bin/o64-clang
 OSXCROSS_X86_64_CXX := $(OSXCROSS_ROOT)/bin/o64-clang++
 OSXCROSS_AARCH64_CC := $(OSXCROSS_ROOT)/bin/oa64-clang
@@ -124,6 +125,7 @@ define build_target
 	fi; \
 	if [ "$$system" = "Darwin" ]; then \
 		[ -d "$(MACOSX_SDK)" ] || { echo "webp2p: missing macOS SDK: $(MACOSX_SDK)" >&2; exit 1; }; \
+		[ -x "$(OSXCROSS_INSTALL_NAME_TOOL)" ] || { echo "webp2p: missing OSXCross install_name_tool" >&2; exit 1; }; \
 		export PATH="$(OSXCROSS_ROOT)/bin:$$PATH"; \
 		export LD_LIBRARY_PATH="$(OSXCROSS_ROOT)/lib:$${LD_LIBRARY_PATH:-}"; \
 	fi; \
@@ -223,10 +225,10 @@ i686/windows:
 ## macOS
 
 x86_64/macos:
-	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)",,-Wl$(comma)-dead_strip)
+	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",,-Wl$(comma)-dead_strip)
 
 aarch64/macos:
-	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)",,-Wl$(comma)-dead_strip)
+	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",,-Wl$(comma)-dead_strip)
 
 rtc:
 	@$(MAKE) --no-print-directory '$(NATIVE_TARGET)'
