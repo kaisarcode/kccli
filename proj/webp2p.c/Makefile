@@ -162,7 +162,7 @@ define build_target
 		pc_libs=$$(PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR="$$pc_libdir" $(PKG_CONFIG) --static --libs libcurl openssl); \
 	else \
 		pc_cflags=$$($(PKG_CONFIG) --cflags libcurl openssl); \
-		pc_libs=$$($(PKG_CONFIG) --static --libs libcurl openssl); \
+		pc_libs=$$($(PKG_CONFIG) --libs libcurl openssl); \
 	fi; \
 	cflags="$$pc_cflags -I$$rtc_inc -Isrc -DRTC_STATIC -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -fdata-sections $(9)"; \
 	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/webp2p.c -o "$$obj_dir/webp2p.o"; \
