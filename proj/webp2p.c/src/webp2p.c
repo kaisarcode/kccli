@@ -739,7 +739,7 @@ int main(int argc, char **argv)
     if (argc == 2 && (strcmp(argv[1], "-v") == 0 ||
         strcmp(argv[1], "--version") == 0))
     {
-        printf("webp2p %s\n", WEBP2P_BUILD_VERSION);
+        printf("%s\n", WEBP2P_BUILD_VERSION);
         return 0;
     }
     if (argc < 3) {
@@ -820,7 +820,7 @@ int main(int argc, char **argv)
         } else if (strcmp(arg, "-v") == 0 ||
             strcmp(arg, "--version") == 0)
         {
-            printf("webp2p %s\n", WEBP2P_BUILD_VERSION);
+            printf("%s\n", WEBP2P_BUILD_VERSION);
             return 0;
         } else {
             fprintf(stderr, "webp2p: unknown option: %s\n", arg);
