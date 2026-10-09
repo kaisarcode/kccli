@@ -143,6 +143,22 @@ define build_target
 		fi; \
 	fi; \
 	mkdir -p "$$rtc_build" "$$obj_dir" "$(BIN_DIR)/$(1)"; \
+	config_stamp="$$rtc_build/.webp2p-config"; \
+	config="$$system|$$processor|$$cc|$$cxx|$$exe|$$platform_libs|$(8)|$(9)|$(10)|$(11)|$(12)|$(WEBP2P_BUILD_VERSION)|$(KC_CROSS_DEPS_DIR)|$(MACOSX_SDK)|$(MACOSX_DEPLOYMENT_TARGET)"; \
+	if [ -f "$$out" ]; then \
+		stale=0; \
+		[ -n "$$(find src -type f \( -name '*.c' -o -name '*.h' \) -newer "$$out" -print -quit)" ] && stale=1; \
+		[ -n "$$(find "$(LIBDATACHANNEL_DIR)" -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name 'CMakeLists.txt' \) -newer "$$out" -print -quit)" ] && stale=1; \
+		if [ -n "$$deps" ] && [ -n "$$(find "$$deps" -type f -newer "$$out" -print -quit)" ]; then stale=1; fi; \
+		if [ "$$stale" -eq 0 ]; then \
+			if [ ! -f "$$config_stamp" ]; then \
+				printf '%s\n' "$$config" > "$$config_stamp"; \
+			elif [ "$$(cat "$$config_stamp")" != "$$config" ]; then \
+				stale=1; \
+			fi; \
+		fi; \
+		if [ "$$stale" -eq 0 ]; then echo "OK $$target (cached)"; exit 0; fi; \
+	fi; \
 	$(CMAKE) \
 		-S "$(LIBDATACHANNEL_DIR)" \
 		-B "$$rtc_build" \
@@ -195,6 +211,7 @@ define build_target
 	rtc_libs="$$datachannel $$juice $$usrsctp"; \
 	"$$cxx" "$$obj_dir/webp2p.o" "$$obj_dir/protocol.o" "$$obj_dir/rtc.o" \
 		$$rtc_libs $$pc_libs $$platform_libs $(10) -o "$$out"; \
+	printf '%s\n' "$$config" > "$$config_stamp"; \
 	echo "OK $$target"
 endef
 
