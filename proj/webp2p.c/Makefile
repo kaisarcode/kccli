@@ -33,7 +33,9 @@ CC ?= cc
 CXX ?= c++
 WINE ?= wine
 WINE_X86_64_CC ?= x86_64-w64-mingw32-gcc
-WEBP2P_BUILD_VERSION ?= 0
+ifndef WEBP2P_BUILD_VERSION
+WEBP2P_BUILD_VERSION := $(shell date +%s)
+endif
 JOBS ?= $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || printf '1')
 
 HOST_ARCH := $(shell uname -m)
@@ -194,7 +196,7 @@ define build_target
 	[ -f "$$rtc_inc/rtc/rtc.h" ] || { echo "webp2p: missing rtc/rtc.h" >&2; exit 1; }; \
 	[ -n "$$datachannel" ] || { echo "webp2p: libdatachannel-static.a not produced for $$target" >&2; exit 1; }; \
 	[ -n "$$juice" ] || { echo "webp2p: libjuice static archive not produced for $$target" >&2; exit 1; }; \
-	[ -n "$$usrsctp" ] || { echo "webp2p: libusrsctp.a not produced for $$target" >&2; exit 1; }; \
+	[ -n "$$usrsctp" ] || { echo "webp2p: libusrsctp static archive not produced for $$target" >&2; exit 1; }; \
 	if [ -n "$$pc_libdir" ]; then \
 		pc_cflags=$$(PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR="$$pc_libdir" $(PKG_CONFIG) --cflags libcurl openssl); \
 		pc_libs=$$(PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR="$$pc_libdir" $(PKG_CONFIG) --static --libs libcurl openssl); \
