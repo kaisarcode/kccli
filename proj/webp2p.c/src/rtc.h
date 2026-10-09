@@ -22,6 +22,7 @@ int webp2p_rtc_make_local(webp2p_rtc_peer_t *peer, const char *type,
     webp2p_description_t *description, int timeout_ms);
 int webp2p_rtc_wait_open(webp2p_rtc_peer_t *peer, int timeout_ms);
 int webp2p_rtc_send(webp2p_rtc_peer_t *peer, const void *data, size_t size);
+int webp2p_rtc_drain(webp2p_rtc_peer_t *peer, int timeout_ms);
 void webp2p_rtc_close(webp2p_rtc_peer_t *peer);
 
 #endif
