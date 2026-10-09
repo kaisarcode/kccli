@@ -182,10 +182,22 @@ static char *webp2p_rtc_turn_uri(const char *turn, const char *user,
     return out;
 }
 
+int webp2p_rtc_init(void)
+{
+    rtcInitLogger(RTC_LOG_WARNING, NULL);
+    rtcPreload();
+    return 0;
+}
+
+void webp2p_rtc_cleanup(void)
+{
+    rtcCleanup();
+}
+
 webp2p_rtc_peer_t *webp2p_rtc_create(int initiator, const char *stun,
     const char *turn, const char *turn_user, const char *turn_pass,
-    webp2p_rtc_receive_fn receive, webp2p_rtc_close_fn closed,
-    void *userdata)
+    int force_turn, int ordered, webp2p_rtc_receive_fn receive,
+    webp2p_rtc_close_fn closed, void *userdata)
 {
     webp2p_rtc_peer_t *peer;
     rtcConfiguration config;
@@ -215,6 +227,8 @@ webp2p_rtc_peer_t *webp2p_rtc_create(int initiator, const char *stun,
 
     memset(&config, 0, sizeof(config));
     config.disableAutoNegotiation = true;
+    config.iceTransportPolicy = force_turn ? RTC_TRANSPORT_POLICY_RELAY :
+        RTC_TRANSPORT_POLICY_ALL;
     if (stun && stun[0]) servers[server_count++] = stun;
     if (turn_uri && turn_uri[0]) servers[server_count++] = turn_uri;
     config.iceServers = servers;
@@ -232,7 +246,12 @@ webp2p_rtc_peer_t *webp2p_rtc_create(int initiator, const char *stun,
     rtcSetDataChannelCallback(peer->pc, webp2p_rtc_data_channel);
 
     if (initiator) {
-        int dc = rtcCreateDataChannel(peer->pc, "redp2p");
+        rtcDataChannelInit init;
+        int dc;
+
+        memset(&init, 0, sizeof(init));
+        init.reliability.unordered = ordered ? false : true;
+        dc = rtcCreateDataChannelEx(peer->pc, "redp2p", &init);
         if (dc < 0) {
             webp2p_rtc_close(peer);
             return NULL;
