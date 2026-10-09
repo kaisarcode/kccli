@@ -9,7 +9,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 
 #ifndef KC_CLI_PATH
 #define KC_CLI_PATH "webp2p"
@@ -32,6 +35,14 @@ static int run_cli(const char *args)
     char command[8192];
     int status;
 
+#ifdef _WIN32
+    if ((size_t)snprintf(command, sizeof(command),
+        "\"%s\" %s > NUL 2>&1", KC_CLI_PATH,
+        args ? args : "") >= sizeof(command))
+        return -1;
+    status = system(command);
+    return status < 0 ? -1 : status;
+#else
     if ((size_t)snprintf(command, sizeof(command),
         "\"%s\" %s > /dev/null 2>&1", KC_CLI_PATH,
         args ? args : "") >= sizeof(command))
@@ -39,6 +50,7 @@ static int run_cli(const char *args)
     status = system(command);
     if (status == -1 || !WIFEXITED(status)) return -1;
     return WEXITSTATUS(status);
+#endif
 }
 
 int main(void)
