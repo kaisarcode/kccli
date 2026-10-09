@@ -71,6 +71,7 @@ Publisher options:
 --turn <url>           Optional TURN URL
 --turn-user <user>     Optional TURN username
 --turn-pass <pass>     Optional TURN password
+--force-turn <0|1>     Disable or require TURN relay
 ```
 
 Consumer options are the same except `--pass`, which is publisher-only.
@@ -86,6 +87,7 @@ A publisher registers with transport `rtc`, polls for pending WebRTC offers,
 answers them, and forwards each opened DataChannel to a separate connection to
 the configured loopback TCP service. A consumer listens on the local port and
 opens one REDP2P WebRTC/DataChannel connection per accepted local TCP session.
+TCP sessions use ordered DataChannels.
 
 ## Environment
 
@@ -97,9 +99,11 @@ REDP2P_STUN
 REDP2P_TURN
 REDP2P_TURN_USER
 REDP2P_TURN_PASS
+REDP2P_FORCE_TURN
 ```
 
-Command-line values take precedence.
+Command-line values take precedence. `REDP2P_FORCE_TURN` accepts `0` or `1`.
+Forcing TURN requires a TURN URL.
 
 Build-time variable:
 
