@@ -171,9 +171,13 @@ define build_target
 	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/webp2p.c -o "$$obj_dir/webp2p.o"; \
 	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/protocol.c -o "$$obj_dir/protocol.o"; \
 	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/rtc.c -o "$$obj_dir/rtc.o"; \
+	if [ "$$system" = "Darwin" ]; then \
+		rtc_libs="-Wl,-force_load,$$datachannel -Wl,-force_load,$$juice -Wl,-force_load,$$usrsctp"; \
+	else \
+		rtc_libs="$$datachannel $$juice $$usrsctp"; \
+	fi; \
 	"$$cxx" "$$obj_dir/webp2p.o" "$$obj_dir/protocol.o" "$$obj_dir/rtc.o" \
-		"$$datachannel" "$$juice" "$$usrsctp" $$pc_libs $$platform_libs \
-		$(10) -o "$$out"; \
+		$$rtc_libs $$pc_libs $$platform_libs $(10) -o "$$out"; \
 	echo "OK $$target"
 endef
 
@@ -226,10 +230,10 @@ i686/windows:
 ## macOS
 
 x86_64/macos:
-	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",,-Wl$(comma)-dead_strip)
+	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET),-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -Wl$(comma)-dead_strip)
 
 aarch64/macos:
-	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",,-Wl$(comma)-dead_strip)
+	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET),-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -Wl$(comma)-dead_strip)
 
 rtc:
 	@$(MAKE) --no-print-directory '$(NATIVE_TARGET)'
