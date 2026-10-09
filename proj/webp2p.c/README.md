@@ -11,27 +11,74 @@ support. Browser peers use the JavaScript REDP2P implementation instead.
 `webp2p` talks to the same REDP2P indexes as the browser implementation. It
 does not link `libredp2p.a` and does not add libdatachannel to `kclib`.
 
-## Dependency
+## Dependencies
 
-The libdatachannel source checkout is external to this repository. Set
-`LIBDATACHANNEL_DIR` to a checkout that includes its submodules:
+`webp2p` builds libdatachannel from an external source checkout and also needs
+several development packages from the host system.
+
+### System packages
+
+On Debian and Ubuntu, install the required build tools and development headers:
+
+```sh
+sudo apt update
+sudo apt install \
+  build-essential \
+  cmake \
+  pkg-config \
+  libcurl4-openssl-dev \
+  libssl-dev
+```
+
+`libcurl4-openssl-dev` provides the libcurl development files used for REDP2P
+index HTTP requests. `libssl-dev` provides the OpenSSL development files used
+by the REDP2P authentication and proof code.
+
+### libdatachannel
+
+libdatachannel is intentionally not vendored into this repository. Clone it
+separately, including its submodules:
+
+```sh
+git clone --recursive https://github.com/paullouisageneau/libdatachannel.git
+```
+
+If the repository was already cloned without submodules, initialize them with:
+
+```sh
+cd libdatachannel
+git submodule update --init --recursive
+```
+
+Point `webp2p` at that source tree with `LIBDATACHANNEL_DIR`:
 
 ```sh
 export LIBDATACHANNEL_DIR="$HOME/work/vendor/libdatachannel"
 ```
 
-`make` configures and builds the minimal static DataChannel stack inside this
-project's `.build` directory. The external libdatachannel source tree is not
-copied into `kccli`.
+The directory must contain libdatachannel's `CMakeLists.txt` and initialized
+submodules. The source checkout remains external to `kccli`.
 
-The current Linux build also requires CMake, a C/C++ toolchain, pkg-config,
-OpenSSL development files, and libcurl development files.
+During the build, `webp2p` configures and builds a minimal static libdatachannel
+stack inside `proj/webp2p.c/.build`. The external source tree is not modified or
+copied into this repository.
+
+The libdatachannel configuration disables media, WebSocket support, examples,
+tests, GnuTLS, Mbed TLS, and libnice. It uses the libjuice ICE backend and the
+static libdatachannel/usrsctp stack.
 
 ## Build
 
-Build the native target:
+From the `kccli` repository root:
 
 ```sh
+./scripts/build.sh webp2p
+```
+
+Or directly from the project directory:
+
+```sh
+cd proj/webp2p.c
 make
 ```
 
@@ -46,10 +93,6 @@ The native binary is written to:
 ```text
 bin/<arch>/linux/webp2p
 ```
-
-The libdatachannel configuration disables media, WebSocket support, examples,
-tests, GnuTLS, Mbed TLS, and libnice. It uses the libjuice ICE backend and the
-static libdatachannel/usrsctp stack.
 
 ## CLI
 
