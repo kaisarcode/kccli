@@ -10,10 +10,12 @@ typedef void (*webp2p_rtc_receive_fn)(const void *data, size_t size,
     void *userdata);
 typedef void (*webp2p_rtc_close_fn)(void *userdata);
 
+int webp2p_rtc_init(void);
+void webp2p_rtc_cleanup(void);
 webp2p_rtc_peer_t *webp2p_rtc_create(int initiator, const char *stun,
     const char *turn, const char *turn_user, const char *turn_pass,
-    webp2p_rtc_receive_fn receive, webp2p_rtc_close_fn closed,
-    void *userdata);
+    int force_turn, int ordered, webp2p_rtc_receive_fn receive,
+    webp2p_rtc_close_fn closed, void *userdata);
 int webp2p_rtc_set_remote(webp2p_rtc_peer_t *peer,
     const webp2p_description_t *description);
 int webp2p_rtc_make_local(webp2p_rtc_peer_t *peer, const char *type,
