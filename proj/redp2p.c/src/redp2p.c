@@ -274,7 +274,7 @@ static int redp2p_cli_force_turn(int *enabled)
  * @param index Destination index endpoint.
  * @return 1 on success, 0 on invalid input.
  */
-static int redp2p_cli_spec(const char *text, char id[KC_REDP2P_ID_MAX + 1],
+static int redp2p_cli_spec(const char *text, char id[REDP2P_ID_MAX + 1],
     char index[320])
 {
     const char *at;
@@ -286,7 +286,7 @@ static int redp2p_cli_spec(const char *text, char id[KC_REDP2P_ID_MAX + 1],
     if (!at || at == text || !at[1]) return 0;
     id_len = (size_t)(at - text);
     index_len = strlen(at + 1);
-    if (id_len > KC_REDP2P_ID_MAX || index_len >= 320) return 0;
+    if (id_len > REDP2P_ID_MAX || index_len >= 320) return 0;
     memcpy(id, text, id_len);
     id[id_len] = '\0';
     memcpy(index, at + 1, index_len + 1);
@@ -319,7 +319,7 @@ typedef struct {
 
 struct redp2p_cli_pub_client {
     redp2p_cli_pub_state_t *owner;
-    kc_redp2p_client_t *client;
+    redp2p_client_t *client;
     redp2p_cli_fd_t fd;
     redp2p_cli_thread_t thread;
     int thread_started;
@@ -343,7 +343,7 @@ typedef struct {
 struct redp2p_cli_con_tcp_session {
     redp2p_cli_con_tcp_state_t *owner;
     redp2p_cli_fd_t fd;
-    kc_redp2p_con_t *con;
+    redp2p_con_t *con;
     redp2p_cli_thread_t thread;
     int thread_started;
     _Atomic int local_shutdown;
@@ -367,7 +367,7 @@ struct redp2p_cli_con_udp_session {
     redp2p_cli_con_udp_state_t *owner;
     struct sockaddr_storage address;
     socklen_t address_len;
-    kc_redp2p_con_t *con;
+    redp2p_con_t *con;
     redp2p_cli_con_udp_session_t *next;
 };
 
@@ -514,7 +514,7 @@ static redp2p_cli_fd_t redp2p_cli_connect_local(int protocol, uint16_t port)
     redp2p_cli_fd_t fd;
     int type;
 
-    type = protocol == KC_REDP2P_TCP ? SOCK_STREAM : SOCK_DGRAM;
+    type = protocol == REDP2P_TCP ? SOCK_STREAM : SOCK_DGRAM;
     fd = socket(AF_INET, type, 0);
     if (REDP2P_CLI_ISERR(fd)) return REDP2P_CLI_FD_INVALID;
     memset(&address, 0, sizeof(address));
@@ -541,7 +541,7 @@ static redp2p_cli_fd_t redp2p_cli_bind_local(int protocol, uint16_t port)
     int reuse;
     int type;
 
-    type = protocol == KC_REDP2P_TCP ? SOCK_STREAM : SOCK_DGRAM;
+    type = protocol == REDP2P_TCP ? SOCK_STREAM : SOCK_DGRAM;
     fd = socket(AF_INET, type, 0);
     if (REDP2P_CLI_ISERR(fd)) return REDP2P_CLI_FD_INVALID;
     reuse = 1;
@@ -552,7 +552,7 @@ static redp2p_cli_fd_t redp2p_cli_bind_local(int protocol, uint16_t port)
     address.sin_port = htons(port);
     address.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(fd, (const struct sockaddr *)&address, sizeof(address)) != 0 ||
-        (protocol == KC_REDP2P_TCP && listen(fd, 64) != 0))
+        (protocol == REDP2P_TCP && listen(fd, 64) != 0))
     {
         REDP2P_CLI_FD_CLOSE(fd);
         return REDP2P_CLI_FD_INVALID;
@@ -573,7 +573,7 @@ static int redp2p_cli_socket_send(redp2p_cli_fd_t fd, int protocol,
 {
     const unsigned char *cursor = (const unsigned char *)data;
 
-    if (protocol == KC_REDP2P_UDP) {
+    if (protocol == REDP2P_UDP) {
         int sent;
         if (size > INT_MAX) return -1;
         sent = (int)send(fd, (const char *)data, (int)size, 0);
@@ -615,16 +615,16 @@ REDP2P_CLI_THREAD(redp2p_cli_pub_backend_worker)
             abort_stream = 1;
             break;
         }
-        if (n == 0 && state->owner->protocol == KC_REDP2P_TCP) {
+        if (n == 0 && state->owner->protocol == REDP2P_TCP) {
             atomic_store(&state->local_shutdown, 1);
-            if (kc_redp2p_client_shutdown(state->client) != KC_REDP2P_OK) {
+            if (redp2p_client_shutdown(state->client) != REDP2P_OK) {
                 abort_stream = 1;
                 break;
             }
             continue;
         }
-        if (kc_redp2p_client_respond(state->client, buffer, (size_t)n) !=
-            KC_REDP2P_OK)
+        if (redp2p_client_respond(state->client, buffer, (size_t)n) !=
+            REDP2P_OK)
         {
             abort_stream = 1;
             break;
@@ -639,7 +639,7 @@ REDP2P_CLI_THREAD(redp2p_cli_pub_backend_worker)
     if (abort_stream || atomic_load(&state->owner->stopping) ||
         (atomic_load(&state->local_shutdown) &&
         atomic_load(&state->peer_shutdown)))
-        kc_redp2p_client_close(state->client);
+        redp2p_client_close(state->client);
     REDP2P_CLI_THREAD_RETURN();
 }
 
@@ -649,25 +649,25 @@ REDP2P_CLI_THREAD(redp2p_cli_pub_backend_worker)
  * @param userdata Publisher CLI state.
  * @return None.
  */
-static void redp2p_cli_pub_connect(kc_redp2p_client_t *client, void *userdata)
+static void redp2p_cli_pub_connect(redp2p_client_t *client, void *userdata)
 {
     redp2p_cli_pub_state_t *owner = (redp2p_cli_pub_state_t *)userdata;
     redp2p_cli_pub_client_t *state;
     redp2p_cli_fd_t fd;
 
     if (!owner || !client || atomic_load(&owner->stopping)) {
-        kc_redp2p_client_close(client);
+        redp2p_client_close(client);
         return;
     }
     fd = redp2p_cli_connect_local(owner->protocol, owner->port);
     if (REDP2P_CLI_ISERR(fd)) {
-        kc_redp2p_client_close(client);
+        redp2p_client_close(client);
         return;
     }
     state = (redp2p_cli_pub_client_t *)calloc(1, sizeof(*state));
     if (!state) {
         REDP2P_CLI_FD_CLOSE(fd);
-        kc_redp2p_client_close(client);
+        redp2p_client_close(client);
         return;
     }
     state->owner = owner;
@@ -679,7 +679,7 @@ static void redp2p_cli_pub_connect(kc_redp2p_client_t *client, void *userdata)
         redp2p_cli_mutex_unlock(&owner->mutex);
         REDP2P_CLI_FD_CLOSE(fd);
         free(state);
-        kc_redp2p_client_close(client);
+        redp2p_client_close(client);
         return;
     }
     state->next = owner->clients;
@@ -695,7 +695,7 @@ static void redp2p_cli_pub_connect(kc_redp2p_client_t *client, void *userdata)
             state->fd = REDP2P_CLI_FD_INVALID;
         }
         redp2p_cli_mutex_unlock(&owner->mutex);
-        kc_redp2p_client_close(client);
+        redp2p_client_close(client);
         return;
     }
     state->thread_started = 1;
@@ -707,7 +707,7 @@ static void redp2p_cli_pub_connect(kc_redp2p_client_t *client, void *userdata)
  * @param userdata Publisher CLI state.
  * @return None.
  */
-static void redp2p_cli_pub_receive(const kc_redp2p_pub_input_t *input,
+static void redp2p_cli_pub_receive(const redp2p_pub_input_t *input,
     void *userdata)
 {
     redp2p_cli_pub_state_t *owner = (redp2p_cli_pub_state_t *)userdata;
@@ -727,7 +727,7 @@ static void redp2p_cli_pub_receive(const kc_redp2p_pub_input_t *input,
         break;
     }
     redp2p_cli_mutex_unlock(&owner->mutex);
-    if (failed) kc_redp2p_client_close(input->client);
+    if (failed) redp2p_client_close(input->client);
 }
 
 /**
@@ -736,7 +736,7 @@ static void redp2p_cli_pub_receive(const kc_redp2p_pub_input_t *input,
  * @param userdata Publisher CLI state.
  * @return None.
  */
-static void redp2p_cli_pub_peer_shutdown(kc_redp2p_client_t *client,
+static void redp2p_cli_pub_peer_shutdown(redp2p_client_t *client,
     void *userdata)
 {
     redp2p_cli_pub_state_t *owner = (redp2p_cli_pub_state_t *)userdata;
@@ -806,7 +806,7 @@ static void redp2p_cli_con_tcp_receive(const void *data, size_t size,
         (redp2p_cli_con_tcp_session_t *)userdata;
 
     if (!session || atomic_load(&session->owner->stopping)) return;
-    (void)redp2p_cli_socket_send(session->fd, KC_REDP2P_TCP, data, size);
+    (void)redp2p_cli_socket_send(session->fd, REDP2P_TCP, data, size);
 }
 
 /**
@@ -836,7 +836,7 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
 {
     redp2p_cli_con_tcp_session_t *session =
         (redp2p_cli_con_tcp_session_t *)arg;
-    kc_redp2p_con_options_t options;
+    redp2p_con_options_t options;
     unsigned char buffer[REDP2P_CLI_BUF];
     int status;
     int abort_stream = 0;
@@ -851,10 +851,10 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
     options.receive = redp2p_cli_con_tcp_receive;
     options.peer_shutdown = redp2p_cli_con_tcp_peer_shutdown;
     options.userdata = session;
-    status = kc_redp2p_con(&session->con, &options);
-    if (status != KC_REDP2P_OK) {
+    status = redp2p_con(&session->con, &options);
+    if (status != REDP2P_OK) {
         fprintf(stderr, "redp2p: consumer connection failed: %s\n",
-            kc_redp2p_strerror(status));
+            redp2p_strerror(status));
     } else {
         while (!atomic_load(&session->owner->stopping)) {
             int n;
@@ -872,21 +872,21 @@ REDP2P_CLI_THREAD(redp2p_cli_con_tcp_worker)
             }
             if (n == 0) {
                 atomic_store(&session->local_shutdown, 1);
-                if (kc_redp2p_con_shutdown(session->con) != KC_REDP2P_OK) {
+                if (redp2p_con_shutdown(session->con) != REDP2P_OK) {
                     abort_stream = 1;
                     break;
                 }
                 continue;
             }
-            if (kc_redp2p_con_send(session->con, buffer, (size_t)n) !=
-                KC_REDP2P_OK)
+            if (redp2p_con_send(session->con, buffer, (size_t)n) !=
+                REDP2P_OK)
             {
                 abort_stream = 1;
                 break;
             }
         }
         (void)abort_stream;
-        kc_redp2p_con_close(session->con);
+        redp2p_con_close(session->con);
         session->con = NULL;
     }
     redp2p_cli_mutex_lock(&session->owner->mutex);
@@ -925,7 +925,7 @@ static int redp2p_cli_con_tcp_run(const char *id, const char *index,
     state.turn_user = turn_user;
     state.turn_pass = turn_pass;
     if (redp2p_cli_mutex_init(&state.mutex) != 0) return 1;
-    listener = redp2p_cli_bind_local(KC_REDP2P_TCP, port);
+    listener = redp2p_cli_bind_local(REDP2P_TCP, port);
     if (REDP2P_CLI_ISERR(listener)) {
         redp2p_cli_mutex_destroy(&state.mutex);
         return 1;
@@ -1033,12 +1033,12 @@ static redp2p_cli_con_udp_session_t *redp2p_cli_con_udp_find(
  * Opens one REDP2P channel for a local UDP endpoint.
  * @param state UDP forwarding state.
  * @param session Session receiving the channel.
- * @return KC_REDP2P_OK on success or a public error code.
+ * @return REDP2P_OK on success or a public error code.
  */
 static int redp2p_cli_con_udp_open(redp2p_cli_con_udp_state_t *state,
     redp2p_cli_con_udp_session_t *session)
 {
-    kc_redp2p_con_options_t options;
+    redp2p_con_options_t options;
 
     memset(&options, 0, sizeof(options));
     options.id = state->id;
@@ -1049,7 +1049,7 @@ static int redp2p_cli_con_udp_open(redp2p_cli_con_udp_state_t *state,
     options.turn_pass = state->turn_pass;
     options.receive = redp2p_cli_con_udp_receive;
     options.userdata = session;
-    return kc_redp2p_con(&session->con, &options);
+    return redp2p_con(&session->con, &options);
 }
 
 /**
@@ -1077,7 +1077,7 @@ static int redp2p_cli_con_udp_run(const char *id, const char *index,
     state.turn = turn;
     state.turn_user = turn_user;
     state.turn_pass = turn_pass;
-    state.fd = redp2p_cli_bind_local(KC_REDP2P_UDP, port);
+    state.fd = redp2p_cli_bind_local(REDP2P_UDP, port);
     if (REDP2P_CLI_ISERR(state.fd)) return 1;
 
     while (!redp2p_cli_stop) {
@@ -1106,20 +1106,20 @@ static int redp2p_cli_con_udp_run(const char *id, const char *index,
                 session->owner = &state;
                 session->address = from;
                 session->address_len = from_len;
-                if (redp2p_cli_con_udp_open(&state, session) != KC_REDP2P_OK) {
+                if (redp2p_cli_con_udp_open(&state, session) != REDP2P_OK) {
                     free(session);
                     continue;
                 }
                 session->next = state.sessions;
                 state.sessions = session;
             } else if (!session->con) {
-                if (redp2p_cli_con_udp_open(&state, session) != KC_REDP2P_OK)
+                if (redp2p_cli_con_udp_open(&state, session) != REDP2P_OK)
                     continue;
             }
-            if (kc_redp2p_con_send(session->con, buffer, (size_t)n) !=
-                KC_REDP2P_OK)
+            if (redp2p_con_send(session->con, buffer, (size_t)n) !=
+                REDP2P_OK)
             {
-                kc_redp2p_con_close(session->con);
+                redp2p_con_close(session->con);
                 session->con = NULL;
             }
         }
@@ -1128,7 +1128,7 @@ static int redp2p_cli_con_udp_run(const char *id, const char *index,
     atomic_store(&state.stopping, 1);
     while (state.sessions) {
         redp2p_cli_con_udp_session_t *next = state.sessions->next;
-        kc_redp2p_con_close(state.sessions->con);
+        redp2p_con_close(state.sessions->con);
         free(state.sessions);
         state.sessions = next;
     }
@@ -1189,14 +1189,14 @@ static void redp2p_cli_usage(const char *name)
  * @param out_storage Destination mutable backing storage.
  * @return 1 on success, 0 on invalid input or allocation failure.
  */
-static int redp2p_cli_vips(const char *text, kc_redp2p_vip_t **out,
+static int redp2p_cli_vips(const char *text, redp2p_vip_t **out,
     size_t *out_count, char **out_storage)
 {
     char *copy;
     char *p;
     size_t tokens;
     size_t count;
-    kc_redp2p_vip_t *vips;
+    redp2p_vip_t *vips;
 
     *out = NULL;
     *out_count = 0;
@@ -1221,7 +1221,7 @@ static int redp2p_cli_vips(const char *text, kc_redp2p_vip_t **out,
         return 0;
     }
     count = tokens / 2;
-    vips = (kc_redp2p_vip_t *)calloc(count, sizeof(*vips));
+    vips = (redp2p_vip_t *)calloc(count, sizeof(*vips));
     if (!vips) {
         free(copy);
         return 0;
@@ -1254,9 +1254,9 @@ static int redp2p_cli_vips(const char *text, kc_redp2p_vip_t **out,
  */
 static int redp2p_cli_idx(int argc, char **argv)
 {
-    kc_redp2p_idx_options_t options;
-    kc_redp2p_idx_t *idx = NULL;
-    kc_redp2p_vip_t *vips = NULL;
+    redp2p_idx_options_t options;
+    redp2p_idx_t *idx = NULL;
+    redp2p_vip_t *vips = NULL;
     char *vip_storage = NULL;
     size_t vip_storage_len = 0;
     size_t vip_count = 0;
@@ -1321,14 +1321,14 @@ static int redp2p_cli_idx(int argc, char **argv)
             }
             pass = argv[i];
         } else if (strcmp(argv[i], "--vip") == 0) {
-            kc_redp2p_vip_t *next;
+            redp2p_vip_t *next;
 
             if (i + 2 >= argc || !argv[i + 1][0] || !argv[i + 2][0]) {
                 fprintf(stderr, "redp2p: --vip requires <id> <pass>\n");
                 free(vips);
                 return 1;
             }
-            next = (kc_redp2p_vip_t *)realloc(vips,
+            next = (redp2p_vip_t *)realloc(vips,
                 (vip_count + 1) * sizeof(*vips));
             if (!next) {
                 free(vips);
@@ -1367,15 +1367,15 @@ static int redp2p_cli_idx(int argc, char **argv)
         options.vips = vips;
     }
 
-    status = kc_redp2p_idx(&idx, &options);
+    status = redp2p_idx(&idx, &options);
     free(vips);
     if (vip_storage) {
         memset(vip_storage, 0, vip_storage_len);
         free(vip_storage);
     }
-    if (status != KC_REDP2P_OK) {
+    if (status != REDP2P_OK) {
         fprintf(stderr, "redp2p: idx failed: %s\n",
-            kc_redp2p_strerror(status));
+            redp2p_strerror(status));
         return 1;
     }
 
@@ -1384,7 +1384,7 @@ static int redp2p_cli_idx(int argc, char **argv)
     signal(SIGINT, redp2p_cli_signal);
     signal(SIGTERM, redp2p_cli_signal);
     while (!redp2p_cli_stop) redp2p_cli_sleep();
-    kc_redp2p_idx_close(idx);
+    redp2p_idx_close(idx);
     return 0;
 }
 
@@ -1396,13 +1396,13 @@ static int redp2p_cli_idx(int argc, char **argv)
  */
 static int redp2p_cli_pub(int argc, char **argv)
 {
-    kc_redp2p_pub_options_t options;
-    kc_redp2p_pub_t *pub = NULL;
+    redp2p_pub_options_t options;
+    redp2p_pub_t *pub = NULL;
     redp2p_cli_pub_state_t state;
-    char id[KC_REDP2P_ID_MAX + 1];
+    char id[REDP2P_ID_MAX + 1];
     char index[320];
     uint16_t port = 0;
-    int protocol = KC_REDP2P_TCP;
+    int protocol = REDP2P_TCP;
     int protocol_set = 0;
     const char *pass = getenv("REDP2P_PASS");
     const char *stun = getenv("REDP2P_STUN");
@@ -1433,9 +1433,9 @@ static int redp2p_cli_pub(int argc, char **argv)
                 return 1;
             }
             if (strcmp(argv[i], "tcp") == 0)
-                protocol = KC_REDP2P_TCP;
+                protocol = REDP2P_TCP;
             else if (strcmp(argv[i], "udp") == 0)
-                protocol = KC_REDP2P_UDP;
+                protocol = REDP2P_UDP;
             else {
                 fprintf(stderr, "redp2p: -t/--transport requires tcp or udp\n");
                 return 1;
@@ -1531,10 +1531,10 @@ static int redp2p_cli_pub(int argc, char **argv)
     options.peer_shutdown = redp2p_cli_pub_peer_shutdown;
     options.userdata = &state;
 
-    status = kc_redp2p_pub(&pub, &options);
-    if (status != KC_REDP2P_OK) {
+    status = redp2p_pub(&pub, &options);
+    if (status != REDP2P_OK) {
         fprintf(stderr, "redp2p: pub failed: %s\n",
-            kc_redp2p_strerror(status));
+            redp2p_strerror(status));
         redp2p_cli_pub_state_destroy(&state);
         redp2p_cli_platform_cleanup();
         return 1;
@@ -1548,7 +1548,7 @@ static int redp2p_cli_pub(int argc, char **argv)
     while (!redp2p_cli_stop) redp2p_cli_sleep();
 
     redp2p_cli_pub_state_stop(&state);
-    kc_redp2p_pub_close(pub);
+    redp2p_pub_close(pub);
     redp2p_cli_pub_state_destroy(&state);
     redp2p_cli_platform_cleanup();
     return 0;
@@ -1562,10 +1562,10 @@ static int redp2p_cli_pub(int argc, char **argv)
  */
 static int redp2p_cli_con(int argc, char **argv)
 {
-    char id[KC_REDP2P_ID_MAX + 1];
+    char id[REDP2P_ID_MAX + 1];
     char index[320];
     uint16_t port = 0;
-    int protocol = KC_REDP2P_TCP;
+    int protocol = REDP2P_TCP;
     int protocol_set = 0;
     const char *stun = getenv("REDP2P_STUN");
     const char *turn = getenv("REDP2P_TURN");
@@ -1595,9 +1595,9 @@ static int redp2p_cli_con(int argc, char **argv)
                 return 1;
             }
             if (strcmp(argv[i], "tcp") == 0)
-                protocol = KC_REDP2P_TCP;
+                protocol = REDP2P_TCP;
             else if (strcmp(argv[i], "udp") == 0)
-                protocol = KC_REDP2P_UDP;
+                protocol = REDP2P_UDP;
             else {
                 fprintf(stderr, "redp2p: -t/--transport requires tcp or udp\n");
                 return 1;
@@ -1671,7 +1671,7 @@ static int redp2p_cli_con(int argc, char **argv)
     signal(SIGTERM, redp2p_cli_signal);
     fprintf(stderr, "redp2p: tunnel to '%s' available on 0.0.0.0:%u\n",
         id, (unsigned)port);
-    result = protocol == KC_REDP2P_TCP ?
+    result = protocol == REDP2P_TCP ?
         redp2p_cli_con_tcp_run(id, index, port, stun, turn,
             turn_user, turn_pass) :
         redp2p_cli_con_udp_run(id, index, port, stun, turn,
@@ -1695,7 +1695,7 @@ int main(int argc, char **argv)
         return argc < 2 ? 1 : 0;
     }
     if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-        printf("%llu\n", (unsigned long long)kc_redp2p_version());
+        printf("%llu\n", (unsigned long long)redp2p_version());
         return 0;
     }
     if (strcmp(argv[1], "idx") == 0) return redp2p_cli_idx(argc, argv);
