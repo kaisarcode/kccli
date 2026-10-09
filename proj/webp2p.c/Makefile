@@ -87,10 +87,11 @@ $(NATIVE_TARGET): rtc
 	[ -n "$$juice" ] || { echo "webp2p: libjuice static archive not produced" >&2; exit 1; }; \
 	[ -n "$$usrsctp" ] || { echo "webp2p: libusrsctp.a not produced" >&2; exit 1; }; \
 	mkdir -p '$(OBJ_DIR)' '$(BIN_DIR)/$(NATIVE_TARGET)'; \
-	cflags="$$($(PKG_CONFIG) --cflags libcurl openssl) -I$$rtc_inc -Isrc -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -DWEBP2P_BUILD_VERSION=\\\"$(WEBP2P_BUILD_VERSION)\\\""; \
-	$(CC) $$cflags -c src/webp2p.c -o '$(OBJ_DIR)/webp2p.o'; \
-	$(CC) $$cflags -c src/protocol.c -o '$(OBJ_DIR)/protocol.o'; \
-	$(CC) $$cflags -c src/rtc.c -o '$(OBJ_DIR)/rtc.o'; \
+	cflags="$$($(PKG_CONFIG) --cflags libcurl openssl) -I$$rtc_inc -Isrc -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -fdata-sections"; \
+	version='-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"'; \
+	$(CC) $$cflags $$version -c src/webp2p.c -o '$(OBJ_DIR)/webp2p.o'; \
+	$(CC) $$cflags $$version -c src/protocol.c -o '$(OBJ_DIR)/protocol.o'; \
+	$(CC) $$cflags $$version -c src/rtc.c -o '$(OBJ_DIR)/rtc.o'; \
 	libs="$$($(PKG_CONFIG) --libs libcurl openssl) -lpthread -ldl -lm"; \
 	$(CXX) '$(OBJ_DIR)/webp2p.o' '$(OBJ_DIR)/protocol.o' '$(OBJ_DIR)/rtc.o' \
 		"$$datachannel" "$$juice" "$$usrsctp" $$libs \
