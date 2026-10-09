@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #ifndef SHUT_RDWR
 #define SHUT_RDWR SD_BOTH
