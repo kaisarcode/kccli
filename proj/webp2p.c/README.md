@@ -53,7 +53,7 @@ git submodule update --init --recursive
 Point `webp2p` at that source tree with `LIBDATACHANNEL_DIR`:
 
 ```sh
-export LIBDATACHANNEL_DIR="$HOME/work/vendor/libdatachannel"
+export LIBDATACHANNEL_DIR="/path/to/libdatachannel"
 ```
 
 The directory must contain libdatachannel's `CMakeLists.txt` and initialized
