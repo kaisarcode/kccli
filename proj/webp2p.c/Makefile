@@ -16,6 +16,10 @@ MACOSX_DEPLOYMENT_TARGET ?= 11.0
 DETECTED_MACOSX_SDK := $(shell ls -d "$(OSXCROSS_ROOT)"/SDK/MacOSX*.sdk 2>/dev/null | sort -V | tail -n 1)
 MACOSX_SDK ?= $(DETECTED_MACOSX_SDK)
 OSXCROSS_INSTALL_NAME_TOOL := $(shell find "$(OSXCROSS_ROOT)/bin" -maxdepth 1 \( -type f -o -type l \) -name '*-install_name_tool' 2>/dev/null | sort | tail -n 1)
+OSXCROSS_X86_64_AR := $(shell find "$(OSXCROSS_ROOT)/bin" -maxdepth 1 \( -type f -o -type l \) -name 'x86_64-apple-darwin*-ar' 2>/dev/null | sort | tail -n 1)
+OSXCROSS_X86_64_RANLIB := $(shell find "$(OSXCROSS_ROOT)/bin" -maxdepth 1 \( -type f -o -type l \) -name 'x86_64-apple-darwin*-ranlib' 2>/dev/null | sort | tail -n 1)
+OSXCROSS_AARCH64_AR := $(shell find "$(OSXCROSS_ROOT)/bin" -maxdepth 1 \( -type f -o -type l \) \( -name 'arm64-apple-darwin*-ar' -o -name 'aarch64-apple-darwin*-ar' \) 2>/dev/null | sort | tail -n 1)
+OSXCROSS_AARCH64_RANLIB := $(shell find "$(OSXCROSS_ROOT)/bin" -maxdepth 1 \( -type f -o -type l \) \( -name 'arm64-apple-darwin*-ranlib' -o -name 'aarch64-apple-darwin*-ranlib' \) 2>/dev/null | sort | tail -n 1)
 OSXCROSS_X86_64_CC := $(OSXCROSS_ROOT)/bin/o64-clang
 OSXCROSS_X86_64_CXX := $(OSXCROSS_ROOT)/bin/o64-clang++
 OSXCROSS_AARCH64_CC := $(OSXCROSS_ROOT)/bin/oa64-clang
@@ -130,6 +134,14 @@ define build_target
 		export PATH="$(OSXCROSS_ROOT)/bin:$$PATH"; \
 		export LD_LIBRARY_PATH="$(OSXCROSS_ROOT)/lib:$${LD_LIBRARY_PATH:-}"; \
 	fi; \
+	if [ -n '$(11)' ]; then \
+		[ -x '$(11)' ] || { echo "webp2p: missing OSXCross archiver: $(11)" >&2; exit 1; }; \
+		[ -x '$(12)' ] || { echo "webp2p: missing OSXCross ranlib: $(12)" >&2; exit 1; }; \
+		if [ -f "$$rtc_build/CMakeCache.txt" ]; then \
+			cached_ar=$$(sed -n 's/^CMAKE_AR:FILEPATH=//p' "$$rtc_build/CMakeCache.txt" | tail -n 1); \
+			if [ "$$cached_ar" != '$(11)' ]; then rm -rf "$$rtc_build"; fi; \
+		fi; \
+	fi; \
 	mkdir -p "$$rtc_build" "$$obj_dir" "$(BIN_DIR)/$(1)"; \
 	$(CMAKE) \
 		-S "$(LIBDATACHANNEL_DIR)" \
@@ -140,6 +152,7 @@ define build_target
 		-DCMAKE_C_COMPILER="$$cc" \
 		-DCMAKE_CXX_COMPILER="$$cxx" \
 		$(8) \
+		$(if $(11),-DCMAKE_AR="$(11)" -DCMAKE_RANLIB="$(12)") \
 		$$openssl_args \
 		-DBUILD_SHARED_LIBS=OFF \
 		-DBUILD_SHARED_DEPS_LIBS=OFF \
@@ -167,15 +180,19 @@ define build_target
 		pc_cflags=$$($(PKG_CONFIG) --cflags libcurl openssl); \
 		pc_libs=$$($(PKG_CONFIG) --libs libcurl openssl); \
 	fi; \
+	if [ "$$system" = "Darwin" ] && [ ! -d "$$deps/lib64" ]; then \
+		filtered_libs=''; \
+		for flag in $$pc_libs; do \
+			[ "$$flag" = "-L$$deps/lib64" ] && continue; \
+			filtered_libs="$$filtered_libs $$flag"; \
+		done; \
+		pc_libs="$$filtered_libs"; \
+	fi; \
 	cflags="$$pc_cflags -I$$rtc_inc -Isrc -DRTC_STATIC -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -fdata-sections $(9)"; \
 	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/webp2p.c -o "$$obj_dir/webp2p.o"; \
 	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/protocol.c -o "$$obj_dir/protocol.o"; \
 	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/rtc.c -o "$$obj_dir/rtc.o"; \
-	if [ "$$system" = "Darwin" ]; then \
-		rtc_libs="-Wl,-force_load,$$datachannel -Wl,-force_load,$$juice -Wl,-force_load,$$usrsctp"; \
-	else \
-		rtc_libs="$$datachannel $$juice $$usrsctp"; \
-	fi; \
+	rtc_libs="$$datachannel $$juice $$usrsctp"; \
 	"$$cxx" "$$obj_dir/webp2p.o" "$$obj_dir/protocol.o" "$$obj_dir/rtc.o" \
 		$$rtc_libs $$pc_libs $$platform_libs $(10) -o "$$out"; \
 	echo "OK $$target"
@@ -230,10 +247,10 @@ i686/windows:
 ## macOS
 
 x86_64/macos:
-	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET),-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -Wl$(comma)-dead_strip)
+	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET),-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -Wl$(comma)-dead_strip,$(OSXCROSS_X86_64_AR),$(OSXCROSS_X86_64_RANLIB))
 
 aarch64/macos:
-	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET),-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -Wl$(comma)-dead_strip)
+	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)" -DCMAKE_INSTALL_NAME_TOOL="$(OSXCROSS_INSTALL_NAME_TOOL)",-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET),-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -Wl$(comma)-dead_strip,$(OSXCROSS_AARCH64_AR),$(OSXCROSS_AARCH64_RANLIB))
 
 rtc:
 	@$(MAKE) --no-print-directory '$(NATIVE_TARGET)'
