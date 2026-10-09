@@ -30,6 +30,23 @@ static void webp2p_rtc_signal(webp2p_rtc_peer_t *peer)
     pthread_cond_broadcast(&peer->cond);
 }
 
+static uint64_t webp2p_rtc_now_ms(void)
+{
+    struct timespec now;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
+    return (uint64_t)now.tv_sec * 1000u + (uint64_t)now.tv_nsec / 1000000u;
+}
+
+static void webp2p_rtc_sleep(unsigned milliseconds)
+{
+    struct timespec delay;
+
+    delay.tv_sec = (time_t)(milliseconds / 1000u);
+    delay.tv_nsec = (long)(milliseconds % 1000u) * 1000000L;
+    (void)nanosleep(&delay, NULL);
+}
+
 static void webp2p_rtc_state(int pc, rtcState state, void *userdata)
 {
     webp2p_rtc_peer_t *peer = (webp2p_rtc_peer_t *)userdata;
@@ -327,6 +344,30 @@ int webp2p_rtc_send(webp2p_rtc_peer_t *peer, const void *data, size_t size)
     pthread_mutex_unlock(&peer->mutex);
     if (dc < 0) return -1;
     return rtcSendMessage(dc, (const char *)data, (int)size) < 0 ? -1 : 0;
+}
+
+int webp2p_rtc_drain(webp2p_rtc_peer_t *peer, int timeout_ms)
+{
+    uint64_t deadline;
+
+    if (!peer || timeout_ms < 0) return -1;
+    deadline = webp2p_rtc_now_ms() + (uint64_t)timeout_ms;
+    for (;;) {
+        int dc;
+        int failed;
+        int buffered;
+
+        pthread_mutex_lock(&peer->mutex);
+        dc = peer->dc;
+        failed = peer->failed || peer->closing;
+        pthread_mutex_unlock(&peer->mutex);
+        if (failed || dc < 0) return -1;
+        buffered = rtcGetBufferedAmount(dc);
+        if (buffered < 0) return -1;
+        if (buffered == 0) return 0;
+        if (webp2p_rtc_now_ms() >= deadline) return -1;
+        webp2p_rtc_sleep(10);
+    }
 }
 
 void webp2p_rtc_close(webp2p_rtc_peer_t *peer)
