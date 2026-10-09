@@ -6,6 +6,7 @@
 ## License: GNU GPL v3
 
 SHELL := /bin/sh
+comma := ,
 
 LIBDATACHANNEL_DIR ?=
 XDG_DATA_HOME ?= $(HOME)/.local/share
@@ -177,56 +178,56 @@ endef
 ## Linux
 
 x86_64/linux:
-	$(call build_target,x86_64/linux,Linux,x86_64,gcc,g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,x86_64/linux,Linux,x86_64,gcc,g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 i686/linux:
-	$(call build_target,i686/linux,Linux,i686,i686-linux-gnu-gcc,i686-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,i686/linux,Linux,i686,i686-linux-gnu-gcc,i686-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 aarch64/linux:
-	$(call build_target,aarch64/linux,Linux,aarch64,aarch64-linux-gnu-gcc,aarch64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,aarch64/linux,Linux,aarch64,aarch64-linux-gnu-gcc,aarch64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 armv7/linux:
-	$(call build_target,armv7/linux,Linux,armv7,arm-linux-gnueabi-gcc,arm-linux-gnueabi-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,armv7/linux,Linux,armv7,arm-linux-gnueabi-gcc,arm-linux-gnueabi-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 armv7hf/linux:
-	$(call build_target,armv7hf/linux,Linux,armv7,arm-linux-gnueabihf-gcc,arm-linux-gnueabihf-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,armv7hf/linux,Linux,armv7,arm-linux-gnueabihf-gcc,arm-linux-gnueabihf-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 riscv64/linux:
-	$(call build_target,riscv64/linux,Linux,riscv64,riscv64-linux-gnu-gcc,riscv64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,riscv64/linux,Linux,riscv64,riscv64-linux-gnu-gcc,riscv64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 powerpc64le/linux:
-	$(call build_target,powerpc64le/linux,Linux,ppc64le,powerpc64le-linux-gnu-gcc,powerpc64le-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,powerpc64le/linux,Linux,ppc64le,powerpc64le-linux-gnu-gcc,powerpc64le-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 mips/linux:
-	$(call build_target,mips/linux,Linux,mips,mips-linux-gnu-gcc,mips-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,mips/linux,Linux,mips,mips-linux-gnu-gcc,mips-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 mipsel/linux:
-	$(call build_target,mipsel/linux,Linux,mipsel,mipsel-linux-gnu-gcc,mipsel-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,mipsel/linux,Linux,mipsel,mipsel-linux-gnu-gcc,mipsel-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 mips64el/linux:
-	$(call build_target,mips64el/linux,Linux,mips64el,mips64el-linux-gnuabi64-gcc,mips64el-linux-gnuabi64-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,mips64el/linux,Linux,mips64el,mips64el-linux-gnuabi64-gcc,mips64el-linux-gnuabi64-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 s390x/linux:
-	$(call build_target,s390x/linux,Linux,s390x,s390x-linux-gnu-gcc,s390x-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,s390x/linux,Linux,s390x,s390x-linux-gnu-gcc,s390x-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 loongarch64/linux:
-	$(call build_target,loongarch64/linux,Linux,loongarch64,loongarch64-linux-gnu-gcc,loongarch64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl,--gc-sections)
+	$(call build_target,loongarch64/linux,Linux,loongarch64,loongarch64-linux-gnu-gcc,loongarch64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 ## Windows
 
 x86_64/windows:
-	$(call build_target,x86_64/windows,Windows,x86_64,x86_64-w64-mingw32-gcc,x86_64-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,,-D_WIN32_WINNT=0x0601,-Wl,--gc-sections)
+	$(call build_target,x86_64/windows,Windows,x86_64,x86_64-w64-mingw32-gcc,x86_64-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,,-D_WIN32_WINNT=0x0601,-Wl$(comma)--gc-sections)
 
 i686/windows:
-	$(call build_target,i686/windows,Windows,i686,i686-w64-mingw32-gcc,i686-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,,-D_WIN32_WINNT=0x0601,-Wl,--gc-sections)
+	$(call build_target,i686/windows,Windows,i686,i686-w64-mingw32-gcc,i686-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,,-D_WIN32_WINNT=0x0601,-Wl$(comma)--gc-sections)
 
 ## macOS
 
 x86_64/macos:
-	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)",,-Wl,-dead_strip)
+	$(call build_target,x86_64/macos,Darwin,x86_64,$(OSXCROSS_X86_64_CC),$(OSXCROSS_X86_64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)",,-Wl$(comma)-dead_strip)
 
 aarch64/macos:
-	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)",,-Wl,-dead_strip)
+	$(call build_target,aarch64/macos,Darwin,arm64,$(OSXCROSS_AARCH64_CC),$(OSXCROSS_AARCH64_CXX),,-pthread -lm,-DCMAKE_OSX_SYSROOT="$(MACOSX_SDK)" -DCMAKE_OSX_DEPLOYMENT_TARGET="$(MACOSX_DEPLOYMENT_TARGET)",,-Wl$(comma)-dead_strip)
 
 rtc:
 	@$(MAKE) --no-print-directory '$(NATIVE_TARGET)'
