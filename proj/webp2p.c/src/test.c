@@ -43,7 +43,7 @@ static int run_cli(const char *args)
 
 int main(void)
 {
-    test_total = 11;
+    test_total = 12;
     result("help", "prints command help", run_cli("--help") == 0);
     result("version", "prints build version", run_cli("--version") == 0);
     result("command", "rejects unknown command", run_cli("unknown") != 0);
@@ -61,6 +61,8 @@ int main(void)
         run_cli("pub demo@https://example.invalid/ -p 8080 --turn turn:x --turn-user u") != 0);
     result("turn URL", "requires TURN URL for credentials",
         run_cli("pub demo@https://example.invalid/ -p 8080 --turn-user u --turn-pass p") != 0);
+    result("force turn", "requires TURN URL when relay is forced",
+        run_cli("pub demo@https://example.invalid/ -p 8080 --force-turn 1") != 0);
     result("positional", "rejects extra positional arguments",
         run_cli("pub demo@https://example.invalid/ extra -p 8080") != 0);
 
