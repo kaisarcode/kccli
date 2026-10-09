@@ -11,8 +11,6 @@
 #include "protocol.h"
 #include "rtc.h"
 
-#include <rtc/rtc.h>
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -23,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
@@ -49,6 +48,8 @@ typedef struct {
     const char *turn_user;
     const char *turn_pass;
     uint16_t port;
+    int force_turn;
+    int ordered;
 } webp2p_options_t;
 
 struct webp2p_session {
@@ -253,8 +254,9 @@ static int webp2p_publisher_accept(webp2p_publisher_t *publisher,
         goto fail;
     }
     session->peer = webp2p_rtc_create(0, options->stun, options->turn,
-        options->turn_user, options->turn_pass, webp2p_session_receive,
-        webp2p_session_closed, session);
+        options->turn_user, options->turn_pass, options->force_turn,
+        options->ordered, webp2p_session_receive, webp2p_session_closed,
+        session);
     if (!session->peer ||
         webp2p_rtc_set_remote(session->peer, &pending->offer) != 0 ||
         webp2p_rtc_make_local(session->peer, "answer", &answer,
@@ -349,8 +351,9 @@ static void *webp2p_consumer_session(void *userdata)
     memset(&offer, 0, sizeof(offer));
     memset(&answer, 0, sizeof(answer));
     session->peer = webp2p_rtc_create(1, options->stun, options->turn,
-        options->turn_user, options->turn_pass, webp2p_session_receive,
-        webp2p_session_closed, session);
+        options->turn_user, options->turn_pass, options->force_turn,
+        options->ordered, webp2p_session_receive, webp2p_session_closed,
+        session);
     if (!session->peer || webp2p_rtc_make_local(session->peer, "offer",
         &offer, WEBP2P_ICE_TIMEOUT_MS) != 0 ||
         webp2p_con_connect(options->index, options->id, &offer,
@@ -407,7 +410,6 @@ static int webp2p_consumer_run(const webp2p_options_t *options)
 {
     webp2p_session_t *sessions = NULL;
     int listener;
-    int result = 0;
 
     listener = webp2p_listen(options->port);
     if (listener < 0) {
@@ -416,22 +418,16 @@ static int webp2p_consumer_run(const webp2p_options_t *options)
         return 1;
     }
     while (!webp2p_stop) {
-        struct timespec timeout;
         fd_set reads;
+        struct timeval timeout;
         int selected;
 
         webp2p_sessions_reap(&sessions);
         FD_ZERO(&reads);
         FD_SET(listener, &reads);
         timeout.tv_sec = 0;
-        timeout.tv_nsec = 250000000L;
-        {
-            struct timeval tv;
-            tv.tv_sec = 0;
-            tv.tv_usec = 250000;
-            selected = select(listener + 1, &reads, NULL, NULL, &tv);
-        }
-        (void)timeout;
+        timeout.tv_usec = 250000;
+        selected = select(listener + 1, &reads, NULL, NULL, &timeout);
         if (selected < 0 && errno == EINTR) continue;
         if (selected <= 0 || !FD_ISSET(listener, &reads)) continue;
         {
@@ -459,7 +455,7 @@ static int webp2p_consumer_run(const webp2p_options_t *options)
     }
     close(listener);
     webp2p_sessions_stop(&sessions);
-    return result;
+    return 0;
 }
 
 static int webp2p_parse_port(const char *text, uint16_t *port)
@@ -473,6 +469,20 @@ static int webp2p_parse_port(const char *text, uint16_t *port)
     if (errno || *end || value == 0 || value > 65535) return 0;
     *port = (uint16_t)value;
     return 1;
+}
+
+static int webp2p_parse_bool(const char *text, int *value)
+{
+    if (!text || !value) return 0;
+    if (strcmp(text, "0") == 0) {
+        *value = 0;
+        return 1;
+    }
+    if (strcmp(text, "1") == 0) {
+        *value = 1;
+        return 1;
+    }
+    return 0;
 }
 
 static int webp2p_parse_spec(const char *text, char id[64],
@@ -511,14 +521,16 @@ static void webp2p_usage(const char *name)
     printf("  --stun <url>           Optional STUN URL\n");
     printf("  --turn <url>           Optional TURN URL\n");
     printf("  --turn-user <user>     Optional TURN username\n");
-    printf("  --turn-pass <pass>     Optional TURN password\n\n");
+    printf("  --turn-pass <pass>     Optional TURN password\n");
+    printf("  --force-turn <0|1>     Disable or require TURN relay\n\n");
     printf("Consumer options:\n");
     printf("  -p, --port <port>      Local exposed port\n");
     printf("  -t, --transport tcp    Local transport (currently tcp)\n");
     printf("  --stun <url>           Optional STUN URL\n");
     printf("  --turn <url>           Optional TURN URL\n");
     printf("  --turn-user <user>     Optional TURN username\n");
-    printf("  --turn-pass <pass>     Optional TURN password\n\n");
+    printf("  --turn-pass <pass>     Optional TURN password\n");
+    printf("  --force-turn <0|1>     Disable or require TURN relay\n\n");
     printf("Common options:\n");
     printf("  -h, --help             Show this help\n");
     printf("  -v, --version          Show version\n");
@@ -530,6 +542,7 @@ int main(int argc, char **argv)
     const char *command;
     const char *spec = NULL;
     const char *transport = "tcp";
+    const char *force_turn_env;
     char id[64];
     char index[1024];
     int is_publisher;
@@ -564,6 +577,14 @@ int main(int argc, char **argv)
     options.turn = getenv("REDP2P_TURN");
     options.turn_user = getenv("REDP2P_TURN_USER");
     options.turn_pass = getenv("REDP2P_TURN_PASS");
+    options.ordered = 1;
+    force_turn_env = getenv("REDP2P_FORCE_TURN");
+    if (force_turn_env && !webp2p_parse_bool(force_turn_env,
+        &options.force_turn))
+    {
+        fprintf(stderr, "webp2p: REDP2P_FORCE_TURN requires 0 or 1\n");
+        return 2;
+    }
 
     for (i = 2; i < argc; i++) {
         const char *arg = argv[i];
@@ -605,6 +626,13 @@ int main(int argc, char **argv)
         } else if (strcmp(arg, "--turn-pass") == 0) {
             if (++i >= argc) return 2;
             options.turn_pass = argv[i];
+        } else if (strcmp(arg, "--force-turn") == 0) {
+            if (++i >= argc || !webp2p_parse_bool(argv[i],
+                &options.force_turn))
+            {
+                fprintf(stderr, "webp2p: --force-turn requires 0 or 1\n");
+                return 2;
+            }
         } else if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
             webp2p_usage(argv[0]);
             return 0;
@@ -626,9 +654,10 @@ int main(int argc, char **argv)
     }
     if ((options.turn_user && !options.turn_pass) ||
         (!options.turn_user && options.turn_pass) ||
-        ((options.turn_user || options.turn_pass) && !options.turn))
+        ((options.turn_user || options.turn_pass) && !options.turn) ||
+        (options.force_turn && !options.turn))
     {
-        fprintf(stderr, "webp2p: TURN credentials require --turn and both credentials\n");
+        fprintf(stderr, "webp2p: TURN options require a TURN URL and paired credentials\n");
         return 2;
     }
     options.id = id;
@@ -639,11 +668,14 @@ int main(int argc, char **argv)
         fprintf(stderr, "webp2p: HTTP initialization failed\n");
         return 1;
     }
-    rtcInitLogger(RTC_LOG_WARNING, NULL);
-    rtcPreload();
+    if (webp2p_rtc_init() != 0) {
+        fprintf(stderr, "webp2p: RTC initialization failed\n");
+        webp2p_protocol_cleanup();
+        return 1;
+    }
     result = is_publisher ? webp2p_publisher_run(&options) :
         webp2p_consumer_run(&options);
-    rtcCleanup();
+    webp2p_rtc_cleanup();
     webp2p_protocol_cleanup();
     return result;
 }
