@@ -162,7 +162,7 @@ define build_target
 				stale=1; \
 			fi; \
 		fi; \
-		if [ "$$stale" -eq 0 ]; then echo "OK $$target (cached)"; exit 0; fi; \
+		if [ "$$stale" -eq 0 ]; then echo "OK $$target"; exit 0; fi; \
 	fi; \
 	$(CMAKE) \
 		-S "$(LIBDATACHANNEL_DIR)" \
