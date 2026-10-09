@@ -228,7 +228,7 @@ mipsel/linux:
 	$(call build_target,mipsel/linux,Linux,mipsel,mipsel-linux-gnu-gcc,mipsel-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 mips64el/linux:
-	$(call build_target,mips64el/linux,Linux,mips64el,mips64el-linux-gnuabi64-gcc,mips64el-linux-gnuabi64-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
+	$(call build_target,mips64el/linux,Linux,mips64el,mips64el-linux-gnuabi64-gcc,mips64el-linux-gnuabi64-g++,,-pthread -ldl -lm,-DZLIB_LIBRARY="$(KC_CROSS_DEPS_DIR)/mips64el/linux/lib64/libz.a" -DZLIB_INCLUDE_DIR="$(KC_CROSS_DEPS_DIR)/mips64el/linux/include",-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 s390x/linux:
 	$(call build_target,s390x/linux,Linux,s390x,s390x-linux-gnu-gcc,s390x-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
