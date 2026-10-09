@@ -117,6 +117,7 @@ define build_target
 	deps=''; \
 	pc_libdir=''; \
 	openssl_args=''; \
+	zlib_args=''; \
 	if [ "$$target" = "$(NATIVE_TARGET)" ]; then \
 		$(PKG_CONFIG) --exists libcurl openssl || { echo "webp2p: native libcurl/OpenSSL development packages are required" >&2; exit 1; }; \
 	else \
@@ -126,6 +127,11 @@ define build_target
 		pc_libdir="$$deps/lib/pkgconfig:$$deps/lib64/pkgconfig"; \
 		PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR="$$pc_libdir" $(PKG_CONFIG) --exists libcurl openssl || { echo "webp2p: invalid cross pkg-config metadata for $$target" >&2; exit 1; }; \
 		openssl_args="-DOPENSSL_ROOT_DIR=$$deps -DOPENSSL_USE_STATIC_LIBS=TRUE -DCMAKE_PREFIX_PATH=$$deps"; \
+		if [ -f "$$deps/lib/libz.a" ]; then \
+			zlib_args="-DZLIB_LIBRARY=$$deps/lib/libz.a -DZLIB_INCLUDE_DIR=$$deps/include"; \
+		elif [ -f "$$deps/lib64/libz.a" ]; then \
+			zlib_args="-DZLIB_LIBRARY=$$deps/lib64/libz.a -DZLIB_INCLUDE_DIR=$$deps/include"; \
+		fi; \
 	fi; \
 	if [ "$$system" = "Darwin" ]; then \
 		[ -d "$(MACOSX_SDK)" ] || { echo "webp2p: missing macOS SDK: $(MACOSX_SDK)" >&2; exit 1; }; \
@@ -144,7 +150,7 @@ define build_target
 	fi; \
 	mkdir -p "$$rtc_build" "$$obj_dir" "$(BIN_DIR)/$(1)"; \
 	config_stamp="$$rtc_build/.webp2p-config"; \
-	config="$$system|$$processor|$$cc|$$cxx|$$exe|$$platform_libs|$(8)|$(9)|$(10)|$(11)|$(12)|$(WEBP2P_BUILD_VERSION)|$(KC_CROSS_DEPS_DIR)|$(MACOSX_SDK)|$(MACOSX_DEPLOYMENT_TARGET)"; \
+	config="$$system|$$processor|$$cc|$$cxx|$$exe|$$platform_libs|$(8)|$(9)|$(10)|$(11)|$(12)|$(WEBP2P_BUILD_VERSION)|$(KC_CROSS_DEPS_DIR)|$(MACOSX_SDK)|$(MACOSX_DEPLOYMENT_TARGET)|$$zlib_args"; \
 	if [ -f "$$out" ]; then \
 		stale=0; \
 		[ -n "$$(find src -type f \( -name '*.c' -o -name '*.h' \) -newer "$$out" -print -quit)" ] && stale=1; \
@@ -170,6 +176,7 @@ define build_target
 		$(8) \
 		$(if $(11),-DCMAKE_AR="$(11)" -DCMAKE_RANLIB="$(12)") \
 		$$openssl_args \
+		$$zlib_args \
 		-DBUILD_SHARED_LIBS=OFF \
 		-DBUILD_SHARED_DEPS_LIBS=OFF \
 		-DNO_MEDIA=ON \
@@ -245,7 +252,7 @@ mipsel/linux:
 	$(call build_target,mipsel/linux,Linux,mipsel,mipsel-linux-gnu-gcc,mipsel-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 mips64el/linux:
-	$(call build_target,mips64el/linux,Linux,mips64el,mips64el-linux-gnuabi64-gcc,mips64el-linux-gnuabi64-g++,,-pthread -ldl -lm,-DZLIB_LIBRARY="$(KC_CROSS_DEPS_DIR)/mips64el/linux/lib64/libz.a" -DZLIB_INCLUDE_DIR="$(KC_CROSS_DEPS_DIR)/mips64el/linux/include",-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
+	$(call build_target,mips64el/linux,Linux,mips64el,mips64el-linux-gnuabi64-gcc,mips64el-linux-gnuabi64-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 s390x/linux:
 	$(call build_target,s390x/linux,Linux,s390x,s390x-linux-gnu-gcc,s390x-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
