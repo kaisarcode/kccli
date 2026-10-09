@@ -127,10 +127,9 @@ define build_target
 		pc_libdir="$$deps/lib/pkgconfig:$$deps/lib64/pkgconfig"; \
 		PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR="$$pc_libdir" $(PKG_CONFIG) --exists libcurl openssl || { echo "webp2p: invalid cross pkg-config metadata for $$target" >&2; exit 1; }; \
 		openssl_args="-DOPENSSL_ROOT_DIR=$$deps -DOPENSSL_USE_STATIC_LIBS=TRUE -DCMAKE_PREFIX_PATH=$$deps"; \
-		if [ -f "$$deps/lib/libz.a" ]; then \
-			zlib_args="-DZLIB_LIBRARY=$$deps/lib/libz.a -DZLIB_INCLUDE_DIR=$$deps/include"; \
-		elif [ -f "$$deps/lib64/libz.a" ]; then \
-			zlib_args="-DZLIB_LIBRARY=$$deps/lib64/libz.a -DZLIB_INCLUDE_DIR=$$deps/include"; \
+		zlib_archive=$$(find "$$deps" -type f -name 'libz.a' -print -quit); \
+		if [ -n "$$zlib_archive" ]; then \
+			zlib_args="-DZLIB_LIBRARY=$$zlib_archive -DZLIB_INCLUDE_DIR=$$deps/include"; \
 		fi; \
 	fi; \
 	if [ "$$system" = "Darwin" ]; then \
