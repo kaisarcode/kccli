@@ -29,8 +29,16 @@ OpenSSL development files, and libcurl development files.
 
 ## Build
 
+Build the native target:
+
 ```sh
 make
+```
+
+Build all currently configured targets:
+
+```sh
+make all
 ```
 
 The native binary is written to:
@@ -113,12 +121,23 @@ LIBDATACHANNEL_DIR
 
 ## Tests
 
+Run the native CLI contract tests:
+
 ```sh
 make test
 ```
 
 The ordinary tests exercise the CLI contract and do not require a public index.
 The build itself requires the external libdatachannel checkout.
+
+The standard kccli compatibility target is also accepted:
+
+```sh
+make test wine
+```
+
+There is no Windows `webp2p` target yet, so the Wine form currently reports a
+skip instead of building a Windows binary.
 
 ## Scope
 
