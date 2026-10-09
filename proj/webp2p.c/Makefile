@@ -165,10 +165,9 @@ define build_target
 		pc_libs=$$($(PKG_CONFIG) --static --libs libcurl openssl); \
 	fi; \
 	cflags="$$pc_cflags -I$$rtc_inc -Isrc -DRTC_STATIC -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -fdata-sections $(9)"; \
-	version='-DWEBP2P_BUILD_VERSION=\"$(WEBP2P_BUILD_VERSION)\"'; \
-	"$$cc" $$cflags $$version -c src/webp2p.c -o "$$obj_dir/webp2p.o"; \
-	"$$cc" $$cflags $$version -c src/protocol.c -o "$$obj_dir/protocol.o"; \
-	"$$cc" $$cflags $$version -c src/rtc.c -o "$$obj_dir/rtc.o"; \
+	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/webp2p.c -o "$$obj_dir/webp2p.o"; \
+	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/protocol.c -o "$$obj_dir/protocol.o"; \
+	"$$cc" $$cflags '-DWEBP2P_BUILD_VERSION="$(WEBP2P_BUILD_VERSION)"' -c src/rtc.c -o "$$obj_dir/rtc.o"; \
 	"$$cxx" "$$obj_dir/webp2p.o" "$$obj_dir/protocol.o" "$$obj_dir/rtc.o" \
 		"$$datachannel" "$$juice" "$$usrsctp" $$pc_libs $$platform_libs \
 		$(10) -o "$$out"; \
