@@ -25,7 +25,6 @@
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
-typedef SSIZE_T ssize_t;
 static inline int webp2p_socket_close(int fd)
 {
     return closesocket((SOCKET)fd);
