@@ -11,6 +11,8 @@
 
 #include <rtc/rtc.h>
 
+#define WEBP2P_RTC_CLOSE_DRAIN_MS 2000
+
 struct webp2p_rtc_peer {
     int pc;
     int dc;
@@ -376,6 +378,7 @@ void webp2p_rtc_close(webp2p_rtc_peer_t *peer)
     int pc;
 
     if (!peer) return;
+    (void)webp2p_rtc_drain(peer, WEBP2P_RTC_CLOSE_DRAIN_MS);
     pthread_mutex_lock(&peer->mutex);
     peer->closing = 1;
     peer->receive = NULL;
