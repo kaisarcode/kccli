@@ -38,9 +38,7 @@ static void webp2p_rtc_state(int pc, rtcState state, void *userdata)
 
     (void)pc;
     pthread_mutex_lock(&peer->mutex);
-    if (state == RTC_FAILED || state == RTC_CLOSED ||
-        state == RTC_DISCONNECTED)
-    {
+    if (state == RTC_FAILED || state == RTC_CLOSED) {
         if (!peer->failed) {
             peer->failed = 1;
             if (!peer->closing) {
@@ -128,15 +126,17 @@ static void webp2p_rtc_setup_channel(webp2p_rtc_peer_t *peer, int dc)
 static void webp2p_rtc_data_channel(int pc, int dc, void *userdata)
 {
     webp2p_rtc_peer_t *peer = (webp2p_rtc_peer_t *)userdata;
+    int reject = 0;
 
     (void)pc;
     pthread_mutex_lock(&peer->mutex);
     if (peer->dc < 0 && !peer->closing)
         webp2p_rtc_setup_channel(peer, dc);
     else
-        rtcDeleteDataChannel(dc);
+        reject = 1;
     webp2p_rtc_signal(peer);
     pthread_mutex_unlock(&peer->mutex);
+    if (reject) rtcDeleteDataChannel(dc);
 }
 
 static int webp2p_rtc_wait(webp2p_rtc_peer_t *peer, int *flag,
@@ -185,8 +185,7 @@ static char *webp2p_rtc_turn_uri(const char *turn, const char *user,
 int webp2p_rtc_init(void)
 {
     rtcInitLogger(RTC_LOG_WARNING, NULL);
-    rtcPreload();
-    return 0;
+    return rtcPreload() ? 0 : -1;
 }
 
 void webp2p_rtc_cleanup(void)
@@ -217,9 +216,13 @@ webp2p_rtc_peer_t *webp2p_rtc_create(int initiator, const char *stun,
     peer->receive = receive;
     peer->closed = closed;
     peer->userdata = userdata;
-    if (pthread_mutex_init(&peer->mutex, NULL) != 0 ||
-        pthread_cond_init(&peer->cond, NULL) != 0)
-    {
+    if (pthread_mutex_init(&peer->mutex, NULL) != 0) {
+        free(turn_uri);
+        free(peer);
+        return NULL;
+    }
+    if (pthread_cond_init(&peer->cond, NULL) != 0) {
+        pthread_mutex_destroy(&peer->mutex);
         free(turn_uri);
         free(peer);
         return NULL;
