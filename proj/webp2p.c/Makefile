@@ -16,7 +16,6 @@ MACOSX_DEPLOYMENT_TARGET ?= 11.0
 DETECTED_MACOSX_SDK := $(shell ls -d "$(OSXCROSS_ROOT)"/SDK/MacOSX*.sdk 2>/dev/null | sort -V | tail -n 1)
 MACOSX_SDK ?= $(DETECTED_MACOSX_SDK)
 OSXCROSS_INSTALL_NAME_TOOL := $(shell find "$(OSXCROSS_ROOT)/bin" -maxdepth 1 \( -type f -o -type l \) -name '*-install_name_tool' 2>/dev/null | sort | tail -n 1)
-OSXCROSS_INCLUDE_FILTER := $(CURDIR)/scripts/osxcross-filter-includes.sh
 OSXCROSS_X86_64_CC := $(OSXCROSS_ROOT)/bin/o64-clang
 OSXCROSS_X86_64_CXX := $(OSXCROSS_ROOT)/bin/o64-clang++
 OSXCROSS_AARCH64_CC := $(OSXCROSS_ROOT)/bin/oa64-clang
@@ -114,7 +113,6 @@ define build_target
 	deps=''; \
 	pc_libdir=''; \
 	openssl_args=''; \
-	launcher_args=''; \
 	if [ "$$target" = "$(NATIVE_TARGET)" ]; then \
 		$(PKG_CONFIG) --exists libcurl openssl || { echo "webp2p: native libcurl/OpenSSL development packages are required" >&2; exit 1; }; \
 	else \
@@ -128,9 +126,7 @@ define build_target
 	if [ "$$system" = "Darwin" ]; then \
 		[ -d "$(MACOSX_SDK)" ] || { echo "webp2p: missing macOS SDK: $(MACOSX_SDK)" >&2; exit 1; }; \
 		[ -x "$(OSXCROSS_INSTALL_NAME_TOOL)" ] || { echo "webp2p: missing OSXCross install_name_tool" >&2; exit 1; }; \
-		[ -f "$(OSXCROSS_INCLUDE_FILTER)" ] || { echo "webp2p: missing OSXCross include filter" >&2; exit 1; }; \
-		chmod +x "$(OSXCROSS_INCLUDE_FILTER)"; \
-		launcher_args='-DCMAKE_C_COMPILER_LAUNCHER=$(OSXCROSS_INCLUDE_FILTER) -DCMAKE_CXX_COMPILER_LAUNCHER=$(OSXCROSS_INCLUDE_FILTER)'; \
+		export OSXCROSS_NO_INCLUDE_PATH_WARNINGS=1; \
 		export PATH="$(OSXCROSS_ROOT)/bin:$$PATH"; \
 		export LD_LIBRARY_PATH="$(OSXCROSS_ROOT)/lib:$${LD_LIBRARY_PATH:-}"; \
 	fi; \
@@ -144,7 +140,6 @@ define build_target
 		-DCMAKE_C_COMPILER="$$cc" \
 		-DCMAKE_CXX_COMPILER="$$cxx" \
 		$(8) \
-		$$launcher_args \
 		$$openssl_args \
 		-DBUILD_SHARED_LIBS=OFF \
 		-DBUILD_SHARED_DEPS_LIBS=OFF \
