@@ -11,9 +11,59 @@
 #include "protocol.h"
 #include "rtc.h"
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <limits.h>
+#include <unistd.h>
+#ifndef SHUT_RDWR
+#define SHUT_RDWR SD_BOTH
+#endif
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+typedef SSIZE_T ssize_t;
+static inline int webp2p_socket_close(int fd)
+{
+    return closesocket((SOCKET)fd);
+}
+static inline int webp2p_socket_send(int fd, const void *data, size_t size,
+    int flags)
+{
+    int count = size > INT_MAX ? INT_MAX : (int)size;
+    return send((SOCKET)fd, (const char *)data, count, flags);
+}
+static inline int webp2p_socket_recv(int fd, void *data, size_t size,
+    int flags)
+{
+    int count = size > INT_MAX ? INT_MAX : (int)size;
+    return recv((SOCKET)fd, (char *)data, count, flags);
+}
+static inline int webp2p_socket_setsockopt(int fd, int level, int option,
+    const void *value, size_t size)
+{
+    return setsockopt((SOCKET)fd, level, option, (const char *)value,
+        (int)size);
+}
+#define close(fd) webp2p_socket_close(fd)
+#define send(fd, data, size, flags) \
+    webp2p_socket_send((fd), (data), (size), (flags))
+#define recv(fd, data, size, flags) \
+    webp2p_socket_recv((fd), (data), (size), (flags))
+#define setsockopt(fd, level, option, value, size) \
+    webp2p_socket_setsockopt((fd), (level), (option), (value), (size))
+#else
 #include <arpa/inet.h>
-#include <errno.h>
 #include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
+
+#include <errno.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdatomic.h>
@@ -21,10 +71,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
-#include <sys/socket.h>
 #include <time.h>
-#include <unistd.h>
 
 #ifndef WEBP2P_BUILD_VERSION
 #define WEBP2P_BUILD_VERSION "0"
