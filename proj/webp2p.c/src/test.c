@@ -22,6 +22,10 @@ static int test_total;
 static int test_current;
 static int test_failures;
 
+/**
+ * Reports one test result.
+ * @return None.
+ */
 static void result(const char *name, const char *detail, int ok)
 {
     test_current++;
@@ -30,6 +34,10 @@ static void result(const char *name, const char *detail, int ok)
         ok ? "PASS" : "FAIL", name, detail);
 }
 
+/**
+ * Runs the command-line program.
+ * @return Program exit status, or -1 on failure.
+ */
 static int run_cli(const char *args)
 {
     char command[8192];
@@ -53,6 +61,10 @@ static int run_cli(const char *args)
 #endif
 }
 
+/**
+ * Runs WebP2P command-line contract tests.
+ * @return 0 when all tests pass, otherwise 1.
+ */
 int main(void)
 {
     test_total = 12;

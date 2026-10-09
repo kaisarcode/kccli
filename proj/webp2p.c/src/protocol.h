@@ -1,3 +1,12 @@
+/**
+ * protocol.h - WebP2P index protocol declarations.
+ * Summary: Declares index request types and public protocol operations.
+ *
+ * Author:  KaisarCode
+ * Website: https://kaisarcode.com
+ * License: https://www.gnu.org/licenses/gpl-3.0.html
+ */
+
 #ifndef WEBP2P_PROTOCOL_H
 #define WEBP2P_PROTOCOL_H
 

@@ -1,13 +1,13 @@
-#define _POSIX_C_SOURCE 200809L
 /**
  * webp2p.c - REDP2P WebRTC command-line peer.
  * Summary: Publishes and consumes local TCP services through REDP2P WebRTC.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
- * License: GNU General Public License v3.0
+ * License: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "protocol.h"
 #include "rtc.h"
 
@@ -25,22 +25,56 @@
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
+
+/**
+ * Closes a socket.
+ * @param fd Socket descriptor.
+ * @return Socket close status.
+ */
 static inline int webp2p_socket_close(int fd)
 {
     return closesocket((SOCKET)fd);
 }
+
+/**
+ * Sends socket data.
+ * @param fd Socket descriptor.
+ * @param data Data to send.
+ * @param size Data size.
+ * @param flags Send flags.
+ * @return Number of bytes sent.
+ */
 static inline int webp2p_socket_send(int fd, const void *data, size_t size,
     int flags)
 {
     int count = size > INT_MAX ? INT_MAX : (int)size;
     return send((SOCKET)fd, (const char *)data, count, flags);
 }
+
+/**
+ * Receives socket data.
+ * @param fd Socket descriptor.
+ * @param data Receive buffer.
+ * @param size Buffer size.
+ * @param flags Receive flags.
+ * @return Number of bytes received.
+ */
 static inline int webp2p_socket_recv(int fd, void *data, size_t size,
     int flags)
 {
     int count = size > INT_MAX ? INT_MAX : (int)size;
     return recv((SOCKET)fd, (char *)data, count, flags);
 }
+
+/**
+ * Sets a socket option.
+ * @param fd Socket descriptor.
+ * @param level Socket option level.
+ * @param option Socket option name.
+ * @param value Option value.
+ * @param size Option value size.
+ * @return 0 on success, or -1 on failure.
+ */
 static inline int webp2p_socket_setsockopt(int fd, int level, int option,
     const void *value, size_t size)
 {
@@ -113,12 +147,20 @@ struct webp2p_session {
 
 static volatile sig_atomic_t webp2p_stop;
 
+/**
+ * Records a termination signal.
+ * @return None.
+ */
 static void webp2p_signal(int signal_number)
 {
     (void)signal_number;
     webp2p_stop = 1;
 }
 
+/**
+ * Sleeps for a duration.
+ * @return None.
+ */
 static void webp2p_sleep(unsigned milliseconds)
 {
     struct timespec delay;
@@ -128,6 +170,10 @@ static void webp2p_sleep(unsigned milliseconds)
     (void)nanosleep(&delay, NULL);
 }
 
+/**
+ * Writes all bytes to a socket.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_write_all(int fd, const void *data, size_t size)
 {
     const unsigned char *cursor = (const unsigned char *)data;
@@ -142,6 +188,10 @@ static int webp2p_write_all(int fd, const void *data, size_t size)
     return 0;
 }
 
+/**
+ * Connects to a local TCP port.
+ * @return Socket descriptor, or -1 on failure.
+ */
 static int webp2p_connect_local(uint16_t port)
 {
     struct sockaddr_in address;
@@ -160,6 +210,10 @@ static int webp2p_connect_local(uint16_t port)
     return fd;
 }
 
+/**
+ * Opens a local TCP listener.
+ * @return Socket descriptor, or -1 on failure.
+ */
 static int webp2p_listen(uint16_t port)
 {
     struct sockaddr_in address;
@@ -182,6 +236,13 @@ static int webp2p_listen(uint16_t port)
     return fd;
 }
 
+/**
+ * Receives a session message.
+ * @param data Message data.
+ * @param size Message size.
+ * @param userdata Session context.
+ * @return None.
+ */
 static void webp2p_session_receive(const void *data, size_t size,
     void *userdata)
 {
@@ -194,6 +255,11 @@ static void webp2p_session_receive(const void *data, size_t size,
     }
 }
 
+/**
+ * Handles session closure.
+ * @param userdata Session context.
+ * @return None.
+ */
 static void webp2p_session_closed(void *userdata)
 {
     webp2p_session_t *session = (webp2p_session_t *)userdata;
@@ -203,6 +269,11 @@ static void webp2p_session_closed(void *userdata)
     if (session->fd >= 0) (void)shutdown(session->fd, SHUT_RDWR);
 }
 
+/**
+ * Pumps one session.
+ * @param userdata Session context.
+ * @return Thread result.
+ */
 static void *webp2p_session_pump(void *userdata)
 {
     webp2p_session_t *session = (webp2p_session_t *)userdata;
@@ -235,6 +306,11 @@ done:
     return NULL;
 }
 
+/**
+ * Checks whether a session is active.
+ * @param sessions Session list.
+ * @return Nonzero when active.
+ */
 static int webp2p_session_active(webp2p_session_t *sessions,
     const char *connection)
 {
@@ -245,6 +321,11 @@ static int webp2p_session_active(webp2p_session_t *sessions,
     return 0;
 }
 
+/**
+ * Reaps completed sessions.
+ * @param sessions Session list.
+ * @return None.
+ */
 static void webp2p_sessions_reap(webp2p_session_t **sessions)
 {
     webp2p_session_t **cursor = sessions;
@@ -261,6 +342,11 @@ static void webp2p_sessions_reap(webp2p_session_t **sessions)
     }
 }
 
+/**
+ * Stops all sessions.
+ * @param sessions Session list.
+ * @return None.
+ */
 static void webp2p_sessions_stop(webp2p_session_t **sessions)
 {
     webp2p_session_t *session;
@@ -280,6 +366,11 @@ static void webp2p_sessions_stop(webp2p_session_t **sessions)
     }
 }
 
+/**
+ * Accepts one publisher client.
+ * @param publisher Publisher state.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_publisher_accept(webp2p_publisher_t *publisher,
     const webp2p_options_t *options, const webp2p_pending_t *pending,
     webp2p_session_t **sessions)
@@ -330,6 +421,11 @@ fail:
     return -1;
 }
 
+/**
+ * Runs the publisher role.
+ * @param options Command options.
+ * @return Process status.
+ */
 static int webp2p_publisher_run(const webp2p_options_t *options)
 {
     webp2p_publisher_t publisher;
@@ -383,6 +479,11 @@ static int webp2p_publisher_run(const webp2p_options_t *options)
     return result;
 }
 
+/**
+ * Runs a consumer session.
+ * @param userdata Session context.
+ * @return Thread result.
+ */
 static void *webp2p_consumer_session(void *userdata)
 {
     webp2p_session_t *session = (webp2p_session_t *)userdata;
@@ -452,6 +553,11 @@ done:
     return NULL;
 }
 
+/**
+ * Runs the consumer role.
+ * @param options Command options.
+ * @return Process status.
+ */
 static int webp2p_consumer_run(const webp2p_options_t *options)
 {
     webp2p_session_t *sessions = NULL;
@@ -504,6 +610,12 @@ static int webp2p_consumer_run(const webp2p_options_t *options)
     return 0;
 }
 
+/**
+ * Parses a TCP port.
+ * @param text Port text.
+ * @param port Destination port.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_parse_port(const char *text, uint16_t *port)
 {
     unsigned long value;
@@ -517,6 +629,12 @@ static int webp2p_parse_port(const char *text, uint16_t *port)
     return 1;
 }
 
+/**
+ * Parses a Boolean value.
+ * @param text Boolean text.
+ * @param value Destination value.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_parse_bool(const char *text, int *value)
 {
     if (!text || !value) return 0;
@@ -531,6 +649,12 @@ static int webp2p_parse_bool(const char *text, int *value)
     return 0;
 }
 
+/**
+ * Parses a WebP2P endpoint specification.
+ * @param text Specification text.
+ * @param id Destination identifier.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_parse_spec(const char *text, char id[64],
     char index[1024])
 {
@@ -554,6 +678,11 @@ static int webp2p_parse_spec(const char *text, char id[64],
     return 1;
 }
 
+/**
+ * Prints command usage.
+ * @param name Program name.
+ * @return None.
+ */
 static void webp2p_usage(const char *name)
 {
     printf("Usage: %s <command> [options]\n\n", name);
@@ -582,6 +711,12 @@ static void webp2p_usage(const char *name)
     printf("  -v, --version          Show version\n");
 }
 
+/**
+ * Runs the WebP2P command-line program.
+ * @param argc Argument count.
+ * @param argv Argument values.
+ * @return Process status.
+ */
 int main(int argc, char **argv)
 {
     webp2p_options_t options;

@@ -1,3 +1,12 @@
+/**
+ * protocol.c - WebP2P HTTP protocol implementation.
+ * Summary: Builds authenticated index requests and parses their responses.
+ *
+ * Author:  KaisarCode
+ * Website: https://kaisarcode.com
+ * License: https://www.gnu.org/licenses/gpl-3.0.html
+ */
+
 #define _POSIX_C_SOURCE 200809L
 #include "protocol.h"
 
@@ -30,6 +39,11 @@ typedef struct {
     size_t size;
 } webp2p_http_buffer_t;
 
+/**
+ * Formats an allocated string from variadic arguments.
+ * @param format Printf-style format string.
+ * @return Allocated formatted string, or NULL on failure.
+ */
 static char *webp2p_format(const char *format, ...)
 {
     va_list args;
@@ -55,12 +69,23 @@ static char *webp2p_format(const char *format, ...)
     return out;
 }
 
+/**
+ * Skips leading whitespace in text.
+ * @param text Input text.
+ * @return First non-whitespace character, or the terminating null character.
+ */
 static const char *webp2p_skip_space(const char *text)
 {
     while (text && *text && isspace((unsigned char)*text)) text++;
     return text;
 }
 
+/**
+ * Locates a JSON string value by key.
+ * @param json JSON document.
+ * @param key Object member name.
+ * @return Pointer to the value, or NULL when absent.
+ */
 static const char *webp2p_json_value(const char *json, const char *key)
 {
     char needle[128];
@@ -78,6 +103,11 @@ static const char *webp2p_json_value(const char *json, const char *key)
     return webp2p_skip_space(at + 1);
 }
 
+/**
+ * Converts one hexadecimal character to its numeric value.
+ * @param value Hexadecimal character.
+ * @return Value from 0 to 15, or -1 when invalid.
+ */
 static int webp2p_hex_value(char value)
 {
     if (value >= '0' && value <= '9') return value - '0';
@@ -86,11 +116,23 @@ static int webp2p_hex_value(char value)
     return -1;
 }
 
+/**
+ * Converts a numeric value to a lowercase hexadecimal character.
+ * @param value Numeric value.
+ * @return Lowercase hexadecimal digit.
+ */
 static char webp2p_hex_digit(unsigned value)
 {
     return "0123456789abcdef"[value & 15u];
 }
 
+/**
+ * Encodes bytes as a hexadecimal string.
+ * @param data Bytes to encode.
+ * @param size Number of bytes.
+ * @param out Destination string.
+ * @return None.
+ */
 static void webp2p_hex_encode(const unsigned char *data, size_t size,
     char *out)
 {
@@ -103,6 +145,13 @@ static void webp2p_hex_encode(const unsigned char *data, size_t size,
     out[size * 2] = '\0';
 }
 
+/**
+ * Decodes a hexadecimal string into bytes.
+ * @param text Hexadecimal string.
+ * @param out Destination bytes.
+ * @param size Expected byte count.
+ * @return 0 on success, or -1 for invalid input.
+ */
 static int webp2p_hex_decode(const char *text, unsigned char *out,
     size_t size)
 {
@@ -118,6 +167,12 @@ static int webp2p_hex_decode(const char *text, unsigned char *out,
     return 0;
 }
 
+/**
+ * Checks whether text contains lowercase hexadecimal digits.
+ * @param text Text to validate.
+ * @param size Expected text length.
+ * @return Nonzero when valid, otherwise 0.
+ */
 static int webp2p_hex_lower(const char *text, size_t size)
 {
     size_t i;
@@ -131,6 +186,11 @@ static int webp2p_hex_lower(const char *text, size_t size)
     return 1;
 }
 
+/**
+ * Parses a JSON string at the current position.
+ * @param text JSON text.
+ * @return Allocated decoded string, or NULL on failure.
+ */
 static char *webp2p_json_string_at(const char *text)
 {
     char *out;
@@ -195,11 +255,19 @@ static char *webp2p_json_string_at(const char *text)
     return out;
 }
 
+/**
+ * Extracts a JSON string member.
+ * @return Allocated member string, or NULL when unavailable.
+ */
 static char *webp2p_json_string(const char *json, const char *key)
 {
     return webp2p_json_string_at(webp2p_json_value(json, key));
 }
 
+/**
+ * Extracts an unsigned JSON member.
+ * @return 0 on success, or -1 on invalid input.
+ */
 static int webp2p_json_u64(const char *json, const char *key,
     uint64_t *value)
 {
@@ -214,6 +282,10 @@ static int webp2p_json_u64(const char *json, const char *key,
     return 0;
 }
 
+/**
+ * Extracts a Boolean JSON member.
+ * @return 0 on success, or -1 on invalid input.
+ */
 static int webp2p_json_bool(const char *json, const char *key, int *value)
 {
     const char *at = webp2p_json_value(json, key);
@@ -230,6 +302,10 @@ static int webp2p_json_bool(const char *json, const char *key, int *value)
     return -1;
 }
 
+/**
+ * Quotes text for a JSON string.
+ * @return Allocated JSON string, or NULL on failure.
+ */
 static char *webp2p_json_quote(const char *text)
 {
     size_t size = 2;
@@ -278,6 +354,10 @@ static char *webp2p_json_quote(const char *text)
     return out;
 }
 
+/**
+ * Appends an HTTP response chunk.
+ * @return Number of bytes consumed.
+ */
 static size_t webp2p_http_write(char *data, size_t size, size_t count,
     void *userdata)
 {
@@ -295,6 +375,10 @@ static size_t webp2p_http_write(char *data, size_t size, size_t count,
     return bytes;
 }
 
+/**
+ * Sends one JSON request to the index.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_request(const char *index, const char *body,
     char **response)
 {
@@ -350,12 +434,20 @@ static int webp2p_request(const char *index, const char *body,
     return 0;
 }
 
+/**
+ * Stores a 16-bit value in big-endian order.
+ * @return None.
+ */
 static void webp2p_be16(unsigned char out[2], uint16_t value)
 {
     out[0] = (unsigned char)(value >> 8);
     out[1] = (unsigned char)value;
 }
 
+/**
+ * Stores a 64-bit value in big-endian order.
+ * @return None.
+ */
 static void webp2p_be64(unsigned char out[8], uint64_t value)
 {
     int i;
@@ -366,6 +458,10 @@ static void webp2p_be64(unsigned char out[8], uint64_t value)
     }
 }
 
+/**
+ * Computes a SHA-256 digest.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_sha256(const void *data, size_t size,
     unsigned char digest[32])
 {
@@ -375,6 +471,10 @@ static int webp2p_sha256(const void *data, size_t size,
         length == 32 ? 0 : -1;
 }
 
+/**
+ * Computes a hexadecimal SHA-256 digest.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_sha256_hex(const void *data, size_t size, char out[65])
 {
     unsigned char digest[32];
@@ -384,6 +484,10 @@ static int webp2p_sha256_hex(const void *data, size_t size, char out[65])
     return 0;
 }
 
+/**
+ * Computes a hexadecimal HMAC digest.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_hmac_hex(const char *key, const void *data, size_t size,
     char out[65])
 {
@@ -397,6 +501,10 @@ static int webp2p_hmac_hex(const char *key, const void *data, size_t size,
     return 0;
 }
 
+/**
+ * Counts leading zero bits in a digest.
+ * @return Number of leading zero bits.
+ */
 static unsigned webp2p_leading_zero_bits(const unsigned char digest[32])
 {
     unsigned bits = 0;
@@ -417,6 +525,10 @@ static unsigned webp2p_leading_zero_bits(const unsigned char digest[32])
     return bits;
 }
 
+/**
+ * Produces random bytes encoded as hexadecimal.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_random_hex(size_t bytes, char *out)
 {
     unsigned char random[64];
@@ -427,6 +539,10 @@ static int webp2p_random_hex(size_t bytes, char *out)
     return 0;
 }
 
+/**
+ * Parses a proof-of-work challenge.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_challenge_parse(const char *json,
     webp2p_challenge_t *challenge)
 {
@@ -455,6 +571,10 @@ done:
     return result;
 }
 
+/**
+ * Solves a proof-of-work challenge.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_solve_pow(const char *id,
     const webp2p_challenge_t *challenge, char solution[17])
 {
@@ -493,6 +613,10 @@ static int webp2p_solve_pow(const char *id,
     return -1;
 }
 
+/**
+ * Builds the canonical publisher registration payload.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_register_canonical(const char *id, const char *secret,
     const webp2p_challenge_t *challenge, const char *solution,
     unsigned char **data, size_t *size)
@@ -532,6 +656,10 @@ static int webp2p_register_canonical(const char *id, const char *secret,
     return 0;
 }
 
+/**
+ * Computes a publisher control proof.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_control_proof(const webp2p_publisher_t *publisher,
     const char *operation, const char *id, uint64_t seq, const char *extra1,
     const char *extra2, char out[65])
@@ -555,6 +683,10 @@ static int webp2p_control_proof(const webp2p_publisher_t *publisher,
     return result;
 }
 
+/**
+ * Extracts the next JSON object from a cursor.
+ * @return Allocated JSON object, or NULL when unavailable.
+ */
 static char *webp2p_json_object(const char **cursor)
 {
     const char *start;
@@ -591,16 +723,28 @@ static char *webp2p_json_object(const char **cursor)
     return NULL;
 }
 
+/**
+ * Initializes protocol dependencies.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_protocol_init(void)
 {
     return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK ? 0 : -1;
 }
 
+/**
+ * Cleans up protocol dependencies.
+ * @return None.
+ */
 void webp2p_protocol_cleanup(void)
 {
     curl_global_cleanup();
 }
 
+/**
+ * Gets the current Unix time in milliseconds.
+ * @return Current time in milliseconds.
+ */
 uint64_t webp2p_now_ms(void)
 {
     struct timespec now;
@@ -609,6 +753,10 @@ uint64_t webp2p_now_ms(void)
     return (uint64_t)now.tv_sec * 1000u + (uint64_t)now.tv_nsec / 1000000u;
 }
 
+/**
+ * Validates a WebP2P identifier.
+ * @return Nonzero when valid, otherwise 0.
+ */
 int webp2p_validate_id(const char *id)
 {
     size_t i;
@@ -622,6 +770,10 @@ int webp2p_validate_id(const char *id)
     return 0;
 }
 
+/**
+ * Frees an RTC description.
+ * @return None.
+ */
 void webp2p_description_free(webp2p_description_t *description)
 {
     if (!description) return;
@@ -631,6 +783,10 @@ void webp2p_description_free(webp2p_description_t *description)
     description->sdp = NULL;
 }
 
+/**
+ * Frees a pending connection.
+ * @return None.
+ */
 void webp2p_pending_free(webp2p_pending_t *pending)
 {
     if (!pending) return;
@@ -638,6 +794,10 @@ void webp2p_pending_free(webp2p_pending_t *pending)
     memset(pending->connection, 0, sizeof(pending->connection));
 }
 
+/**
+ * Registers a publisher with the index.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_pub_register(webp2p_publisher_t *publisher, const char *index,
     const char *id, const char *pass)
 {
@@ -713,6 +873,10 @@ done:
     return result;
 }
 
+/**
+ * Sends a publisher control request.
+ * @return 0 on success, or -1 on failure.
+ */
 static int webp2p_pub_control(webp2p_publisher_t *publisher,
     const char *id, const char *operation)
 {
@@ -740,16 +904,28 @@ static int webp2p_pub_control(webp2p_publisher_t *publisher,
     return result;
 }
 
+/**
+ * Sends a publisher heartbeat.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_pub_heartbeat(webp2p_publisher_t *publisher, const char *id)
 {
     return webp2p_pub_control(publisher, id, "heartbeat");
 }
 
+/**
+ * Deregisters a publisher.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_pub_deregister(webp2p_publisher_t *publisher, const char *id)
 {
     return webp2p_pub_control(publisher, id, "deregister");
 }
 
+/**
+ * Polls for publisher work.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_pub_poll(webp2p_publisher_t *publisher, const char *id,
     webp2p_pending_t pending[WEBP2P_MAX_PENDING], size_t *count)
 {
@@ -827,6 +1003,10 @@ done:
     return result;
 }
 
+/**
+ * Submits a publisher answer.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_pub_answer(webp2p_publisher_t *publisher, const char *id,
     const char *connection, const webp2p_description_t *answer)
 {
@@ -871,6 +1051,10 @@ done:
     return result;
 }
 
+/**
+ * Requests a consumer connection.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_con_connect(const char *index, const char *id,
     const webp2p_description_t *offer, webp2p_connection_t *connection)
 {
@@ -911,6 +1095,10 @@ done:
     return result;
 }
 
+/**
+ * Polls a consumer connection.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_con_poll(const char *index, const webp2p_connection_t *connection,
     webp2p_description_t *answer, int *has_answer)
 {

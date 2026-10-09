@@ -1,3 +1,12 @@
+/**
+ * rtc.c - WebP2P RTC peer implementation.
+ * Summary: Creates WebRTC peers and bridges data-channel events.
+ *
+ * Author:  KaisarCode
+ * Website: https://kaisarcode.com
+ * License: https://www.gnu.org/licenses/gpl-3.0.html
+ */
+
 #define _POSIX_C_SOURCE 200809L
 #include "rtc.h"
 
@@ -27,11 +36,20 @@ struct webp2p_rtc_peer {
     void *userdata;
 };
 
+/**
+ * Signals peer state changes.
+ * @param peer RTC peer.
+ * @return None.
+ */
 static void webp2p_rtc_signal(webp2p_rtc_peer_t *peer)
 {
     pthread_cond_broadcast(&peer->cond);
 }
 
+/**
+ * Gets the current time.
+ * @return Time in milliseconds.
+ */
 static uint64_t webp2p_rtc_now_ms(void)
 {
     struct timespec now;
@@ -40,6 +58,11 @@ static uint64_t webp2p_rtc_now_ms(void)
     return (uint64_t)now.tv_sec * 1000u + (uint64_t)now.tv_nsec / 1000000u;
 }
 
+/**
+ * Sleeps for a duration.
+ * @param milliseconds Sleep duration.
+ * @return None.
+ */
 static void webp2p_rtc_sleep(unsigned milliseconds)
 {
     struct timespec delay;
@@ -49,6 +72,13 @@ static void webp2p_rtc_sleep(unsigned milliseconds)
     (void)nanosleep(&delay, NULL);
 }
 
+/**
+ * Handles peer state changes.
+ * @param pc Peer connection handle.
+ * @param state New peer state.
+ * @param userdata RTC peer.
+ * @return None.
+ */
 static void webp2p_rtc_state(int pc, rtcState state, void *userdata)
 {
     webp2p_rtc_peer_t *peer = (webp2p_rtc_peer_t *)userdata;
@@ -71,6 +101,13 @@ static void webp2p_rtc_state(int pc, rtcState state, void *userdata)
     if (closed) closed(closed_data);
 }
 
+/**
+ * Handles ICE gathering changes.
+ * @param pc Peer connection handle.
+ * @param state New gathering state.
+ * @param userdata RTC peer.
+ * @return None.
+ */
 static void webp2p_rtc_gathering(int pc, rtcGatheringState state,
     void *userdata)
 {
@@ -84,6 +121,12 @@ static void webp2p_rtc_gathering(int pc, rtcGatheringState state,
     pthread_mutex_unlock(&peer->mutex);
 }
 
+/**
+ * Handles data-channel opening.
+ * @param dc Data-channel handle.
+ * @param userdata RTC peer.
+ * @return None.
+ */
 static void webp2p_rtc_open(int dc, void *userdata)
 {
     webp2p_rtc_peer_t *peer = (webp2p_rtc_peer_t *)userdata;
@@ -95,6 +138,12 @@ static void webp2p_rtc_open(int dc, void *userdata)
     pthread_mutex_unlock(&peer->mutex);
 }
 
+/**
+ * Handles data-channel closure.
+ * @param dc Data-channel handle.
+ * @param userdata RTC peer.
+ * @return None.
+ */
 static void webp2p_rtc_channel_closed(int dc, void *userdata)
 {
     webp2p_rtc_peer_t *peer = (webp2p_rtc_peer_t *)userdata;
@@ -115,6 +164,14 @@ static void webp2p_rtc_channel_closed(int dc, void *userdata)
     if (closed) closed(closed_data);
 }
 
+/**
+ * Handles a data-channel message.
+ * @param dc Data-channel handle.
+ * @param message Message data.
+ * @param size Message size.
+ * @param userdata RTC peer.
+ * @return None.
+ */
 static void webp2p_rtc_message(int dc, const char *message, int size,
     void *userdata)
 {
@@ -133,6 +190,10 @@ static void webp2p_rtc_message(int dc, const char *message, int size,
     if (receive) receive(message, length, receive_data);
 }
 
+/**
+ * Configures a data channel.
+ * @return None.
+ */
 static void webp2p_rtc_setup_channel(webp2p_rtc_peer_t *peer, int dc)
 {
     peer->dc = dc;
@@ -142,6 +203,10 @@ static void webp2p_rtc_setup_channel(webp2p_rtc_peer_t *peer, int dc)
     rtcSetMessageCallback(dc, webp2p_rtc_message);
 }
 
+/**
+ * Handles a new data channel.
+ * @return None.
+ */
 static void webp2p_rtc_data_channel(int pc, int dc, void *userdata)
 {
     webp2p_rtc_peer_t *peer = (webp2p_rtc_peer_t *)userdata;
@@ -158,6 +223,10 @@ static void webp2p_rtc_data_channel(int pc, int dc, void *userdata)
     if (reject) rtcDeleteDataChannel(dc);
 }
 
+/**
+ * Waits for an RTC peer condition.
+ * @return 0 on success, or -1 on timeout.
+ */
 static int webp2p_rtc_wait(webp2p_rtc_peer_t *peer, int *flag,
     int timeout_ms)
 {
@@ -182,6 +251,10 @@ static int webp2p_rtc_wait(webp2p_rtc_peer_t *peer, int *flag,
     return rc;
 }
 
+/**
+ * Builds an RTC TURN server URI.
+ * @return Allocated URI, or NULL on failure.
+ */
 static char *webp2p_rtc_turn_uri(const char *turn, const char *user,
     const char *pass)
 {
@@ -201,17 +274,29 @@ static char *webp2p_rtc_turn_uri(const char *turn, const char *user,
     return out;
 }
 
+/**
+ * Initializes the RTC library.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_rtc_init(void)
 {
     rtcInitLogger(RTC_LOG_WARNING, NULL);
     return rtcPreload() ? 0 : -1;
 }
 
+/**
+ * Cleans up the RTC library.
+ * @return None.
+ */
 void webp2p_rtc_cleanup(void)
 {
     rtcCleanup();
 }
 
+/**
+ * Creates an RTC peer.
+ * @return New peer, or NULL on failure.
+ */
 webp2p_rtc_peer_t *webp2p_rtc_create(int initiator, const char *stun,
     const char *turn, const char *turn_user, const char *turn_pass,
     int force_turn, int ordered, webp2p_rtc_receive_fn receive,
@@ -285,6 +370,10 @@ webp2p_rtc_peer_t *webp2p_rtc_create(int initiator, const char *stun,
     return peer;
 }
 
+/**
+ * Sets an RTC remote description.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_rtc_set_remote(webp2p_rtc_peer_t *peer,
     const webp2p_description_t *description)
 {
@@ -294,6 +383,10 @@ int webp2p_rtc_set_remote(webp2p_rtc_peer_t *peer,
         description->type) < 0 ? -1 : 0;
 }
 
+/**
+ * Creates an RTC local description.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_rtc_make_local(webp2p_rtc_peer_t *peer, const char *type,
     webp2p_description_t *description, int timeout_ms)
 {
@@ -330,12 +423,20 @@ int webp2p_rtc_make_local(webp2p_rtc_peer_t *peer, const char *type,
     return 0;
 }
 
+/**
+ * Waits for an RTC data channel.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_rtc_wait_open(webp2p_rtc_peer_t *peer, int timeout_ms)
 {
     if (!peer || timeout_ms <= 0) return -1;
     return webp2p_rtc_wait(peer, &peer->open, timeout_ms);
 }
 
+/**
+ * Sends RTC data.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_rtc_send(webp2p_rtc_peer_t *peer, const void *data, size_t size)
 {
     int dc;
@@ -348,6 +449,10 @@ int webp2p_rtc_send(webp2p_rtc_peer_t *peer, const void *data, size_t size)
     return rtcSendMessage(dc, (const char *)data, (int)size) < 0 ? -1 : 0;
 }
 
+/**
+ * Drains pending RTC data.
+ * @return 0 on success, or -1 on failure.
+ */
 int webp2p_rtc_drain(webp2p_rtc_peer_t *peer, int timeout_ms)
 {
     uint64_t deadline;
@@ -372,6 +477,10 @@ int webp2p_rtc_drain(webp2p_rtc_peer_t *peer, int timeout_ms)
     }
 }
 
+/**
+ * Closes an RTC peer.
+ * @return None.
+ */
 void webp2p_rtc_close(webp2p_rtc_peer_t *peer)
 {
     int dc;

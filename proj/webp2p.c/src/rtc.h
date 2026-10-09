@@ -1,3 +1,12 @@
+/**
+ * rtc.h - WebP2P RTC peer declarations.
+ * Summary: Declares RTC peer lifecycle and data-channel operations.
+ *
+ * Author:  KaisarCode
+ * Website: https://kaisarcode.com
+ * License: https://www.gnu.org/licenses/gpl-3.0.html
+ */
+
 #ifndef WEBP2P_RTC_H
 #define WEBP2P_RTC_H
 

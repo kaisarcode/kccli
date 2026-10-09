@@ -262,10 +262,10 @@ loongarch64/linux:
 ## Windows
 
 x86_64/windows:
-	$(call build_target,x86_64/windows,Windows,x86_64,x86_64-w64-mingw32-gcc,x86_64-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,-DCMAKE_C_FLAGS=-Wno-cast-function-type -DCMAKE_CXX_FLAGS=-Wno-cast-function-type,-D_WIN32_WINNT=0x0601,-Wl$(comma)--gc-sections)
+	$(call build_target,x86_64/windows,Windows,x86_64,x86_64-w64-mingw32-gcc,x86_64-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,-DCMAKE_C_FLAGS=-Wno-cast-function-type -DCMAKE_CXX_FLAGS=-Wno-cast-function-type,-D_WIN32_WINNT=0x0601,-static -static-libgcc -static-libstdc++ -Wl$(comma)--gc-sections)
 
 i686/windows:
-	$(call build_target,i686/windows,Windows,i686,i686-w64-mingw32-gcc,i686-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,-DCMAKE_C_FLAGS=-Wno-cast-function-type -DCMAKE_CXX_FLAGS=-Wno-cast-function-type,-D_WIN32_WINNT=0x0601,-Wl$(comma)--gc-sections)
+	$(call build_target,i686/windows,Windows,i686,i686-w64-mingw32-gcc,i686-w64-mingw32-g++,.exe,-lwinpthread -lws2_32 -liphlpapi -lbcrypt -lcrypt32,-DCMAKE_C_FLAGS=-Wno-cast-function-type -DCMAKE_CXX_FLAGS=-Wno-cast-function-type,-D_WIN32_WINNT=0x0601,-static -static-libgcc -static-libstdc++ -Wl$(comma)--gc-sections)
 
 ## macOS
 
