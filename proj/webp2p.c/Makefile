@@ -35,7 +35,7 @@ OUT := $(BIN_DIR)/$(NATIVE_TARGET)/webp2p
 
 .DEFAULT_GOAL := $(NATIVE_TARGET)
 
-.PHONY: all test clean $(NATIVE_TARGET) rtc check
+.PHONY: all test wine clean $(NATIVE_TARGET) rtc check
 
 all: $(NATIVE_TARGET)
 
@@ -98,12 +98,24 @@ $(NATIVE_TARGET): rtc
 		-Wl,--gc-sections -o '$(OUT)'; \
 	echo "OK $(NATIVE_TARGET)"
 
-test: $(NATIVE_TARGET)
-	@mkdir -p '$(BUILD_DIR)/test'
-	@$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
-		-DKC_CLI_PATH=\"$(CURDIR)/$(OUT)\" \
-		src/test.c -o '$(BUILD_DIR)/test/webp2p_test'
-	@'$(BUILD_DIR)/test/webp2p_test'
+test:
+	@if [ -n "$(filter wine,$(MAKECMDGOALS))" ]; then \
+		echo "SKIP webp2p: Windows/Wine target is not configured yet"; \
+	else \
+		$(MAKE) --no-print-directory '$(NATIVE_TARGET)' || exit 1; \
+		mkdir -p '$(BUILD_DIR)/test'; \
+		$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+			-DKC_CLI_PATH=\"$(CURDIR)/$(OUT)\" \
+			src/test.c -o '$(BUILD_DIR)/test/webp2p_test' || exit 1; \
+		'$(BUILD_DIR)/test/webp2p_test'; \
+	fi
+
+wine:
+	@if [ -z "$(filter test,$(MAKECMDGOALS))" ]; then \
+		echo "Use 'make test wine' to run the Windows compatibility target." >&2; \
+		exit 1; \
+	fi
+	@:
 
 clean:
 	@rm -rf '$(BUILD_DIR)' '$(BIN_DIR)'
