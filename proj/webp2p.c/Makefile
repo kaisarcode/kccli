@@ -232,7 +232,7 @@ i686/linux:
 	$(call build_target,i686/linux,Linux,i686,i686-linux-gnu-gcc,i686-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
 
 aarch64/linux:
-	$(call build_target,aarch64/linux,Linux,aarch64,aarch64-linux-gnu-gcc,aarch64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
+	$(call build_target,aarch64/linux,Linux,aarch64,aarch64-linux-gnu-gcc,aarch64-linux-gnu-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,)
 
 armv7/linux:
 	$(call build_target,armv7/linux,Linux,armv7,arm-linux-gnueabi-gcc,arm-linux-gnueabi-g++,,-pthread -ldl -lm,,-D_GNU_SOURCE,-Wl$(comma)--gc-sections)
