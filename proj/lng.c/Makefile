@@ -12,6 +12,15 @@ LNG_DIST_DIR := $(KCLIB_DIST_DIR)/liblng.c
 BIN_DIR := bin
 BUILD_DIR := .build
 
+ANDROID_HOME ?= $(HOME)/.local/share/android-sdk
+NDK_VERSION ?= 27.2.12479018
+NDK_DIR := $(ANDROID_HOME)/ndk/$(NDK_VERSION)
+NDK_HOST_TAG ?= linux-x86_64
+NDK_BIN_DIR := $(NDK_DIR)/toolchains/llvm/prebuilt/$(NDK_HOST_TAG)/bin
+ANDROID_API ?= 21
+ANDROID_AARCH64_CC := $(NDK_BIN_DIR)/aarch64-linux-android$(ANDROID_API)-clang
+ANDROID_ARMV7_CC := $(NDK_BIN_DIR)/armv7a-linux-androideabi$(ANDROID_API)-clang
+
 XDG_DATA_HOME ?= $(HOME)/.local/share
 OSXCROSS_ROOT ?= $(XDG_DATA_HOME)/osxcross/target
 OSXCROSS_X86_64_CC := $(OSXCROSS_ROOT)/bin/o64-clang
@@ -67,8 +76,8 @@ endif
 .PHONY: all test wine clean \
 	x86_64/linux x86_64/windows x86_64/macos \
 	i686/linux i686/windows \
-	aarch64/linux aarch64/macos \
-	armv7/linux armv7hf/linux \
+	aarch64/linux aarch64/android aarch64/macos \
+	armv7/linux armv7/android armv7hf/linux \
 	riscv64/linux powerpc64le/linux \
 	mips/linux mipsel/linux mips64el/linux \
 	s390x/linux loongarch64/linux
@@ -76,8 +85,8 @@ endif
 all: \
 	x86_64/linux x86_64/windows x86_64/macos \
 	i686/linux i686/windows \
-	aarch64/linux aarch64/macos \
-	armv7/linux armv7hf/linux \
+	aarch64/linux aarch64/android aarch64/macos \
+	armv7/linux armv7/android armv7hf/linux \
 	riscv64/linux powerpc64le/linux \
 	mips/linux mipsel/linux mips64el/linux \
 	s390x/linux loongarch64/linux
@@ -131,6 +140,26 @@ s390x/linux:
 
 loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
+
+define android_target
+	@target='$(LNG_DIST_DIR)/$(1)/android'; \
+	header="$$target/liblng.h"; \
+	library="$$target/liblng.a"; \
+	out='$(BIN_DIR)/$(1)/android/lng'; \
+	[ -f "$$header" ] || { echo "kccli: missing liblng header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing liblng static library: $$library" >&2; exit 1; }; \
+	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
+	mkdir -p '$(BIN_DIR)/$(1)/android'; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+		src/lng.c "$$library" -pthread -lm -o "$$out"; \
+	echo "OK $(1)/android"
+endef
+
+aarch64/android:
+	$(call android_target,aarch64,$(ANDROID_AARCH64_CC))
+
+armv7/android:
+	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
 	@target='$(LNG_DIST_DIR)/$(1)/windows'; \

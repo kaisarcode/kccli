@@ -33,9 +33,7 @@ CC ?= cc
 CXX ?= c++
 WINE ?= wine
 WINE_X86_64_CC ?= x86_64-w64-mingw32-gcc
-ifndef WEBP2P_BUILD_VERSION
-WEBP2P_BUILD_VERSION := $(shell date +%s)
-endif
+WEBP2P_BUILD_VERSION ?= 0
 JOBS ?= $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || printf '1')
 
 HOST_ARCH := $(shell uname -m)
@@ -119,7 +117,6 @@ define build_target
 	deps=''; \
 	pc_libdir=''; \
 	openssl_args=''; \
-	zlib_args=''; \
 	if [ "$$target" = "$(NATIVE_TARGET)" ]; then \
 		$(PKG_CONFIG) --exists libcurl openssl || { echo "webp2p: native libcurl/OpenSSL development packages are required" >&2; exit 1; }; \
 	else \
@@ -129,10 +126,6 @@ define build_target
 		pc_libdir="$$deps/lib/pkgconfig:$$deps/lib64/pkgconfig"; \
 		PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR="$$pc_libdir" $(PKG_CONFIG) --exists libcurl openssl || { echo "webp2p: invalid cross pkg-config metadata for $$target" >&2; exit 1; }; \
 		openssl_args="-DOPENSSL_ROOT_DIR=$$deps -DOPENSSL_USE_STATIC_LIBS=TRUE -DCMAKE_PREFIX_PATH=$$deps"; \
-		zlib_archive=$$(find "$$deps" -type f -name 'libz.a' -print -quit); \
-		if [ -n "$$zlib_archive" ]; then \
-			zlib_args="-DZLIB_LIBRARY=$$zlib_archive -DZLIB_INCLUDE_DIR=$$deps/include"; \
-		fi; \
 	fi; \
 	if [ "$$system" = "Darwin" ]; then \
 		[ -d "$(MACOSX_SDK)" ] || { echo "webp2p: missing macOS SDK: $(MACOSX_SDK)" >&2; exit 1; }; \
@@ -151,7 +144,7 @@ define build_target
 	fi; \
 	mkdir -p "$$rtc_build" "$$obj_dir" "$(BIN_DIR)/$(1)"; \
 	config_stamp="$$rtc_build/.webp2p-config"; \
-	config="$$system|$$processor|$$cc|$$cxx|$$exe|$$platform_libs|$(8)|$(9)|$(10)|$(11)|$(12)|$(WEBP2P_BUILD_VERSION)|$(KC_CROSS_DEPS_DIR)|$(MACOSX_SDK)|$(MACOSX_DEPLOYMENT_TARGET)|$$zlib_args"; \
+	config="$$system|$$processor|$$cc|$$cxx|$$exe|$$platform_libs|$(8)|$(9)|$(10)|$(11)|$(12)|$(WEBP2P_BUILD_VERSION)|$(KC_CROSS_DEPS_DIR)|$(MACOSX_SDK)|$(MACOSX_DEPLOYMENT_TARGET)"; \
 	if [ -f "$$out" ]; then \
 		stale=0; \
 		[ -n "$$(find src -type f \( -name '*.c' -o -name '*.h' \) -newer "$$out" -print -quit)" ] && stale=1; \
@@ -177,7 +170,6 @@ define build_target
 		$(8) \
 		$(if $(11),-DCMAKE_AR="$(11)" -DCMAKE_RANLIB="$(12)") \
 		$$openssl_args \
-		$$zlib_args \
 		-DBUILD_SHARED_LIBS=OFF \
 		-DBUILD_SHARED_DEPS_LIBS=OFF \
 		-DNO_MEDIA=ON \
