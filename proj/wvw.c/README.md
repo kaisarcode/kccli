@@ -161,12 +161,12 @@ Expose only selected native executables to page code:
 
 ```bash
 wvw ./index.html \
-    --exec /path/to/demo \
-    --exec /path/to/pact
+    --exec /path/to/myexe \
+    --exec /path/to/other
 ```
 
 ```js
-NativeBridge.exec(["demo", "Kaisar"]);
+NativeBridge.exec(["myexe", "--param", "hello"]);
 ```
 
 ---
