@@ -141,6 +141,7 @@ static void kc_cli_help(void)
     printf("  --no-focus              Prevent the window from taking focus\n");
     printf("  --hidden                Start with the native window hidden\n");
     printf("  --unlist                Exclude the window from the window list\n");
+    printf("  --exec <path>           Expose executable to NativeBridge.exec\n");
     printf("  -h, --help              Show this help\n");
     printf("  -v, --version           Show version\n");
 }
@@ -192,6 +193,8 @@ int main(int argc, char **argv)
     int no_focus = 0;
     int hidden = 0;
     int unlist = 0;
+    const char **executables;
+    size_t executable_count = 0;
     int i;
 
     if (argc == 2 &&
@@ -210,15 +213,11 @@ int main(int argc, char **argv)
         kc_cli_help();
         return 1;
     }
-    if (argv[1][0] == '-') {
-        fprintf(stderr, "wvw: unknown option: %s\n", argv[1]);
-        return 1;
-    }
-
     memset(&options, 0, sizeof(options));
-    options.url = argv[1];
+    executables = calloc((size_t)argc, sizeof(*executables));
+    if (!executables) return 1;
 
-    for (i = 2; i < argc; i++) {
+    for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--title") == 0) {
             if (++i >= argc || !argv[i][0]) {
                 fprintf(stderr, "wvw: --title requires a value\n");
@@ -285,14 +284,43 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "--unlist") == 0) {
             unlist = 1;
             options.unlist = &unlist;
-        } else {
+        } else if (strcmp(argv[i], "--exec") == 0) {
+            if (++i >= argc || !argv[i][0] || argv[i][0] == '-') {
+                fprintf(stderr, "wvw: --exec requires a value\n");
+                free(executables);
+                return 1;
+            }
+            executables[executable_count++] = argv[i];
+        } else if (argv[i][0] == '-') {
             fprintf(stderr, "wvw: unknown option: %s\n", argv[i]);
+            free(executables);
+            return 1;
+        } else if (!options.url) {
+            options.url = argv[i];
+        } else {
+            fprintf(stderr, "wvw: unexpected positional argument: %s\n", argv[i]);
+            free(executables);
             return 1;
         }
     }
 
-    if (kc_wvw_open(&wvw, &options) != KC_WVW_OK)
+    if (!options.url) {
+        kc_cli_help();
+        free(executables);
+        return 1;
+    }
+
+    if (kc_wvw_open(&wvw, &options) != KC_WVW_OK) {
+        free(executables);
         return kc_cli_error(wvw, "failed to open WebView");
+    }
+    if (kc_wvw_set_executables(wvw, &(kc_wvw_exec_options_t){
+        executables, executable_count}) != KC_WVW_OK) {
+        free(executables);
+        kc_wvw_close(wvw);
+        return kc_cli_error(wvw, "failed to expose executables");
+    }
+    free(executables);
 
     kc_cli_stop = 0;
     signal(SIGINT, kc_cli_signal);

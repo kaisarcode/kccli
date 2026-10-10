@@ -70,6 +70,7 @@ Options:
 --no-focus              Prevent the window from taking focus
 --hidden                Start with the native window hidden
 --unlist                Exclude the window from the platform window list
+--exec <path>           Expose executable to NativeBridge.exec
 -h, --help              Show help
 -v, --version           Show version
 ```
@@ -154,6 +155,18 @@ Start hidden:
 
 ```bash
 wvw https://example.com --hidden
+```
+
+Expose only selected native executables to page code:
+
+```bash
+wvw ./index.html \
+    --exec /path/to/demo \
+    --exec /path/to/pact
+```
+
+```js
+NativeBridge.exec(["demo", "Kaisar"]);
 ```
 
 ---

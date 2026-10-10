@@ -101,7 +101,7 @@ static int run_cli(const char *args)
  */
 int main(void)
 {
-    test_total = 11;
+    test_total = 12;
     test_current = 0;
     test_failures = 0;
 
@@ -125,6 +125,8 @@ int main(void)
         run_cli("about:blank --x bad") != 0);
     result("y", "requires an integer Y position",
         run_cli("about:blank --y bad") != 0);
+    result("exec", "requires an executable path",
+        run_cli("about:blank --exec") != 0);
 
     printf("\n%d passed, %d failed\n",
         test_total - test_failures, test_failures);
