@@ -15,6 +15,12 @@
 #define KC_CLI_PATH "demo"
 #endif
 
+#ifdef _WIN32
+#define KC_LINE_END "\r\n"
+#else
+#define KC_LINE_END "\n"
+#endif
+
 static int test_total = 0;
 static int test_failed = 0;
 
@@ -100,10 +106,10 @@ int main(void)
     result("version", "--version succeeds", run_cli("--version") == 0);
     result("greet", "name prints greeting",
         capture_output("John", output, sizeof(output)) &&
-        strcmp(output, "Hello John!\n") == 0);
+        strcmp(output, "Hello John!" KC_LINE_END) == 0);
     result("quoted", "quoted name with spaces succeeds",
         capture_output("\"John Doe\"", output, sizeof(output)) &&
-        strcmp(output, "Hello John Doe!\n") == 0);
+        strcmp(output, "Hello John Doe!" KC_LINE_END) == 0);
     result("missing", "missing name fails", run_cli(NULL) != 0);
     result("unknown", "unknown option fails", run_cli("--unknown") != 0);
 
