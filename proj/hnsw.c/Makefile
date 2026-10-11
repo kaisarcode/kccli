@@ -3,7 +3,7 @@
 ##
 ## Author:  KaisarCode
 ## Website: https://kaisarcode.com
-## License: GNU GPL v3
+## License: GNU LGPL v3
 
 SHELL := /bin/sh
 

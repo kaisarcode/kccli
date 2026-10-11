@@ -3,7 +3,7 @@
 # Summary: Tests one or all kccli projects natively and through Wine.
 # Author:  KaisarCode
 # Website: https://kaisarcode.com
-# License: GNU General Public License v3.0
+# License: GNU Lesser General Public License v3.0
 
 set -e
 
