@@ -296,6 +296,8 @@ sync_target() {
         cp "$project_dir/README.md" "$work/README.md"
     [ -f "$project_dir/LICENSE" ] &&
         cp "$project_dir/LICENSE" "$work/LICENSE"
+    [ -f "$project_dir/COPYING" ] &&
+        cp "$project_dir/COPYING" "$work/COPYING"
 
     (
         cd "$work"
