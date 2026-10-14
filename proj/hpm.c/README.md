@@ -2,35 +2,23 @@
 
 `hpm` sends or receives one UDP datagram over a direct peer-to-peer path backed by `libhpm.c`.
 
-Both peers run the same CLI. There are no publisher/consumer roles. Each side supplies the remote endpoint information it already knows and a local bind preference; HPM performs the direct connectivity attempt before the datagram operation.
+This CLI is primarily a low-level automation, integration, and testing interface for `libhpm.c`. It is not intended to be a standalone interactive rendezvous tool: it does not discover your public endpoint, discover the peer, or exchange endpoint information for you. In a real deployment, the peer endpoints normally come from a higher-level signaling or rendezvous system, STUN-derived information, an index, configuration, or another application-controlled source.
+
+Both peers run the same CLI. There are no publisher/consumer roles. Each side supplies the remote endpoint information it already knows and a local bind preference; HPM performs the direct connectivity attempt before the datagram operation. For Internet hole punching, the supplied peer information must include usable public UDP endpoints, including the external port, and both sides normally need to attempt the path concurrently.
 
 ## Usage
 
 ```text
-Usage: hpm <command> <peer> [peer...] [options]
+Usage: hpm <send|receive> <peer> [peer...] [options]
 
-Commands:
-  send                       Send one UDP datagram
-  receive                    Receive one UDP datagram
-
-Endpoint format:
-  host:port                  IPv4 or hostname endpoint
-  [ipv6]:port                IPv6 endpoint
-
-Connection options:
-  --host <host>              Local bind host
-  -p, --port <port>          Local UDP port (default: 0)
-  -t, --timeout <ms>         Connection timeout in ms (default: library)
-
-send options:
-  -i, --input <file>         Read datagram from file
-
-receive options:
-  --receive-timeout <ms>     Receive timeout in ms (default: 0, infinite)
-
-Common options:
-  -h, --help                 Show this help
-  -v, --version              Show version
+Options:
+  --host <host>           Local bind host
+  -p, --port <port>       Local UDP port (default: 0)
+  -t, --timeout <ms>      Connection timeout in ms (default: library)
+  -i, --input <file>      Read send datagram from file
+  --receive-timeout <ms>  Receive timeout in ms (default: 0, infinite)
+  -h, --help              Show this help
+  -v, --version           Show version
 ```
 
 Peer endpoints are positional and may be repeated. HPM tries the supplied endpoints and uses a viable direct path. IPv6 literals use bracket form so the address and UDP port remain unambiguous.
@@ -52,6 +40,8 @@ Terminal B:
 ```bash
 printf 'hello' | hpm send 127.0.0.1:5001 -p 5000
 ```
+
+This loopback example is useful for testing the CLI. For real Internet use, an external system must first discover and exchange the endpoints that HPM should try.
 
 Multiple known endpoints can be supplied for the same peer:
 
