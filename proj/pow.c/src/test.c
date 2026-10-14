@@ -128,8 +128,8 @@ int main(void)
         run("challenge 1 -i input > " DEV_NULL " 2>&1") != 0);
     result("challenge-a", "creates challenge A",
         run("challenge 4 > pow-test-challenge-a.bin") == 0);
-    result("challenge-b", "creates challenge B",
-        run("challenge 4 > pow-test-challenge-b.bin") == 0);
+    result("challenge-b", "creates hard challenge B",
+        run("challenge 18446744073709551615 > pow-test-challenge-b.bin") == 0);
     result("solve-file", "solves a challenge from a file",
         run("solve -i pow-test-challenge-a.bin > pow-test-solution-a.bin") == 0);
     result("verify-file", "accepts a matching solution from a file",
