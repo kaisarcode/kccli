@@ -186,21 +186,33 @@ define macos_target
 	header="$$target/libpow.h"; \
 	library="$$target/libpow.a"; \
 	out='$(BIN_DIR)/$(1)/macos/pow'; \
+	compiler='$(2)'; \
+	otool='$(MACOSX_OTOOL)'; \
+	native=0; \
+	if [ "$(HOST_SYSTEM)" = "Darwin" ] && [ "$(NATIVE_ARCH)" = "$(1)" ]; then \
+		compiler='$(CC)'; \
+		otool='otool'; \
+		native=1; \
+	fi; \
 	[ -f "$$header" ] || { echo "kccli: missing libpow header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libpow static library: $$library" >&2; exit 1; }; \
-	[ -x '$(2)' ] || { echo "kccli: missing macOS cross-compiler: $(2)" >&2; exit 1; }; \
+	command -v "$$compiler" >/dev/null 2>&1 || { echo "kccli: missing macOS compiler: $$compiler" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/macos'; \
 	min='$(MACOSX_DEPLOYMENT_TARGET)'; \
 	if [ -z "$$min" ]; then \
-		[ -x '$(MACOSX_OTOOL)' ] || { echo "kccli: missing macOS otool: set MACOSX_DEPLOYMENT_TARGET" >&2; exit 1; }; \
-		min=$$('$(MACOSX_OTOOL)' -l "$$library" 2>/dev/null | awk '/LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX/ { f = 1; next } f && /minos|version/ { v = $$2 + 0; if (v > m) { m = v; s = $$2 }; f = 0 } END { if (m > 0) print s }'); \
+		command -v "$$otool" >/dev/null 2>&1 || { echo "kccli: missing macOS otool: set MACOSX_DEPLOYMENT_TARGET" >&2; exit 1; }; \
+		min=$$($$otool -l "$$library" 2>/dev/null | awk '/LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX/ { f = 1; next } f && /minos|version/ { v = $$2 + 0; if (v > m) { m = v; s = $$2 }; f = 0 } END { if (m > 0) print s }'); \
 	fi; \
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
-	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
-	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/pow.c "$$library" \
-		-o "$$out" || exit 1; \
+	if [ "$$native" = 1 ]; then \
+		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
+			-mmacosx-version-min="$$min" -I"$$target" src/pow.c "$$library" -o "$$out"; \
+	else \
+		LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
+		PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
+		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
+			-mmacosx-version-min="$$min" -I"$$target" src/pow.c "$$library" -o "$$out"; \
+	fi || exit 1; \
 	echo "OK $(1)/macos"
 endef
 

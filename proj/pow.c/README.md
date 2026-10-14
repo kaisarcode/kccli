@@ -44,6 +44,8 @@ or:
 pow solve < challenge.pow > solution.pow
 ```
 
+When standard input contains data, `solve` uses it before `-i`/`--input`.
+
 Verify it:
 
 ```bash
@@ -55,6 +57,9 @@ or:
 ```bash
 cat solution.pow | pow verify -c challenge.pow
 ```
+
+`verify` reads the challenge from `-c`/`--challenge`. Its solution input uses
+standard input before `-i`/`--input` when both are available.
 
 Successful verification exits with status `0` and produces no normal output. Invalid proofs and operational failures return a nonzero status.
 
