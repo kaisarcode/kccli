@@ -34,23 +34,13 @@
  */
 static void pow_cli_usage(const char *name)
 {
-    printf("Usage: %s <command> [arguments] [options]\n", name);
+    printf("Usage: %s <challenge|solve|verify> [arguments] [options]\n", name);
     printf("\n");
-    printf("Commands:\n");
-    printf("  challenge <effort>         Create a proof-of-work challenge\n");
-    printf("  solve                      Solve a challenge\n");
-    printf("  verify                     Verify a solution against a challenge\n");
-    printf("\n");
-    printf("solve options:\n");
-    printf("  -i, --input <file>         Read challenge from file\n");
-    printf("\n");
-    printf("verify options:\n");
-    printf("  -c, --challenge <file>     Read challenge from file\n");
-    printf("  -i, --input <file>         Read solution from file\n");
-    printf("\n");
-    printf("Common options:\n");
-    printf("  -h, --help                 Show this help\n");
-    printf("  -v, --version              Show version\n");
+    printf("Options:\n");
+    printf("  -i, --input <file>      Read command input from file\n");
+    printf("  -c, --challenge <file>  Read verify challenge from file\n");
+    printf("  -h, --help              Show this help\n");
+    printf("  -v, --version           Show version\n");
 }
 
 /**
