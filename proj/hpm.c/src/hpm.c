@@ -34,30 +34,16 @@
  */
 static void hpm_cli_usage(const char *name)
 {
-    printf("Usage: %s <command> <peer> [peer...] [options]\n", name);
+    printf("Usage: %s <send|receive> <peer> [peer...] [options]\n", name);
     printf("\n");
-    printf("Commands:\n");
-    printf("  send                       Send one UDP datagram\n");
-    printf("  receive                    Receive one UDP datagram\n");
-    printf("\n");
-    printf("Endpoint format:\n");
-    printf("  host:port                  IPv4 or hostname endpoint\n");
-    printf("  [ipv6]:port                IPv6 endpoint\n");
-    printf("\n");
-    printf("Connection options:\n");
-    printf("  --host <host>              Local bind host\n");
-    printf("  -p, --port <port>          Local UDP port (default: 0)\n");
-    printf("  -t, --timeout <ms>         Connection timeout in ms (default: library)\n");
-    printf("\n");
-    printf("send options:\n");
-    printf("  -i, --input <file>         Read datagram from file\n");
-    printf("\n");
-    printf("receive options:\n");
-    printf("  --receive-timeout <ms>     Receive timeout in ms (default: 0, infinite)\n");
-    printf("\n");
-    printf("Common options:\n");
-    printf("  -h, --help                 Show this help\n");
-    printf("  -v, --version              Show version\n");
+    printf("Options:\n");
+    printf("  --host <host>           Local bind host\n");
+    printf("  -p, --port <port>       Local UDP port (default: 0)\n");
+    printf("  -t, --timeout <ms>      Connection timeout in ms (default: library)\n");
+    printf("  -i, --input <file>      Read send datagram from file\n");
+    printf("  --receive-timeout <ms>  Receive timeout in ms (default: 0, infinite)\n");
+    printf("  -h, --help              Show this help\n");
+    printf("  -v, --version           Show version\n");
 }
 
 /**
