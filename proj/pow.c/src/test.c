@@ -21,6 +21,11 @@
 #define DEV_NULL "/dev/null"
 #endif
 
+/**
+ * Runs a CLI command and returns its exit status.
+ * @param args Command arguments.
+ * @return Exit status.
+ */
 static int run(const char *args)
 {
     char command[4096];
@@ -29,6 +34,10 @@ static int run(const char *args)
     return system(command);
 }
 
+/**
+ * Test entry point.
+ * @return Exit status.
+ */
 int main(void)
 {
     int fail = 0;

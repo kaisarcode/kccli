@@ -27,6 +27,11 @@
 #include <unistd.h>
 #endif
 
+/**
+ * Prints the CLI usage message.
+ * @param name Program name.
+ * @return None.
+ */
 static void pow_cli_usage(const char *name)
 {
     printf("Usage: %s <command> [arguments] [options]\n", name);
@@ -48,6 +53,10 @@ static void pow_cli_usage(const char *name)
     printf("  -v, --version              Show version\n");
 }
 
+/**
+ * Checks if stdin is a TTY.
+ * @return 1 if stdin is a TTY, 0 otherwise.
+ */
 static int pow_cli_stdin_is_tty(void)
 {
 #ifdef _WIN32
@@ -61,6 +70,13 @@ static int pow_cli_stdin_is_tty(void)
 #endif
 }
 
+/**
+ * Reads all data from a stream into a buffer.
+ * @param stream Input stream.
+ * @param out Output buffer pointer.
+ * @param out_size Output buffer size.
+ * @return 0 on success, 1 on failure.
+ */
 static int pow_cli_read_stream(FILE *stream, void **out, size_t *out_size)
 {
     unsigned char *buffer = NULL;
@@ -118,6 +134,13 @@ static int pow_cli_read_stream(FILE *stream, void **out, size_t *out_size)
     return 0;
 }
 
+/**
+ * Reads a file into a buffer.
+ * @param path File path.
+ * @param out Output buffer pointer.
+ * @param out_size Output buffer size.
+ * @return 0 on success, 1 on failure.
+ */
 static int pow_cli_read_file(const char *path, void **out, size_t *out_size)
 {
     FILE *file;
@@ -131,6 +154,13 @@ static int pow_cli_read_file(const char *path, void **out, size_t *out_size)
     return status;
 }
 
+/**
+ * Reads input from stdin or a file.
+ * @param path Optional file path (used if stdin is a TTY).
+ * @param out Output buffer pointer.
+ * @param out_size Output buffer size.
+ * @return 0 on success, 1 on failure.
+ */
 static int pow_cli_read_input(const char *path, void **out, size_t *out_size)
 {
     if (!pow_cli_stdin_is_tty()) {
@@ -146,6 +176,12 @@ static int pow_cli_read_input(const char *path, void **out, size_t *out_size)
     return 1;
 }
 
+/**
+ * Writes binary data to stdout.
+ * @param data Data to write.
+ * @param size Data size.
+ * @return 0 on success, 1 on failure.
+ */
 static int pow_cli_write_stdout(const void *data, size_t size)
 {
 #ifdef _WIN32
@@ -155,6 +191,12 @@ static int pow_cli_write_stdout(const void *data, size_t size)
     return fflush(stdout) == 0 ? 0 : 1;
 }
 
+/**
+ * Parses an effort value from a string.
+ * @param text Input string.
+ * @param out Output effort value.
+ * @return 0 on success, 1 on failure.
+ */
 static int pow_cli_parse_effort(const char *text, uint64_t *out)
 {
     char *end = NULL;
@@ -168,6 +210,11 @@ static int pow_cli_parse_effort(const char *text, uint64_t *out)
     return 0;
 }
 
+/**
+ * Executes the challenge command.
+ * @param effort_text Effort string to parse.
+ * @return 0 on success, 1 on failure.
+ */
 static int pow_cli_challenge(const char *effort_text)
 {
     uint64_t effort;
@@ -191,6 +238,11 @@ done:
     return status;
 }
 
+/**
+ * Executes the solve command.
+ * @param input_path Optional challenge input file path.
+ * @return 0 on success, 1 on failure.
+ */
 static int pow_cli_solve(const char *input_path)
 {
     void *challenge = NULL;
@@ -218,6 +270,12 @@ done:
     return status;
 }
 
+/**
+ * Executes the verify command.
+ * @param challenge_path Challenge file path.
+ * @param input_path Optional solution input file path.
+ * @return 0 on valid, 1 on invalid or error.
+ */
 static int pow_cli_verify(const char *challenge_path, const char *input_path)
 {
     void *challenge = NULL;
@@ -252,6 +310,12 @@ static int pow_cli_verify(const char *challenge_path, const char *input_path)
     return 1;
 }
 
+/**
+ * Main entry point.
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return Exit status.
+ */
 int main(int argc, char **argv)
 {
     const char *command = NULL;
