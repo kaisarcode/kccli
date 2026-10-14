@@ -66,6 +66,12 @@ Successful verification exits with status `0` and produces no normal output. Inv
 make
 ```
 
+Build all configured targets:
+
+```bash
+make all
+```
+
 ## Tests
 
 ```bash
@@ -81,5 +87,7 @@ make test wine
 ---
 
 ## License
+
+[![LGPLv3](https://www.gnu.org/graphics/lgplv3-147x51.png)](https://www.gnu.org/licenses/lgpl-3.0.html)
 
 This project is distributed under the **GNU Lesser General Public License version 3 (LGPLv3)**.
