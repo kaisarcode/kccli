@@ -7,7 +7,10 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+KCLIB_DIST_DIR := $(KCLIB_DIR)/dist
 B64_DIST_DIR := $(KCLIB_DIST_DIR)/libb64.c
 BIN_DIR := bin
 BUILD_DIR := .build
