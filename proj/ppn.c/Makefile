@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-PPN_DIST_DIR := $(KCLIB_DIST_DIR)/libppn.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+PPN_PROJECT_DIR := $(KCLIB_DIR)/proj/libppn.c
+PPN_BIN_DIR := $(PPN_PROJECT_DIR)/bin
+PPN_INCLUDE_DIR := $(PPN_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -54,15 +58,15 @@ endif
 all: x86_64/linux x86_64/windows x86_64/macos aarch64/macos
 
 define linux_target
-	@target='$(PPN_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libppn.h"; \
+	@target='$(PPN_BIN_DIR)/$(1)/linux'; \
+	header='$(PPN_INCLUDE_DIR)/libppn.h'; \
 	library="$$target/libppn.a"; \
 	out='$(BIN_DIR)/$(1)/linux/ppn'; \
 	[ -f "$$header" ] || { echo "kccli: missing libppn header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libppn static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/ppn.c \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(PPN_INCLUDE_DIR)' src/ppn.c \
 		"$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
@@ -71,15 +75,15 @@ x86_64/linux:
 	$(call linux_target,x86_64,gcc)
 
 define windows_target
-	@target='$(PPN_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libppn.h"; \
+	@target='$(PPN_BIN_DIR)/$(1)/windows'; \
+	header='$(PPN_INCLUDE_DIR)/libppn.h'; \
 	library="$$target/libppn.a"; \
 	out='$(BIN_DIR)/$(1)/windows/ppn.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libppn header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libppn static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/ppn.c \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(PPN_INCLUDE_DIR)' src/ppn.c \
 		"$$library" -luser32 -lshell32 -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
@@ -88,8 +92,8 @@ x86_64/windows:
 	$(call windows_target,x86_64,x86_64-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(PPN_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libppn.h"; \
+	@target='$(PPN_BIN_DIR)/$(1)/macos'; \
+	header='$(PPN_INCLUDE_DIR)/libppn.h'; \
 	library="$$target/libppn.a"; \
 	out='$(BIN_DIR)/$(1)/macos/ppn'; \
 	[ -f "$$header" ] || { echo "kccli: missing libppn header: $$header" >&2; exit 1; }; \
@@ -105,7 +109,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/ppn.c "$$library" \
+		-mmacosx-version-min="$$min" -I'$(PPN_INCLUDE_DIR)' src/ppn.c "$$library" \
 		-framework Foundation -o "$$out" || exit 1; \
 	echo "OK $(1)/macos"
 endef

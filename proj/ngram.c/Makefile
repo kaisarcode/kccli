@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-NGRAM_DIST_DIR := $(KCLIB_DIST_DIR)/libngram.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+NGRAM_PROJECT_DIR := $(KCLIB_DIR)/proj/libngram.c
+NGRAM_BIN_DIR := $(NGRAM_PROJECT_DIR)/bin
+NGRAM_INCLUDE_DIR := $(NGRAM_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -92,15 +96,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(NGRAM_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libngram.h"; \
+	@target='$(NGRAM_BIN_DIR)/$(1)/linux'; \
+	header='$(NGRAM_INCLUDE_DIR)/libngram.h'; \
 	library="$$target/libngram.a"; \
 	out='$(BIN_DIR)/$(1)/linux/ngram'; \
 	[ -f "$$header" ] || { echo "kccli: missing libngram header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libngram static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(NGRAM_INCLUDE_DIR)' \
 		src/ngram.c "$$library" -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(NGRAM_DIST_DIR)/$(1)/android'; \
-	header="$$target/libngram.h"; \
+	@target='$(NGRAM_BIN_DIR)/$(1)/android'; \
+	header='$(NGRAM_INCLUDE_DIR)/libngram.h'; \
 	library="$$target/libngram.a"; \
 	out='$(BIN_DIR)/$(1)/android/ngram'; \
 	[ -f "$$header" ] || { echo "kccli: missing libngram header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libngram static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(NGRAM_INCLUDE_DIR)' \
 		src/ngram.c "$$library" -o "$$out"; \
 	echo "OK $(1)/android"
 endef
@@ -162,15 +166,15 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(NGRAM_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libngram.h"; \
+	@target='$(NGRAM_BIN_DIR)/$(1)/windows'; \
+	header='$(NGRAM_INCLUDE_DIR)/libngram.h'; \
 	library="$$target/libngram.a"; \
 	out='$(BIN_DIR)/$(1)/windows/ngram.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libngram header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libngram static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(NGRAM_INCLUDE_DIR)' \
 		src/ngram.c "$$library" -o "$$out"; \
 	echo "OK $(1)/windows"
 endef
@@ -182,8 +186,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(NGRAM_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libngram.h"; \
+	@target='$(NGRAM_BIN_DIR)/$(1)/macos'; \
+	header='$(NGRAM_INCLUDE_DIR)/libngram.h'; \
 	library="$$target/libngram.a"; \
 	out='$(BIN_DIR)/$(1)/macos/ngram'; \
 	[ -f "$$header" ] || { echo "kccli: missing libngram header: $$header" >&2; exit 1; }; \
@@ -199,7 +203,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/ngram.c "$$library" \
+		-mmacosx-version-min="$$min" -I'$(NGRAM_INCLUDE_DIR)' src/ngram.c "$$library" \
 		-o "$$out"; \
 	echo "OK $(1)/macos"
 endef

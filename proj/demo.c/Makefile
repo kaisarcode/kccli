@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-DEMO_DIST_DIR := $(KCLIB_DIST_DIR)/libdemo.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+DEMO_PROJECT_DIR := $(KCLIB_DIR)/proj/libdemo.c
+DEMO_BIN_DIR := $(DEMO_PROJECT_DIR)/bin
+DEMO_INCLUDE_DIR := $(DEMO_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -92,15 +96,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(DEMO_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libdemo.h"; \
+	@target='$(DEMO_BIN_DIR)/$(1)/linux'; \
+	header='$(DEMO_INCLUDE_DIR)/libdemo.h'; \
 	library="$$target/libdemo.a"; \
 	out='$(BIN_DIR)/$(1)/linux/demo'; \
 	[ -f "$$header" ] || { echo "kccli: missing libdemo header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libdemo static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(DEMO_INCLUDE_DIR)' \
 		src/demo.c "$$library" -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define windows_target
-	@target='$(DEMO_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libdemo.h"; \
+	@target='$(DEMO_BIN_DIR)/$(1)/windows'; \
+	header='$(DEMO_INCLUDE_DIR)/libdemo.h'; \
 	library="$$target/libdemo.a"; \
 	out='$(BIN_DIR)/$(1)/windows/demo.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libdemo header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libdemo static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(DEMO_INCLUDE_DIR)' \
 		src/demo.c "$$library" -o "$$out"; \
 	echo "OK $(1)/windows"
 endef
@@ -162,8 +166,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(DEMO_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libdemo.h"; \
+	@target='$(DEMO_BIN_DIR)/$(1)/macos'; \
+	header='$(DEMO_INCLUDE_DIR)/libdemo.h'; \
 	library="$$target/libdemo.a"; \
 	out='$(BIN_DIR)/$(1)/macos/demo'; \
 	[ -f "$$header" ] || { echo "kccli: missing libdemo header: $$header" >&2; exit 1; }; \
@@ -179,7 +183,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/demo.c "$$library" \
+		-mmacosx-version-min="$$min" -I'$(DEMO_INCLUDE_DIR)' src/demo.c "$$library" \
 		-o "$$out"; \
 	echo "OK $(1)/macos"
 endef
@@ -191,15 +195,15 @@ aarch64/macos:
 	$(call macos_target,aarch64,$(OSXCROSS_AARCH64_CC))
 
 define android_target
-	@target='$(DEMO_DIST_DIR)/$(1)/android'; \
-	header="$$target/libdemo.h"; \
+	@target='$(DEMO_BIN_DIR)/$(1)/android'; \
+	header='$(DEMO_INCLUDE_DIR)/libdemo.h'; \
 	library="$$target/libdemo.a"; \
 	out='$(BIN_DIR)/$(1)/android/demo'; \
 	[ -f "$$header" ] || { echo "kccli: missing libdemo header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libdemo static library: $$library" >&2; exit 1; }; \
 	[ -x '$(2)' ] || { echo "kccli: missing Android compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(DEMO_INCLUDE_DIR)' \
 		src/demo.c "$$library" -o "$$out"; \
 	echo "OK $(1)/android"
 endef

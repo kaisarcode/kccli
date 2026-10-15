@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-DMN_DIST_DIR := $(KCLIB_DIST_DIR)/libdmn.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+DMN_PROJECT_DIR := $(KCLIB_DIR)/proj/libdmn.c
+DMN_BIN_DIR := $(DMN_PROJECT_DIR)/bin
+DMN_INCLUDE_DIR := $(DMN_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -93,15 +97,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(DMN_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libdmn.h"; \
+	@target='$(DMN_BIN_DIR)/$(1)/linux'; \
+	header='$(DMN_INCLUDE_DIR)/libdmn.h'; \
 	library="$$target/libdmn.a"; \
 	out='$(BIN_DIR)/$(1)/linux/dmn'; \
 	[ -f "$$header" ] || { echo "kccli: missing libdmn header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libdmn static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/dmn.c "$$library" -pthread -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(DMN_INCLUDE_DIR)' src/dmn.c "$$library" -pthread -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
 
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(DMN_DIST_DIR)/$(1)/android'; \
-	header="$$target/libdmn.h"; \
+	@target='$(DMN_BIN_DIR)/$(1)/android'; \
+	header='$(DMN_INCLUDE_DIR)/libdmn.h'; \
 	library="$$target/libdmn.a"; \
 	out='$(BIN_DIR)/$(1)/android/dmn'; \
 	[ -f "$$header" ] || { echo "kccli: missing libdmn header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libdmn static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/dmn.c "$$library" -pthread -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(DMN_INCLUDE_DIR)' src/dmn.c "$$library" -pthread -o "$$out"; \
 	echo "OK $(1)/android"
 endef
 
@@ -161,8 +165,8 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(DMN_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libdmn.h"; \
+	@target='$(DMN_BIN_DIR)/$(1)/windows'; \
+	header='$(DMN_INCLUDE_DIR)/libdmn.h'; \
 	library="$$target/libdmn.dll.a"; \
 	dll="$$target/libdmn.dll"; \
 	out='$(BIN_DIR)/$(1)/windows/dmn.exe'; \
@@ -171,7 +175,7 @@ define windows_target
 	[ -f "$$dll" ] || { echo "kccli: missing libdmn DLL: $$dll" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/dmn.c "$$library" -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(DMN_INCLUDE_DIR)' src/dmn.c "$$library" -o "$$out"; \
 	cp "$$dll" '$(BIN_DIR)/$(1)/windows/libdmn.dll'; \
 	echo "OK $(1)/windows"
 endef
@@ -183,8 +187,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(DMN_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libdmn.h"; \
+	@target='$(DMN_BIN_DIR)/$(1)/macos'; \
+	header='$(DMN_INCLUDE_DIR)/libdmn.h'; \
 	library="$$target/libdmn.a"; \
 	out='$(BIN_DIR)/$(1)/macos/dmn'; \
 	[ -f "$$header" ] || { echo "kccli: missing libdmn header: $$header" >&2; exit 1; }; \
@@ -199,7 +203,7 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" -I"$$target" src/dmn.c "$$library" -pthread -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" -I'$(DMN_INCLUDE_DIR)' src/dmn.c "$$library" -pthread -o "$$out"; \
 	echo "OK $(1)/macos"
 endef
 

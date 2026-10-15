@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-EMB_DIST_DIR := $(KCLIB_DIST_DIR)/libemb.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+EMB_PROJECT_DIR := $(KCLIB_DIR)/proj/libemb.c
+EMB_BIN_DIR := $(EMB_PROJECT_DIR)/bin
+EMB_INCLUDE_DIR := $(EMB_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 comma := ,
@@ -97,8 +101,8 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(EMB_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libemb.h"; \
+	@target='$(EMB_BIN_DIR)/$(1)/linux'; \
+	header='$(EMB_INCLUDE_DIR)/libemb.h'; \
 	library="$$target/libemb.a"; \
 	obj='$(BUILD_DIR)/emb-$(1)-linux.o'; \
 	out='$(BIN_DIR)/$(1)/linux/emb'; \
@@ -107,7 +111,7 @@ define linux_target
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	command -v $(3) >/dev/null 2>&1 || { echo "kccli: missing C++ linker: $(3)" >&2; exit 1; }; \
 	mkdir -p '$(BUILD_DIR)' '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(EMB_INCLUDE_DIR)' -c src/emb.c -o "$$obj" || exit 1; \
 	$(3) "$$obj" "$$library" -pthread -ldl -lm $(4) -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
@@ -149,8 +153,8 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc,loongarch64-linux-gnu-g++)
 
 define android_target
-	@target='$(EMB_DIST_DIR)/$(1)/android'; \
-	header="$$target/libemb.h"; \
+	@target='$(EMB_BIN_DIR)/$(1)/android'; \
+	header='$(EMB_INCLUDE_DIR)/libemb.h'; \
 	library="$$target/libemb.a"; \
 	obj='$(BUILD_DIR)/emb-$(1)-android.o'; \
 	out='$(BIN_DIR)/$(1)/android/emb'; \
@@ -159,7 +163,7 @@ define android_target
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	command -v $(3) >/dev/null 2>&1 || { echo "kccli: missing C++ linker: $(3)" >&2; exit 1; }; \
 	mkdir -p '$(BUILD_DIR)' '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(EMB_INCLUDE_DIR)' -c src/emb.c -o "$$obj" || exit 1; \
 	$(3) "$$obj" "$$library" -pthread -ldl -lm $(4) -o "$$out" || exit 1; \
 	echo "OK $(1)/android"
 endef
@@ -171,8 +175,8 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC),$(ANDROID_ARMV7_CXX),-latomic)
 
 define windows_target
-	@target='$(EMB_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libemb.h"; \
+	@target='$(EMB_BIN_DIR)/$(1)/windows'; \
+	header='$(EMB_INCLUDE_DIR)/libemb.h'; \
 	library="$$target/libemb.a"; \
 	obj='$(BUILD_DIR)/emb-$(1)-windows.o'; \
 	out='$(BIN_DIR)/$(1)/windows/emb.exe'; \
@@ -181,7 +185,7 @@ define windows_target
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	command -v $(3) >/dev/null 2>&1 || { echo "kccli: missing C++ linker: $(3)" >&2; exit 1; }; \
 	mkdir -p '$(BUILD_DIR)' '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(EMB_INCLUDE_DIR)' -c src/emb.c -o "$$obj" || exit 1; \
 	$(3) -static -static-libgcc -static-libstdc++ \
 		"$$obj" "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
@@ -194,8 +198,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc,i686-w64-mingw32-g++)
 
 define macos_target
-	@target='$(EMB_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libemb.h"; \
+	@target='$(EMB_BIN_DIR)/$(1)/macos'; \
+	header='$(EMB_INCLUDE_DIR)/libemb.h'; \
 	library="$$target/libemb.a"; \
 	obj='$(BUILD_DIR)/emb-$(1)-macos.o'; \
 	out='$(BIN_DIR)/$(1)/macos/emb'; \
@@ -212,7 +216,7 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" \
-		-I"$$target" -c src/emb.c -o "$$obj" || exit 1; \
+		-I'$(EMB_INCLUDE_DIR)' -c src/emb.c -o "$$obj" || exit 1; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(3) -mmacosx-version-min="$$min" "$$obj" "$$library" -pthread -lm -o "$$out" || exit 1; \
 	echo "OK $(1)/macos"

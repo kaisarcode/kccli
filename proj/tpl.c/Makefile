@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-TPL_DIST_DIR := $(KCLIB_DIST_DIR)/libtpl.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+TPL_PROJECT_DIR := $(KCLIB_DIR)/proj/libtpl.c
+TPL_BIN_DIR := $(TPL_PROJECT_DIR)/bin
+TPL_INCLUDE_DIR := $(TPL_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -92,15 +96,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(TPL_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libtpl.h"; \
+	@target='$(TPL_BIN_DIR)/$(1)/linux'; \
+	header='$(TPL_INCLUDE_DIR)/libtpl.h'; \
 	library="$$target/libtpl.a"; \
 	out='$(BIN_DIR)/$(1)/linux/tpl'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpl header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtpl static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TPL_INCLUDE_DIR)' \
 		src/tpl.c "$$library" -pthread -lm -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(TPL_DIST_DIR)/$(1)/android'; \
-	header="$$target/libtpl.h"; \
+	@target='$(TPL_BIN_DIR)/$(1)/android'; \
+	header='$(TPL_INCLUDE_DIR)/libtpl.h'; \
 	library="$$target/libtpl.a"; \
 	out='$(BIN_DIR)/$(1)/android/tpl'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpl header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtpl static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TPL_INCLUDE_DIR)' \
 		src/tpl.c "$$library" -pthread -lm -o "$$out" || exit 1; \
 	echo "OK $(1)/android"
 endef
@@ -162,15 +166,15 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(TPL_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libtpl.h"; \
+	@target='$(TPL_BIN_DIR)/$(1)/windows'; \
+	header='$(TPL_INCLUDE_DIR)/libtpl.h'; \
 	library="$$target/libtpl.a"; \
 	out='$(BIN_DIR)/$(1)/windows/tpl.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpl header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtpl static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TPL_INCLUDE_DIR)' \
 		src/tpl.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
@@ -182,8 +186,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(TPL_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libtpl.h"; \
+	@target='$(TPL_BIN_DIR)/$(1)/macos'; \
+	header='$(TPL_INCLUDE_DIR)/libtpl.h'; \
 	library="$$target/libtpl.a"; \
 	out='$(BIN_DIR)/$(1)/macos/tpl'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpl header: $$header" >&2; exit 1; }; \
@@ -199,7 +203,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/tpl.c "$$library" \
+		-mmacosx-version-min="$$min" -I'$(TPL_INCLUDE_DIR)' src/tpl.c "$$library" \
 		-pthread -lm -o "$$out" || exit 1; \
 	echo "OK $(1)/macos"
 endef

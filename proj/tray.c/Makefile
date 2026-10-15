@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-TRAY_DIST_DIR := $(KCLIB_DIST_DIR)/libtray.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+TRAY_PROJECT_DIR := $(KCLIB_DIR)/proj/libtray.c
+TRAY_BIN_DIR := $(TRAY_PROJECT_DIR)/bin
+TRAY_INCLUDE_DIR := $(TRAY_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -54,8 +58,8 @@ endif
 all: x86_64/linux x86_64/windows x86_64/macos aarch64/macos
 
 define linux_target
-	@target='$(TRAY_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libtray.h"; \
+	@target='$(TRAY_BIN_DIR)/$(1)/linux'; \
+	header='$(TRAY_INCLUDE_DIR)/libtray.h'; \
 	library="$$target/libtray.a"; \
 	out='$(BIN_DIR)/$(1)/linux/tray'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtray header: $$header" >&2; exit 1; }; \
@@ -64,7 +68,7 @@ define linux_target
 	command -v pkg-config >/dev/null 2>&1 || { echo "kccli: missing pkg-config" >&2; exit 1; }; \
 	pkg-config --exists gtk+-3.0 || { echo "kccli: missing GTK 3 development files" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/tray.c \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TRAY_INCLUDE_DIR)' src/tray.c \
 		"$$library" $$(pkg-config --libs gtk+-3.0) -pthread -lm -ldl \
 		-o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
@@ -74,15 +78,15 @@ x86_64/linux:
 	$(call linux_target,x86_64,gcc)
 
 define windows_target
-	@target='$(TRAY_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libtray.h"; \
+	@target='$(TRAY_BIN_DIR)/$(1)/windows'; \
+	header='$(TRAY_INCLUDE_DIR)/libtray.h'; \
 	library="$$target/libtray.a"; \
 	out='$(BIN_DIR)/$(1)/windows/tray.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtray header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtray static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/tray.c \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TRAY_INCLUDE_DIR)' src/tray.c \
 		"$$library" -luser32 -lshell32 -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
@@ -91,8 +95,8 @@ x86_64/windows:
 	$(call windows_target,x86_64,x86_64-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(TRAY_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libtray.h"; \
+	@target='$(TRAY_BIN_DIR)/$(1)/macos'; \
+	header='$(TRAY_INCLUDE_DIR)/libtray.h'; \
 	library="$$target/libtray.a"; \
 	out='$(BIN_DIR)/$(1)/macos/tray'; \
 	object='$(BUILD_DIR)/tray-$(1)-macos.o'; \
@@ -109,7 +113,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -x objective-c -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" -c src/tray.c \
+		-mmacosx-version-min="$$min" -I'$(TRAY_INCLUDE_DIR)' -c src/tray.c \
 		-o "$$object" || exit 1; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \

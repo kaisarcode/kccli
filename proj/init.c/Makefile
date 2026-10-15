@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-INIT_DIST_DIR := $(KCLIB_DIST_DIR)/libinit.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+INIT_PROJECT_DIR := $(KCLIB_DIR)/proj/libinit.c
+INIT_BIN_DIR := $(INIT_PROJECT_DIR)/bin
+INIT_INCLUDE_DIR := $(INIT_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -84,15 +88,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(INIT_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libinit.h"; \
+	@target='$(INIT_BIN_DIR)/$(1)/linux'; \
+	header='$(INIT_INCLUDE_DIR)/libinit.h'; \
 	library="$$target/libinit.a"; \
 	out='$(BIN_DIR)/$(1)/linux/init'; \
 	[ -f "$$header" ] || { echo "kccli: missing libinit header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libinit static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/init.c "$$library" -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(INIT_INCLUDE_DIR)' src/init.c "$$library" -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
 
@@ -133,15 +137,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define windows_target
-	@target='$(INIT_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libinit.h"; \
+	@target='$(INIT_BIN_DIR)/$(1)/windows'; \
+	header='$(INIT_INCLUDE_DIR)/libinit.h'; \
 	library="$$target/libinit.a"; \
 	out='$(BIN_DIR)/$(1)/windows/init.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libinit header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libinit static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/init.c "$$library" -ladvapi32 -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(INIT_INCLUDE_DIR)' src/init.c "$$library" -ladvapi32 -o "$$out"; \
 	echo "OK $(1)/windows"
 endef
 
@@ -152,8 +156,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(INIT_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libinit.h"; \
+	@target='$(INIT_BIN_DIR)/$(1)/macos'; \
+	header='$(INIT_INCLUDE_DIR)/libinit.h'; \
 	library="$$target/libinit.a"; \
 	out='$(BIN_DIR)/$(1)/macos/init'; \
 	[ -f "$$header" ] || { echo "kccli: missing libinit header: $$header" >&2; exit 1; }; \
@@ -168,7 +172,7 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" -I"$$target" src/init.c "$$library" -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" -I'$(INIT_INCLUDE_DIR)' src/init.c "$$library" -o "$$out"; \
 	echo "OK $(1)/macos"
 endef
 

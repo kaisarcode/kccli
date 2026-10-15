@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-POW_DIST_DIR := $(KCLIB_DIST_DIR)/libpow.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+POW_PROJECT_DIR := $(KCLIB_DIR)/proj/libpow.c
+POW_BIN_DIR := $(POW_PROJECT_DIR)/bin
+POW_INCLUDE_DIR := $(POW_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -92,15 +96,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(POW_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libpow.h"; \
+	@target='$(POW_BIN_DIR)/$(1)/linux'; \
+	header='$(POW_INCLUDE_DIR)/libpow.h'; \
 	library="$$target/libpow.a"; \
 	out='$(BIN_DIR)/$(1)/linux/pow'; \
 	[ -f "$$header" ] || { echo "kccli: missing libpow header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libpow static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(POW_INCLUDE_DIR)' \
 		src/pow.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(POW_DIST_DIR)/$(1)/android'; \
-	header="$$target/libpow.h"; \
+	@target='$(POW_BIN_DIR)/$(1)/android'; \
+	header='$(POW_INCLUDE_DIR)/libpow.h'; \
 	library="$$target/libpow.a"; \
 	out='$(BIN_DIR)/$(1)/android/pow'; \
 	[ -f "$$header" ] || { echo "kccli: missing libpow header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libpow static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(POW_INCLUDE_DIR)' \
 		src/pow.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/android"
 endef
@@ -162,15 +166,15 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(POW_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libpow.h"; \
+	@target='$(POW_BIN_DIR)/$(1)/windows'; \
+	header='$(POW_INCLUDE_DIR)/libpow.h'; \
 	library="$$target/libpow.a"; \
 	out='$(BIN_DIR)/$(1)/windows/pow.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libpow header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libpow static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(POW_INCLUDE_DIR)' \
 		src/pow.c "$$library" -lbcrypt -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
@@ -182,8 +186,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(POW_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libpow.h"; \
+	@target='$(POW_BIN_DIR)/$(1)/macos'; \
+	header='$(POW_INCLUDE_DIR)/libpow.h'; \
 	library="$$target/libpow.a"; \
 	out='$(BIN_DIR)/$(1)/macos/pow'; \
 	compiler='$(2)'; \
@@ -206,12 +210,12 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	if [ "$$native" = 1 ]; then \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I"$$target" src/pow.c "$$library" -o "$$out"; \
+			-mmacosx-version-min="$$min" -I'$(POW_INCLUDE_DIR)' src/pow.c "$$library" -o "$$out"; \
 	else \
 		LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 		PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I"$$target" src/pow.c "$$library" -o "$$out"; \
+			-mmacosx-version-min="$$min" -I'$(POW_INCLUDE_DIR)' src/pow.c "$$library" -o "$$out"; \
 	fi || exit 1; \
 	echo "OK $(1)/macos"
 endef

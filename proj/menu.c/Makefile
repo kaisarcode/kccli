@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-MENU_DIST_DIR := $(KCLIB_DIST_DIR)/libmenu.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+MENU_PROJECT_DIR := $(KCLIB_DIR)/proj/libmenu.c
+MENU_BIN_DIR := $(MENU_PROJECT_DIR)/bin
+MENU_INCLUDE_DIR := $(MENU_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -73,15 +77,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(MENU_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libmenu.h"; \
+	@target='$(MENU_BIN_DIR)/$(1)/linux'; \
+	header='$(MENU_INCLUDE_DIR)/libmenu.h'; \
 	library="$$target/libmenu.a"; \
 	out='$(BIN_DIR)/$(1)/linux/menu'; \
 	[ -f "$$header" ] || { echo "kccli: missing libmenu header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libmenu static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/menu.c "$$library" -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(MENU_INCLUDE_DIR)' src/menu.c "$$library" -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
 
@@ -122,15 +126,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define windows_target
-	@target='$(MENU_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libmenu.h"; \
+	@target='$(MENU_BIN_DIR)/$(1)/windows'; \
+	header='$(MENU_INCLUDE_DIR)/libmenu.h'; \
 	library="$$target/libmenu.a"; \
 	out='$(BIN_DIR)/$(1)/windows/menu.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libmenu header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libmenu static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/menu.c "$$library" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(MENU_INCLUDE_DIR)' src/menu.c "$$library" \
 		-lole32 -lshell32 -luuid -o "$$out"; \
 	echo "OK $(1)/windows"
 endef

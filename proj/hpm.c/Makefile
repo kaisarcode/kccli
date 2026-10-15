@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-HPM_DIST_DIR := $(KCLIB_DIST_DIR)/libhpm.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+HPM_PROJECT_DIR := $(KCLIB_DIR)/proj/libhpm.c
+HPM_BIN_DIR := $(HPM_PROJECT_DIR)/bin
+HPM_INCLUDE_DIR := $(HPM_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -92,15 +96,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(HPM_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libhpm.h"; \
+	@target='$(HPM_BIN_DIR)/$(1)/linux'; \
+	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
 	library="$$target/libhpm.a"; \
 	out='$(BIN_DIR)/$(1)/linux/hpm'; \
 	[ -f "$$header" ] || { echo "kccli: missing libhpm header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libhpm static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(HPM_INCLUDE_DIR)' \
 		src/hpm.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(HPM_DIST_DIR)/$(1)/android'; \
-	header="$$target/libhpm.h"; \
+	@target='$(HPM_BIN_DIR)/$(1)/android'; \
+	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
 	library="$$target/libhpm.a"; \
 	out='$(BIN_DIR)/$(1)/android/hpm'; \
 	[ -f "$$header" ] || { echo "kccli: missing libhpm header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libhpm static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(HPM_INCLUDE_DIR)' \
 		src/hpm.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/android"
 endef
@@ -162,15 +166,15 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(HPM_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libhpm.h"; \
+	@target='$(HPM_BIN_DIR)/$(1)/windows'; \
+	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
 	library="$$target/libhpm.a"; \
 	out='$(BIN_DIR)/$(1)/windows/hpm.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libhpm header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libhpm static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(HPM_INCLUDE_DIR)' \
 		src/hpm.c "$$library" -lws2_32 -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
@@ -182,8 +186,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(HPM_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libhpm.h"; \
+	@target='$(HPM_BIN_DIR)/$(1)/macos'; \
+	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
 	library="$$target/libhpm.a"; \
 	out='$(BIN_DIR)/$(1)/macos/hpm'; \
 	compiler='$(2)'; \
@@ -206,12 +210,12 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	if [ "$$native" = 1 ]; then \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I"$$target" src/hpm.c "$$library" -o "$$out"; \
+			-mmacosx-version-min="$$min" -I'$(HPM_INCLUDE_DIR)' src/hpm.c "$$library" -o "$$out"; \
 	else \
 		LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 		PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I"$$target" src/hpm.c "$$library" -o "$$out"; \
+			-mmacosx-version-min="$$min" -I'$(HPM_INCLUDE_DIR)' src/hpm.c "$$library" -o "$$out"; \
 	fi || exit 1; \
 	echo "OK $(1)/macos"
 endef

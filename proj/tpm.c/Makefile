@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-TPM_DIST_DIR := $(KCLIB_DIST_DIR)/libtpm.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+TPM_PROJECT_DIR := $(KCLIB_DIR)/proj/libtpm.c
+TPM_BIN_DIR := $(TPM_PROJECT_DIR)/bin
+TPM_INCLUDE_DIR := $(TPM_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -92,15 +96,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(TPM_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libtpm.h"; \
+	@target='$(TPM_BIN_DIR)/$(1)/linux'; \
+	header='$(TPM_INCLUDE_DIR)/libtpm.h'; \
 	library="$$target/libtpm.a"; \
 	out='$(BIN_DIR)/$(1)/linux/tpm'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpm header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtpm static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TPM_INCLUDE_DIR)' \
 		src/tpm.c "$$library" -lm -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(TPM_DIST_DIR)/$(1)/android'; \
-	header="$$target/libtpm.h"; \
+	@target='$(TPM_BIN_DIR)/$(1)/android'; \
+	header='$(TPM_INCLUDE_DIR)/libtpm.h'; \
 	library="$$target/libtpm.a"; \
 	out='$(BIN_DIR)/$(1)/android/tpm'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpm header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtpm static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TPM_INCLUDE_DIR)' \
 		src/tpm.c "$$library" -lm -o "$$out"; \
 	echo "OK $(1)/android"
 endef
@@ -162,15 +166,15 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(TPM_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libtpm.h"; \
+	@target='$(TPM_BIN_DIR)/$(1)/windows'; \
+	header='$(TPM_INCLUDE_DIR)/libtpm.h'; \
 	library="$$target/libtpm.a"; \
 	out='$(BIN_DIR)/$(1)/windows/tpm.exe'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpm header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libtpm static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TPM_INCLUDE_DIR)' \
 		src/tpm.c "$$library" -o "$$out"; \
 	echo "OK $(1)/windows"
 endef
@@ -182,8 +186,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(TPM_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libtpm.h"; \
+	@target='$(TPM_BIN_DIR)/$(1)/macos'; \
+	header='$(TPM_INCLUDE_DIR)/libtpm.h'; \
 	library="$$target/libtpm.a"; \
 	out='$(BIN_DIR)/$(1)/macos/tpm'; \
 	[ -f "$$header" ] || { echo "kccli: missing libtpm header: $$header" >&2; exit 1; }; \
@@ -199,7 +203,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/tpm.c "$$library" \
+		-mmacosx-version-min="$$min" -I'$(TPM_INCLUDE_DIR)' src/tpm.c "$$library" \
 		-o "$$out"; \
 	echo "OK $(1)/macos"
 endef
@@ -236,8 +240,7 @@ test:
 
 wine:
 	@if [ -z "$(filter test,$(MAKECMDGOALS))" ]; then \
-		echo "Use 'make test wine' to run Windows CLI tests through Wine." >&2; \
-		exit 1; \
+		echo "Use 'make test wine' to run Windows CLI tests through Wine." >&2; exit 1; \
 	fi
 	@:
 

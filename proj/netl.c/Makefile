@@ -7,8 +7,12 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-NETL_DIST_DIR := $(KCLIB_DIST_DIR)/libnetl.c
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+NETL_PROJECT_DIR := $(KCLIB_DIR)/proj/libnetl.c
+NETL_BIN_DIR := $(NETL_PROJECT_DIR)/bin
+NETL_INCLUDE_DIR := $(NETL_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -93,15 +97,15 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(NETL_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libnetl.h"; \
+	@target='$(NETL_BIN_DIR)/$(1)/linux'; \
+	header='$(NETL_INCLUDE_DIR)/libnetl.h'; \
 	library="$$target/libnetl.a"; \
 	out='$(BIN_DIR)/$(1)/linux/netl'; \
 	[ -f "$$header" ] || { echo "kccli: missing libnetl header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libnetl static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/netl.c "$$library" -pthread -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(NETL_INCLUDE_DIR)' src/netl.c "$$library" -pthread -o "$$out"; \
 	echo "OK $(1)/linux"
 endef
 
@@ -142,15 +146,15 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(NETL_DIST_DIR)/$(1)/android'; \
-	header="$$target/libnetl.h"; \
+	@target='$(NETL_BIN_DIR)/$(1)/android'; \
+	header='$(NETL_INCLUDE_DIR)/libnetl.h'; \
 	library="$$target/libnetl.a"; \
 	out='$(BIN_DIR)/$(1)/android/netl'; \
 	[ -f "$$header" ] || { echo "kccli: missing libnetl header: $$header" >&2; exit 1; }; \
 	[ -f "$$library" ] || { echo "kccli: missing libnetl static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/netl.c "$$library" -pthread -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(NETL_INCLUDE_DIR)' src/netl.c "$$library" -pthread -o "$$out"; \
 	echo "OK $(1)/android"
 endef
 
@@ -161,8 +165,8 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(NETL_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libnetl.h"; \
+	@target='$(NETL_BIN_DIR)/$(1)/windows'; \
+	header='$(NETL_INCLUDE_DIR)/libnetl.h'; \
 	library="$$target/libnetl.dll.a"; \
 	dll="$$target/libnetl.dll"; \
 	out='$(BIN_DIR)/$(1)/windows/netl.exe'; \
@@ -171,7 +175,7 @@ define windows_target
 	[ -f "$$dll" ] || { echo "kccli: missing libnetl DLL: $$dll" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/netl.c "$$library" -lws2_32 -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(NETL_INCLUDE_DIR)' src/netl.c "$$library" -lws2_32 -o "$$out"; \
 	cp "$$dll" '$(BIN_DIR)/$(1)/windows/libnetl.dll'; \
 	echo "OK $(1)/windows"
 endef
@@ -183,8 +187,8 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(NETL_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libnetl.h"; \
+	@target='$(NETL_BIN_DIR)/$(1)/macos'; \
+	header='$(NETL_INCLUDE_DIR)/libnetl.h'; \
 	library="$$target/libnetl.a"; \
 	out='$(BIN_DIR)/$(1)/macos/netl'; \
 	[ -f "$$header" ] || { echo "kccli: missing libnetl header: $$header" >&2; exit 1; }; \
@@ -199,7 +203,7 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" -I"$$target" src/netl.c "$$library" -pthread -o "$$out"; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -mmacosx-version-min="$$min" -I'$(NETL_INCLUDE_DIR)' src/netl.c "$$library" -pthread -o "$$out"; \
 	echo "OK $(1)/macos"
 endef
 

@@ -7,10 +7,13 @@
 
 SHELL := /bin/sh
 
-KCLIB_DIST_DIR ?= $(abspath $(CURDIR)/../../../kclib/dist)
-KCLIB_ROOT_DIR ?= $(abspath $(KCLIB_DIST_DIR)/..)
-WVW_DIST_DIR := $(KCLIB_DIST_DIR)/libwvw.c
-WVW_LOADER := $(KCLIB_ROOT_DIR)/proj/libwvw.c/lib/webview2/WebView2Loader.dll
+ifndef KCLIB_DIR
+$(error KCLIB_DIR environment variable is required)
+endif
+WVW_PROJECT_DIR := $(KCLIB_DIR)/proj/libwvw.c
+WVW_BIN_DIR := $(WVW_PROJECT_DIR)/bin
+WVW_INCLUDE_DIR := $(WVW_PROJECT_DIR)/src
+WVW_LOADER := $(WVW_PROJECT_DIR)/lib/webview2/WebView2Loader.dll
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -61,8 +64,8 @@ endif
 all: x86_64/linux x86_64/windows x86_64/macos aarch64/macos
 
 define linux_target
-	@target='$(WVW_DIST_DIR)/$(1)/linux'; \
-	header="$$target/libwvw.h"; \
+	@target='$(WVW_BIN_DIR)/$(1)/linux'; \
+	header='$(WVW_INCLUDE_DIR)/libwvw.h'; \
 	library="$$target/libwvw.a"; \
 	out='$(BIN_DIR)/$(1)/linux/wvw'; \
 	[ -f "$$header" ] || { echo "kccli: missing libwvw header: $$header" >&2; exit 1; }; \
@@ -71,7 +74,7 @@ define linux_target
 	command -v pkg-config >/dev/null 2>&1 || { echo "kccli: missing pkg-config" >&2; exit 1; }; \
 	pkg-config --exists gtk+-3.0 webkit2gtk-4.1 || { echo "kccli: missing GTK 3 or WebKitGTK 4.1 development files" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/wvw.c \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(WVW_INCLUDE_DIR)' src/wvw.c \
 		"$$library" $$(pkg-config --libs gtk+-3.0 webkit2gtk-4.1) \
 		-pthread -lm -ldl -o "$$out"; \
 	echo "OK $(1)/linux"
@@ -81,8 +84,8 @@ x86_64/linux:
 	$(call linux_target,x86_64,gcc)
 
 define windows_target
-	@target='$(WVW_DIST_DIR)/$(1)/windows'; \
-	header="$$target/libwvw.h"; \
+	@target='$(WVW_BIN_DIR)/$(1)/windows'; \
+	header='$(WVW_INCLUDE_DIR)/libwvw.h'; \
 	library="$$target/libwvw.a"; \
 	out='$(BIN_DIR)/$(1)/windows/wvw.exe'; \
 	loader='$(WVW_LOADER)'; \
@@ -91,7 +94,7 @@ define windows_target
 	[ -f "$$loader" ] || { echo "kccli: missing WebView2Loader.dll: $$loader" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I"$$target" src/wvw.c \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(WVW_INCLUDE_DIR)' src/wvw.c \
 		"$$library" -lole32 -luuid -luser32 -lgdi32 -lshell32 -o "$$out"; \
 	cp "$$loader" '$(BIN_DIR)/$(1)/windows/WebView2Loader.dll'; \
 	echo "OK $(1)/windows"
@@ -101,8 +104,8 @@ x86_64/windows:
 	$(call windows_target,x86_64,x86_64-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(WVW_DIST_DIR)/$(1)/macos'; \
-	header="$$target/libwvw.h"; \
+	@target='$(WVW_BIN_DIR)/$(1)/macos'; \
+	header='$(WVW_INCLUDE_DIR)/libwvw.h'; \
 	library="$$target/libwvw.a"; \
 	out='$(BIN_DIR)/$(1)/macos/wvw'; \
 	[ -f "$$header" ] || { echo "kccli: missing libwvw header: $$header" >&2; exit 1; }; \
@@ -118,7 +121,7 @@ define macos_target
 	LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 	PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 	$(2) -std=c11 -O2 -Wall -Wextra -Werror \
-		-mmacosx-version-min="$$min" -I"$$target" src/wvw.c "$$library" \
+		-mmacosx-version-min="$$min" -I'$(WVW_INCLUDE_DIR)' src/wvw.c "$$library" \
 		-framework WebKit -framework Cocoa -framework Foundation \
 		-pthread -lm -o "$$out"; \
 	echo "OK $(1)/macos"
