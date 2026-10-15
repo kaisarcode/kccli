@@ -1,7 +1,7 @@
 # kccli
 
 `kccli` contains native command-line projects built on top of precompiled
-kclib static libraries.
+kclib libraries.
 
 Each CLI lives in its own project directory:
 
@@ -9,11 +9,22 @@ Each CLI lives in its own project directory:
 proj/NAME.c/
 ```
 
-Projects build against kclib artifacts under
-`kclib/dist/libNAME.c/<arch>/<platform>/` when applicable. The library source
-is not compiled into kccli projects directly.
+KCCLI builds require `KCLIB_DIR` to point to the root of the kclib monorepo.
+For a project `NAME`, public headers are read from
+`$KCLIB_DIR/proj/libNAME.c/src/` and precompiled library artifacts are read from
+`$KCLIB_DIR/proj/libNAME.c/bin/<arch>/<platform>/`. `kclib/dist` is not used as
+a KCCLI build or link input. Library source is not compiled into kccli projects
+directly.
 
 ## Build
+
+Set `KCLIB_DIR` before building:
+
+```sh
+export KCLIB_DIR=/path/to/kclib
+```
+
+`KCLIB_DIR` is required. There is no sibling-relative or `kclib/dist` fallback.
 
 Build one project for all configured targets:
 

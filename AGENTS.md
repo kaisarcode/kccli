@@ -72,13 +72,21 @@ Use `all` instead of a project name to operate on every project.
 ## Relationship with kclib
 
 A KCCLI is normally a thin command-line projection of one public kclib API.
-The project Makefile links against prebuilt static artifacts in `kclib/dist`.
+Every project Makefile requires `KCLIB_DIR` to point to the root of the kclib
+monorepo. For the corresponding `lib<name>.c` project, consume the public
+headers from `$(KCLIB_DIR)/proj/lib<name>.c/src/` and the precompiled library
+artifacts from `$(KCLIB_DIR)/proj/lib<name>.c/bin/<arch>/<platform>/`.
 
 The usual relationship is:
 
 ```text
-proj/<name>.c  ->  kclib/dist/lib<name>.c/<arch>/<platform>/
+proj/<name>.c
+  -> $(KCLIB_DIR)/proj/lib<name>.c/src/
+  -> $(KCLIB_DIR)/proj/lib<name>.c/bin/<arch>/<platform>/
 ```
+
+`kclib/dist` is not a KCCLI build or link input. Do not add a sibling-relative
+fallback for kclib; a missing `KCLIB_DIR` must fail explicitly.
 
 A CLI may add argument parsing, validation, process lifecycle, local socket or
 file handling, privilege handling, and other glue that belongs specifically to
@@ -395,7 +403,13 @@ rewrites while changing behavior.
 ## Makefile pattern
 
 Each project Makefile is responsible for building the CLI directly against the
-precompiled static kclib artifacts for its supported targets.
+precompiled artifacts from the corresponding kclib project. `KCLIB_DIR` is
+mandatory and must point to the kclib monorepo root. Include public headers from
+`$(KCLIB_DIR)/proj/lib<name>.c/src/` and select library artifacts from
+`$(KCLIB_DIR)/proj/lib<name>.c/bin/<arch>/<platform>/`.
+
+Do not derive the kclib location from `$(CURDIR)` or any assumed sibling layout,
+and do not use `kclib/dist` as a build or link source.
 
 Compile `src/<name>.c` directly as the application source. Do not introduce a
 separate `entry.c`, `main.c`, wrapper, source-inclusion shim, or argument
@@ -413,11 +427,14 @@ The established pattern includes:
 - `make test wine` where Windows CLI tests are supported,
 - `make clean` as a project target.
 
-Do not assume every library supports every platform. Match the targets and
-system libraries that the linked kclib artifact actually supports.
+Do not assume every library supports every platform. Match the targets,
+precompiled artifacts, support files, and system libraries that the linked
+kclib project actually supports.
 
-Do not introduce a dynamic-library dependency when the existing KCCLI pattern
-uses the static `kclib/dist` artifact.
+Preserve the linked library's artifact model. Do not replace an existing static
+link with a dynamic-library dependency merely for convenience. When a library
+requires import libraries, DLLs, or other runtime support assets, follow the
+corresponding kclib project and the closest working KCCLI project.
 
 ## Tests
 
@@ -487,8 +504,10 @@ Normally:
     library requirements as the structural reference.
 2. Add `src/<name>.c` as the CLI implementation.
 3. Add `src/test.c` with black-box contract tests.
-4. Add a Makefile that links the appropriate static library from `kclib/dist`
-    and exposes the standard build/test targets applicable to that library.
+4. Add a Makefile that requires `KCLIB_DIR`, consumes the public header from
+    `$(KCLIB_DIR)/proj/lib<name>.c/src/`, links the appropriate precompiled
+    artifact from `$(KCLIB_DIR)/proj/lib<name>.c/bin/<arch>/<platform>/`, and
+    exposes the standard build/test targets applicable to that library.
 5. Add `README.md`, `LICENSE`, and `.kcsignore` following repository patterns.
 6. Verify that the root `scripts/build.sh` and `scripts/test.sh` discover the
     project automatically; do not edit them merely to enumerate the new name.
