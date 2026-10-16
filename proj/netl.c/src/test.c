@@ -23,6 +23,7 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 typedef SOCKET netl_test_fd_t;
+typedef int netl_test_socklen_t;
 #define NETL_TEST_INVALID INVALID_SOCKET
 #define NETL_TEST_CLOSE(fd) closesocket(fd)
 #else
@@ -32,6 +33,7 @@ typedef SOCKET netl_test_fd_t;
 #include <time.h>
 #include <unistd.h>
 typedef int netl_test_fd_t;
+typedef socklen_t netl_test_socklen_t;
 #define NETL_TEST_INVALID (-1)
 #define NETL_TEST_CLOSE(fd) close(fd)
 #endif
@@ -197,7 +199,7 @@ static unsigned short test_port(void)
 {
     struct sockaddr_in address;
     netl_test_fd_t fd;
-    socklen_t size;
+    netl_test_socklen_t size;
     unsigned short port;
 
     fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -209,12 +211,12 @@ static unsigned short test_port(void)
     if (bind(
             fd,
             (const struct sockaddr *)&address,
-            (socklen_t)sizeof(address)
+            (netl_test_socklen_t)sizeof(address)
         ) != 0) {
         NETL_TEST_CLOSE(fd);
         return 0U;
     }
-    size = (socklen_t)sizeof(address);
+    size = (netl_test_socklen_t)sizeof(address);
     if (getsockname(fd, (struct sockaddr *)&address, &size) != 0) {
         NETL_TEST_CLOSE(fd);
         return 0U;
@@ -247,7 +249,7 @@ static netl_test_fd_t test_connect(unsigned short port)
         if (connect(
                 fd,
                 (const struct sockaddr *)&address,
-                (socklen_t)sizeof(address)
+                (netl_test_socklen_t)sizeof(address)
             ) == 0) {
             return fd;
         }
@@ -278,7 +280,7 @@ static int test_closed(unsigned short port)
     rc = connect(
         fd,
         (const struct sockaddr *)&address,
-        (socklen_t)sizeof(address)
+        (netl_test_socklen_t)sizeof(address)
     );
     NETL_TEST_CLOSE(fd);
     return rc != 0;
