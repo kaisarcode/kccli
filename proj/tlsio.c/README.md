@@ -29,14 +29,14 @@ tlsio server <port> --cert <file> --key <file> [options]
 Client options:
 
 - `--name <host>` sets the TLS server name used for SNI and hostname
-  verification. The default is the TCP destination host.
+    verification. The default is the TCP destination host.
 - `--ca <file>` uses the supplied PEM or DER CA chain instead of the system
-  trust store.
+    trust store.
 
 Server options:
 
 - `--bind <host>` limits the local bind address. The default is the platform
-  wildcard address.
+    wildcard address.
 - `--cert <file>` supplies the server certificate chain in PEM or DER form.
 - `--key <file>` supplies the server private key in PEM or DER form.
 
