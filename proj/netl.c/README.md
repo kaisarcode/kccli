@@ -1,9 +1,27 @@
-# netl.c - Resident Network Listener CLI
+# netl
 
-`netl` manages named resident TCP or UDP listeners.
+`netl` creates, lists, replaces, and removes named resident TCP or UDP listeners
+that dispatch incoming traffic to local commands.
 
-A listener is registered once, remains active after the command returns, and
-dispatches incoming traffic to the configured local command.
+## Quick start
+
+Register a TCP listener:
+
+```bash
+netl web 8080 ./handler.sh
+```
+
+List listeners:
+
+```bash
+netl -l
+```
+
+Remove the listener:
+
+```bash
+netl web -d
+```
 
 ## Usage
 
@@ -23,97 +41,48 @@ Options:
   -v, --version            Show version
 ```
 
-Arguments beginning with `-` or `--` are options, not positional arguments.
-Options that take a value consume the following argument.
+Registration returns after the resident listener has been created. Listener ids
+may contain letters, digits, dots, underscores, and hyphens.
 
-## Register a listener
+Use UDP explicitly with `--transport udp`.
 
-TCP is the default transport:
+## Runtime state
 
-```bash
-netl web 8080 ./handler.sh
-```
+`KC_NETL_DIR` overrides the directory used for resident listener state. Without
+it, `netl` selects a per-user runtime directory appropriate for the platform.
 
-Use UDP explicitly:
-
-```bash
-netl dns 5353 -t udp ./handler.sh
-```
-
-Registration creates or replaces the named resident listener and returns the
-terminal immediately.
-
-For TCP, one command process is associated with each connection. Bytes received
-from the peer are written to the command's standard input, and command standard
-output is sent back to the same peer.
-
-For UDP, each datagram starts one command and the datagram is written to that
-command's standard input.
-
-## List listeners
-
-List all registrations:
-
-```bash
-netl -l
-```
-
-List one registration:
-
-```bash
-netl -l web
-```
-
-Each row has a fixed machine-readable schema:
+Listing prints one tab-separated row per listener:
 
 ```text
 <id><TAB><port><TAB><transport><TAB><cmd>
 ```
 
-Example:
-
-```text
-web 8080    tcp ./handler.sh
-dns 5353    udp ./dns-handler.sh
-```
-
-## Remove a listener
-
-```bash
-netl web -d
-```
-
-This stops the resident listener process and removes its registration.
-
-## Runtime state
-
-`KC_NETL_DIR` can override the runtime state directory when needed.
+See [Listener behavior](doc/listener-behavior.md) for TCP and UDP command
+dispatch semantics and lifecycle details.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Run the Windows tests through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

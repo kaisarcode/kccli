@@ -1,7 +1,21 @@
 # mdp
 
-`mdp` parses Markdown, exposes raw frontmatter and body views, and renders the
-body as either HTML or ANSI terminal output.
+`mdp` parses Markdown and prints HTML, ANSI terminal output, the Markdown body,
+or raw frontmatter.
+
+## Quick start
+
+Render Markdown as HTML:
+
+```bash
+mdp "# Hello"
+```
+
+Render for a terminal:
+
+```bash
+mdp --ansi "# Hello"
+```
 
 ## Usage
 
@@ -17,98 +31,43 @@ Options:
   -v, --version       Show version
 ```
 
-HTML output is the default. Use `--ansi` when the rendered Markdown will be
-shown directly in a terminal.
+## Input and output
 
-If Markdown is available from more than one source, `mdp` uses this order:
+Markdown input is selected in this order:
 
 ```text
-positional argument > stdin > -i/--input
+argument > stdin > -i/--input
 ```
 
-A positional argument is treated as literal Markdown text. When it is present,
-it is used even if stdin is redirected or `-i/--input` is also provided.
+A positional argument is literal Markdown. Redirected or piped stdin takes
+priority over the input file when no positional argument is present.
 
-When no positional argument is present, redirected stdin takes priority over
-`-i/--input`. The input file is used only when no higher-priority input is
-available.
-
-Render Markdown passed as an argument to HTML:
-
-```bash
-mdp "# Hello"
-```
-
-Render Markdown for the terminal:
-
-```bash
-mdp --ansi "# Hello"
-```
-
-Render Markdown from standard input:
-
-```bash
-printf '# Hello' | mdp
-```
-
-Render terminal output from standard input:
-
-```bash
-printf '# Hello' | mdp --ansi
-```
-
-Render a Markdown file:
-
-```bash
-mdp -i README.md
-```
-
-If both stdin and a file are provided, stdin wins:
-
-```bash
-printf '# From stdin' | mdp -i README.md
-```
-
-Print the Markdown body after recognized frontmatter:
-
-```bash
-printf '%s\n' '---' 'title: Home' '---' '# Hello' | mdp --body
-```
-
-Print raw frontmatter:
-
-```bash
-printf '%s\n' '---' 'title: Home' '---' '# Hello' | mdp --meta
-```
-
-`--ansi`, `--body`, and `--meta` are mutually exclusive. Without an output-mode
-option, the HTML fragment is written directly to standard output.
+HTML is the default output. `--ansi`, `--body`, and `--meta` are mutually
+exclusive.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

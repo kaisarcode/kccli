@@ -1,23 +1,54 @@
-# wvw.c - Native WebView CLI
+# wvw
 
-`wvw` opens one native WebView window.
+`wvw` opens one native WebView window for a URL or local page and keeps the
+process alive while the window is active.
 
-The URL is the primary positional argument. Window configuration is provided
-through command-line options.
+## Quick start
 
-## Build
-
-Build the native host target:
-
-```sh
-make
+```bash
+wvw https://example.com
 ```
 
-Build all configured targets:
+Set the title and content size:
 
-```sh
-make all
+```bash
+wvw https://example.com --title "Example" --width 1024 --height 768
 ```
+
+## Usage
+
+```text
+Usage: wvw <url> [options]
+
+Options:
+  --title <title>         Window title (default: wvw)
+  --background <color>    RRGGBB or AARRGGBB; 00 alpha is transparent
+  --icon <icon>           Icon file path or platform icon name
+  --width <px>            Content width (default: 1280)
+  --height <px>           Content height (default: 720)
+  --x <px>                Window X position
+  --y <px>                Window Y position
+  --fullscreen            Start fullscreen
+  --borderless            Start without native window borders
+  --always-on-top         Keep the window above normal windows
+  --click-through         Pass pointer input through the window
+  --no-focus              Prevent the window from taking focus
+  --hidden                Start with the native window hidden
+  --unlist                Exclude the window from the window list
+  --exec <path>           Expose executable to NativeBridge.exec
+  -h, --help              Show this help
+  -v, --version           Show version
+```
+
+Eight-digit backgrounds use `AARRGGBB`; alpha `00` is fully transparent. Six
+hexadecimal digits are opaque RGB.
+
+`--exec` is repeatable. See [Native bridge](doc/native-bridge.md) before exposing
+native executables to page content.
+
+`Ctrl+C` and termination signals close the WebView cleanly.
+
+## Platform requirements
 
 Configured targets are:
 
@@ -29,147 +60,32 @@ aarch64/macos
 ```
 
 Linux builds require GTK 3 and WebKitGTK 4.1 development files. Windows uses
-WebView2 at runtime. macOS uses WebKit/Cocoa/Foundation.
+WebView2 and the build packages `WebView2Loader.dll` beside the executable.
+macOS uses WebKit and Cocoa.
 
-## Tests
+## Build
 
-Run the native CLI tests:
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
 
-```sh
+```bash
+export KCLIB_DIR=path/to/kclib
+make
 make test
 ```
 
-Run the x86_64 Windows tests through Wine:
+Build every configured target with:
 
-```sh
+```bash
+make all
+```
+
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
+
+```bash
 make test wine
 ```
-
-The tests validate argument handling without opening a real WebView.
-
-## CLI
-
-```text
-wvw <url> [options]
-```
-
-Options:
-
-```text
---title <title>         Window title (default: wvw)
---background <color>    RRGGBB or AARRGGBB; 00 alpha is transparent
---icon <icon>           Icon file path or platform icon name
---width <px>            Content width (default: 1280)
---height <px>           Content height (default: 720)
---x <px>                Window X position
---y <px>                Window Y position
---fullscreen            Start fullscreen
---borderless            Start without native window borders
---always-on-top         Keep the window above normal windows
---click-through         Pass pointer input through the window
---no-focus              Prevent the window from taking focus
---hidden                Start with the native window hidden
---unlist                Exclude the window from the platform window list
---exec <path>           Expose executable to NativeBridge.exec
--h, --help              Show help
--v, --version           Show version
-```
-
-The process remains alive while the WebView is active and closes the window on
-SIGINT or SIGTERM.
-
-## Transparency
-
-Use the alpha byte of an eight-digit background color. `00` is fully
-transparent.
-
-For example:
-
-```bash
-wvw https://example.com --background 00000000 --borderless
-```
-
-A semi-transparent black background can use:
-
-```bash
-wvw https://example.com --background 80000000
-```
-
-Six-digit colors are opaque RGB values:
-
-```bash
-wvw https://example.com --background 202020
-```
-
-## Examples
-
-Open a normal window:
-
-```bash
-wvw https://example.com
-```
-
-Set title and size:
-
-```bash
-wvw https://example.com \
-    --title "Example" \
-    --width 1024 \
-    --height 768
-```
-
-Set an explicit position:
-
-```bash
-wvw https://example.com --x 100 --y 80
-```
-
-Create a borderless transparent always-on-top window:
-
-```bash
-wvw https://example.com \
-    --background 00000000 \
-    --borderless \
-    --always-on-top
-```
-
-Create a click-through overlay that does not take focus and is not listed:
-
-```bash
-wvw https://example.com \
-    --background 00000000 \
-    --borderless \
-    --always-on-top \
-    --click-through \
-    --no-focus \
-    --unlist
-```
-
-Start fullscreen:
-
-```bash
-wvw https://example.com --fullscreen
-```
-
-Start hidden:
-
-```bash
-wvw https://example.com --hidden
-```
-
-Expose only selected native executables to page code:
-
-```bash
-wvw ./index.html \
-    --exec /path/to/myexe \
-    --exec /path/to/other
-```
-
-```js
-NativeBridge.exec(["myexe", "--param", "hello"]);
-```
-
----
 
 ## License
 

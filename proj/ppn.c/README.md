@@ -1,6 +1,16 @@
-# ppn.c - Native Popup Notification CLI
+# ppn
 
-`ppn` displays one native operating-system notification through `libppn`.
+`ppn` displays one native operating-system notification with a title and
+message.
+
+## Quick start
+
+```bash
+ppn "Download complete" "package.tar.gz is ready"
+```
+
+The operating system controls presentation, duration, grouping, and visibility
+according to the user's notification settings.
 
 ## Usage
 
@@ -12,78 +22,47 @@ Options:
   -v, --version  Show version
 ```
 
-Both `title` and `message` are required and must be non-empty. Quote either
-argument when it contains spaces.
-
-Examples:
-
-```sh
-ppn "Download complete" "package.tar.gz is ready"
-ppn "Build" "Compilation finished successfully"
-```
-
-The operating system controls presentation, duration, grouping, and whether a
-notification is visible according to the user's notification settings.
-
-## Build
-
-The CLI links against the prebuilt static `libppn` artifacts from `kclib/dist`.
-
-Build all configured targets:
-
-```sh
-make all
-```
-
-Build one target:
-
-```sh
-make x86_64/linux
-make x86_64/windows
-make x86_64/macos
-make aarch64/macos
-```
-
-From the `kccli` repository root:
-
-```sh
-./scripts/build.sh ppn
-```
-
-## Tests
-
-Run native CLI contract tests:
-
-```sh
-make test
-```
-
-Run the Windows CLI contract tests through Wine:
-
-```sh
-make test wine
-```
-
-From the `kccli` repository root:
-
-```sh
-./scripts/test.sh ppn
-```
-
-The CLI contract tests cover argument parsing, help, version reporting, and
-invalid invocations. They do not require a visible notification service; the
-underlying `libppn` project owns native notification integration testing.
+Both arguments are required and must be non-empty. Quote arguments that contain
+spaces.
 
 ## Platforms
 
-The configured build targets follow `libppn`:
+Configured targets are:
 
-- Linux x86_64
-- Windows x86_64
-- macOS x86_64
-- macOS aarch64
+```text
+x86_64/linux
+x86_64/windows
+x86_64/macos
+aarch64/macos
+```
 
----
+## Build
+
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
+```bash
+export KCLIB_DIR=path/to/kclib
+make
+make test
+```
+
+Build every configured target with:
+
+```bash
+make all
+```
+
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
+
+```bash
+make test wine
+```
+
+The CLI tests validate its argument contract. Native notification integration
+belongs to the linked platform library and may require a graphical session at
+runtime.
 
 ## License
 

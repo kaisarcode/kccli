@@ -1,6 +1,33 @@
 # wch
 
-`wch` manages resident filesystem watchers.
+`wch` creates, lists, replaces, and removes named resident filesystem watchers.
+Each watcher runs a configured command when filesystem events occur.
+
+## Quick start
+
+Register a watcher:
+
+```bash
+wch source ./src ./handler.sh
+```
+
+Register it recursively:
+
+```bash
+wch source ./src --recursive ./handler.sh
+```
+
+List watchers:
+
+```bash
+wch -l
+```
+
+Remove the watcher:
+
+```bash
+wch source -d
+```
 
 ## Usage
 
@@ -20,97 +47,43 @@ Options:
   -v, --version      Show version
 ```
 
-## Register a watcher
+Registration returns after the resident watcher has been created. The watcher
+does not remain attached to the terminal and does not stream events to stdout.
 
-Register or replace a resident watcher:
+`--recursive` is an option rather than a positional argument and may appear
+before or after command arguments.
 
-```bash
-wch source ./src ./handler.sh
-```
-
-The command returns the terminal immediately after the watcher is registered or
-replaced. `wch` does not remain attached to the terminal and does not stream
-watch events to standard output.
-
-The configured command is executed when filesystem events occur. It may contain
-multiple positional arguments; `wch` stores them as one command string.
-
-For example:
-
-```bash
-wch source ./src ./handler.sh rebuild
-```
-
-Watch directories recursively with either option form:
-
-```bash
-wch source ./src -r ./handler.sh
-```
-
-```bash
-wch source ./src ./handler.sh --recursive
-```
-
-Options are not positional, so `-r` or `--recursive` may appear anywhere in the
-command line without changing the meaning of `id`, `path`, or `command...`.
-
-## List watchers
-
-List every registered watcher:
-
-```bash
-wch -l
-```
-
-List one watcher:
-
-```bash
-wch -l source
-```
-
-Both forms use the same fixed, tab-separated output schema:
+Listing uses this tab-separated schema:
 
 ```text
 <id><TAB><path><TAB><cmd>
 ```
 
-No runtime state or additional configuration fields are printed.
-
-## Delete a watcher
-
-```bash
-wch source -d
-```
-
-Deleting a watcher stops and removes it.
+On Windows, the build packages `libwch.dll` beside `wch.exe`.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-On Windows, `libwch.dll` is packaged beside `wch.exe`.
-
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

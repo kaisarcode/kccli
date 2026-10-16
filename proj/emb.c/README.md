@@ -1,11 +1,23 @@
 # emb
 
-`emb` generates fixed-model text embeddings.
+`emb` generates text embeddings with the embedded BGE small v1.5 model and
+prints one headerless CSV vector.
 
-It accepts one text argument, standard input, or a file and prints one
-headerless CSV vector per successful embedding.
+## Quick start
 
-The embedding dimension is fixed by the model and cannot be changed.
+```bash
+emb "The quick brown fox"
+```
+
+```text
+-0.0123,0.0441,-0.0087,...
+```
+
+Query the model dimension instead of hardcoding it:
+
+```bash
+emb --dimension
+```
 
 ## Usage
 
@@ -19,74 +31,43 @@ Options:
   -v, --version       Show version
 ```
 
-If text is available from more than one source, `emb` uses this order:
+## Input and output
+
+Text is selected in this order:
 
 ```text
 argument > stdin > -i/--input
 ```
 
 A positional argument wins over redirected or piped stdin. Without an argument,
-stdin wins over `-i` when stdin contains input. An empty redirected stdin may
+stdin wins over `--input` when it contains data. An empty redirected stdin may
 fall through to the file.
 
-Embed one text:
-
-```bash
-emb "The quick brown fox"
-```
-
-Read text from standard input:
-
-```bash
-printf 'The quick brown fox' | emb
-```
-
-Read text from a file:
-
-```bash
-emb -i document.txt
-```
-
-Output is one headerless CSV row:
-
-```text
--0.0123,0.0441,-0.0087,...
-```
-
-Print the fixed model dimension:
-
-```bash
-emb --dimension
-```
-
-The current embedded model is BAAI/bge-small-en-v1.5. Query the dimension with
-`--dimension` instead of hardcoding it.
+Each successful embedding is written as one CSV row with no header.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

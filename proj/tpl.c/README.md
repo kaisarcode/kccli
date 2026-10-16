@@ -1,9 +1,19 @@
 # tpl
 
-`tpl` renders templates with variables and optional includes.
-
-It loads one template source, applies the provided variables, and writes the
+`tpl` renders one template with variables and optional includes, then writes the
 rendered result directly to standard output.
+
+## Quick start
+
+```bash
+tpl '<h1>{{ title }}</h1>' --var title Home
+```
+
+Render a file and set multiple variables:
+
+```bash
+tpl -i page.tpl --var title Home --var user_name Kaisar
+```
 
 ## Usage
 
@@ -18,75 +28,41 @@ Options:
   -V, --version           Show version
 ```
 
-A positional argument is literal template text. A template file is selected
-only with `-i` or `--input`.
-
-If template input is available from more than one source, `tpl` uses this order:
+Template input is selected in this order:
 
 ```text
 argument > stdin > -i/--input
 ```
 
-A positional argument wins over redirected or piped stdin. Without an argument,
-stdin wins over `-i` when stdin contains input. An empty redirected stdin may
-fall through to the file.
+A positional argument is literal template text. `--var` is repeatable and
+`--root` controls the directory used to resolve includes.
 
-Render literal template text:
-
-```bash
-tpl '<h1>{{ title }}</h1>' --var title Home
-```
-
-Render from standard input:
-
-```bash
-printf '<h1>{{ title }}</h1>' | tpl --var title Home
-```
-
-Render a template file:
-
-```bash
-tpl -i page.tpl --var title Home --var user_name Kaisar
-```
-
-Set a custom include root:
-
-```bash
-tpl -i page.tpl --root ./views
-```
-
-`--var` is repeatable. The output is written unchanged to standard output.
-Rendering errors are written to standard error and return a nonzero process
-status.
-
-Supported template features include escaping, includes, blocks, conditionals,
-and foreach loops.
+See [Template syntax](doc/template-syntax.md) for expressions, escaping,
+includes, blocks, conditionals, and loops.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

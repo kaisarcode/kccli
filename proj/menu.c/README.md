@@ -1,37 +1,19 @@
-# menu.c - Native Application Menu CLI
+# menu
 
-`menu` manages native application-menu entries from the command line.
+`menu` creates, replaces, and removes native application-menu entries.
 
-It adds application launchers and deletes them by identifier. Linux uses the
-current user's XDG application menu and Windows uses the current user's Start
-Menu Programs folder.
+## Quick start
 
-## Build
+Register an application:
 
-Build the native host target:
-
-```sh
-make
+```bash
+menu myapp ./myapp --name "My App"
 ```
 
-Build all configured Linux and Windows targets:
+Remove it:
 
-```sh
-make all
-```
-
-## Tests
-
-Run the native CLI contract:
-
-```sh
-make test
-```
-
-Run the x86_64 Windows CLI contract through Wine:
-
-```sh
-make test wine
+```bash
+menu myapp -d
 ```
 
 ## Usage
@@ -53,12 +35,37 @@ Options:
   -v, --version         Show version
 ```
 
-`id` and `command` are required when registering an entry. `--name` is optional;
-when omitted, the entry name is the same as `id`.
+The id and command are required when registering an entry. If `--name` is
+omitted, the id is used as the display name.
+
+Linux uses the current user's XDG application menu. Windows uses the current
+user's Start Menu Programs folder.
 
 Deleting a missing entry is a successful no-op.
 
----
+## Build
+
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
+```bash
+export KCLIB_DIR=path/to/kclib
+make
+make test
+```
+
+Build every configured target with:
+
+```bash
+make all
+```
+
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
+
+```bash
+make test wine
+```
 
 ## License
 

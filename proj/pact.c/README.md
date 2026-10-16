@@ -1,7 +1,30 @@
 # pact
 
 `pact` establishes persistent trusted relationships between endpoints and
-protects binary messages exchanged between them.
+protects binary messages exchanged through those relationships.
+
+## Quick start
+
+Create a one-use invitation:
+
+```bash
+pact invite
+```
+
+Join that invitation on the other endpoint:
+
+```bash
+pact join '<code>'
+```
+
+Return the confirmation to the inviter and complete the relationship:
+
+```bash
+pact confirm '<confirmation>'
+```
+
+The handshake returns endpoint-local UIDs that are then used with `seal` and
+`unseal`.
 
 ## Usage
 
@@ -25,102 +48,7 @@ Options:
   -v, --version             Show version
 ```
 
-Trust state is stored persistently for the current user. Each invocation opens
-the same local state automatically.
-
-## Establishing trust
-
-Create an invitation:
-
-```bash
-pact invite
-```
-
-The output has two tab-separated fields:
-
-```text
-<uid><TAB><code>
-```
-
-The UID identifies the invited endpoint from the inviter's side. Send the code
-to the other endpoint using any transport you choose.
-
-The invited endpoint joins with that code:
-
-```bash
-pact join '<code>'
-```
-
-The output is also tab-separated:
-
-```text
-<uid><TAB><confirmation>
-```
-
-This UID identifies the inviter from the joining endpoint's side. Send the
-confirmation back to the endpoint that created the invitation.
-
-The inviter completes the relationship:
-
-```bash
-pact confirm '<confirmation>'
-```
-
-`confirm` prints the same invited-endpoint UID originally returned by
-`pact invite`.
-
-The two endpoints use different UIDs for the same relationship. Each endpoint
-uses the UID that identifies the remote endpoint when sealing data.
-
-## Listing trust
-
-List all locally known remote UIDs:
-
-```bash
-pact -l
-```
-
-List one UID:
-
-```bash
-pact -l "$UID"
-```
-
-Each row has three tab-separated fields:
-
-```text
-<uid><TAB><status><TAB><created>
-```
-
-`status` is `pending` for an unconfirmed invitation and `confirmed` for an
-established relationship. `created` is the Unix timestamp of the persisted
-state record.
-
-## Protecting data
-
-Protect a text argument:
-
-```bash
-pact seal "$UID" "hello"
-```
-
-Protect binary data from standard input:
-
-```bash
-cat message.bin | pact seal "$UID" > protected.bin
-```
-
-Or read it from a file:
-
-```bash
-pact seal "$UID" -i message.bin > protected.bin
-```
-
-Restore protected data:
-
-```bash
-pact unseal "$UID" -i protected.bin > message.bin
-```
+## Data input
 
 For `seal` and `unseal`, input is selected in this order:
 
@@ -130,42 +58,32 @@ argument > stdin > -i/--input
 
 Standard input, file input, and command output are binary-safe.
 
-## Deleting trust
-
-Delete an established relationship or a pending invitation:
-
-```bash
-pact "$UID" -d
-```
-
-After deletion, that UID can no longer be used locally for the removed trust
-relationship.
+See [Trust workflow](doc/trust-workflow.md) for invitation exchange, endpoint
+UIDs, listing, deletion, and protected-data examples.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

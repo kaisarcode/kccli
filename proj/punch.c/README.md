@@ -1,10 +1,24 @@
 # punch
 
-`punch` sends or receives one UDP datagram over a direct peer-to-peer path backed by `libpunch.c`.
+`punch` sends or receives one UDP datagram over a direct peer-to-peer path.
+Both peers run the same CLI; endpoint discovery and signaling are intentionally
+outside its scope.
 
-This CLI is primarily a low-level automation, integration, and testing interface for `libpunch.c`. It is not intended to be a standalone interactive rendezvous tool: it does not discover your public endpoint, discover the peer, or exchange endpoint information for you. In a real deployment, the peer endpoints normally come from a higher-level signaling or rendezvous system, STUN-derived information, an index, configuration, or another application-controlled source.
+## Quick start
 
-Both peers run the same CLI. There are no publisher/consumer roles. Each side supplies the remote endpoint information it already knows and a local bind preference; PUNCH performs the direct connectivity attempt before the datagram operation. For Internet hole punching, the supplied peer information must include usable public UDP endpoints, including the external port, and both sides normally need to attempt the path concurrently.
+Test a direct exchange on loopback using two terminals.
+
+Terminal A:
+
+```bash
+punch receive 127.0.0.1:5000 -p 5001 > message.bin
+```
+
+Terminal B:
+
+```bash
+printf 'hello' | punch send 127.0.0.1:5001 -p 5000
+```
 
 ## Usage
 
@@ -21,68 +35,39 @@ Options:
   -v, --version           Show version
 ```
 
-Peer endpoints are positional and may be repeated. PUNCH tries the supplied endpoints and uses a viable direct path. IPv6 literals use bracket form so the address and UDP port remain unambiguous.
+Peer endpoints are positional and may be repeated. IPv6 literals use bracket
+form so the address and UDP port remain unambiguous.
 
-`send` reads exactly one datagram. Redirected standard input is used first; otherwise `-i`/`--input` supplies the datagram from a file. Binary data and empty datagrams are preserved.
+`send` reads one binary datagram from redirected stdin first, otherwise from
+`--input`. `receive` writes exactly one received datagram to standard output.
 
-`receive` writes exactly one received datagram to standard output. Output is binary and contains no status or endpoint decoration. `--receive-timeout 0` waits indefinitely after the direct path has been established.
-
-For example, on two terminals using loopback endpoints:
-
-Terminal A:
-
-```bash
-punch receive 127.0.0.1:5000 -p 5001 > message.bin
-```
-
-Terminal B:
-
-```bash
-printf 'hello' | punch send 127.0.0.1:5001 -p 5000
-```
-
-This loopback example is useful for testing the CLI. For real Internet use, an external system must first discover and exchange the endpoints that PUNCH should try.
-
-Multiple known endpoints can be supplied for the same peer:
-
-```bash
-cat payload.bin | punch send \
-  203.0.113.20:5000 \
-  192.168.1.20:5000 \
-  -p 5000
-```
-
-The CLI does not discover or exchange endpoints. It does not perform STUN, rendezvous, index lookup, relay/TURN, identity, authentication, encryption, or reliable delivery. Endpoint exchange and any higher-level session policy remain outside `punch`.
+See [Direct UDP operation](doc/direct-udp.md) for endpoint exchange, concurrent
+hole punching, multiple peers, timeouts, and the protocol boundaries that
+remain outside this CLI.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-The build links the matching precompiled static `libpunch.c` artifact from `kclib/dist`.
-
-## Tests
-
-```bash
-make test
-```
-
-The black-box tests cover argument validation and a real loopback exchange between two `punch` processes, including multiple peer endpoints and binary datagrams.
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

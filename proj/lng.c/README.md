@@ -1,17 +1,16 @@
 # lng
 
-`lng` detects the language of input text and prints ranked results as
-headerless TSV:
+`lng` detects the language of input text and prints ranked matches as
+headerless TSV.
 
-```text
-<code>  <score>
+## Quick start
+
+```bash
+lng "Hello world"
 ```
 
-For example:
-
 ```text
-en  0.99999
-es  0.87231
+en<TAB>0.99999
 ```
 
 Scores are heuristic ranking values, not calibrated probabilities.
@@ -29,77 +28,43 @@ Options:
   -v, --version        Show version
 ```
 
-If text is available from more than one source, `lng` uses this order:
+## Input and results
+
+Text is selected in this order:
 
 ```text
 argument > stdin > -i/--input
 ```
 
-A positional argument wins over redirected or piped stdin. Without an argument,
-stdin wins over `-i` when stdin contains input. An empty redirected stdin may
-fall through to the file.
+An empty input is valid and produces no output. Zero matches are also
+successful.
 
-Quote text containing spaces:
-
-```bash
-lng "Hello world"
-```
-
-Read from standard input:
-
-```bash
-printf 'Bonjour le monde' | lng
-```
-
-Read from a file:
-
-```bash
-lng -i document.txt
-```
-
-Return more ranked matches:
-
-```bash
-lng "Hello world" --limit 3
-```
-
-Filter weak matches:
-
-```bash
-lng "Hello world" --threshold 0.1
-```
-
-An empty input is valid and produces no output. Zero matches are also a
-successful result.
-
-`--limit` must be greater than zero; values above 32 are limited to 32.
+`--limit` must be greater than zero and values above 32 are limited to 32.
 `--threshold` must be finite and between 0 and 1 inclusive.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

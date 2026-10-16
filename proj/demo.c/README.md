@@ -1,7 +1,22 @@
 # demo
 
-`demo` is the command-line interface for `libdemo.c`. It creates a greeting for
-one name.
+`demo` creates a greeting for one name.
+
+## Quick start
+
+```bash
+demo John
+```
+
+```text
+Hello John!
+```
+
+Quote names that contain spaces:
+
+```bash
+demo "John Doe"
+```
 
 ## Usage
 
@@ -13,63 +28,31 @@ Options:
   -v, --version  Show version
 ```
 
-For example:
-
-```bash
-demo John
-```
-
-prints:
-
-```text
-Hello John!
-```
-
-Quote names containing spaces:
-
-```bash
-demo "John Doe"
-```
+Exactly one name is accepted.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-Android targets use the same NDK baseline as `kclib`:
-
-```bash
-make aarch64/android
-make armv7/android
-```
-
-The resulting executables are written to:
-
-```text
-bin/aarch64/android/demo
-bin/armv7/android/demo
-```
-
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

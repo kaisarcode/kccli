@@ -1,10 +1,16 @@
 # ngram
 
-`ngram` traverses descending sliding windows over text tokens and prints each
+`ngram` traverses descending sliding windows over text tokens and prints every
 visited chunk to standard output.
 
-Windows are visited from largest to smallest. Windows of the same size are
-visited from left to right.
+## Quick start
+
+```bash
+ngram "the quick brown fox" --max 2 --min 1
+```
+
+Windows are visited from largest to smallest and left to right within each
+size.
 
 ## Usage
 
@@ -21,94 +27,47 @@ Options:
   -v, --version            Show version
 ```
 
-The default separators are space, tab, carriage return, and newline.
-`--separators` replaces that set. An empty separator string treats the input as
-one token.
+## Input and windows
 
-`--max 0` uses all available tokens as the largest window. A nonzero `--max`
-must not be smaller than `--min`. `--min` must be greater than zero.
-
-If text is available from more than one source, `ngram` uses this order:
+Input is selected in this order:
 
 ```text
-text argument > stdin > -i/--input
+argument > stdin > -i/--input
 ```
 
-Traverse literal text:
+The default separators are space, tab, carriage return, and newline.
+`--separators` replaces that set. An empty separator string treats the entire
+input as one token.
 
-```bash
-ngram "the quick brown fox" --max 2 --min 1
-```
+`--max 0` uses all available tokens as the largest window. A nonzero `--max`
+must not be smaller than `--min`, and `--min` must be greater than zero.
 
-Read from standard input:
-
-```bash
-printf 'the quick brown fox' | ngram --max 3
-```
-
-Read from a file:
-
-```bash
-ngram -i document.txt --max 3
-```
-
-Use commas as token separators:
-
-```bash
-ngram "one,two,three" --separators ","
-```
-
-## Filtering
-
-`--filter` runs one command synchronously for every visited chunk. The chunk is
-written to the command's standard input followed by a newline.
-
-If the filter writes anything to standard output, the current span is closed.
-Smaller windows fully contained in that span are skipped. If the filter writes
-nothing, traversal continues normally through that span.
-
-The filter's standard output is consumed only as the decision signal and is not
-copied to `ngram` output. The filter's exit status does not select or reject a
-chunk.
-
-For example, close a span whenever `grep` finds `brown`:
-
-```bash
-ngram "the quick brown fox jumps" --filter "grep brown"
-```
-
-Each chunk is printed by `ngram` before its filter decision is applied. The
-filter therefore controls which smaller chunks are visited later; it does not
-remove the current chunk from output.
-
-Without `--filter`, every candidate chunk in the configured traversal range is
-printed.
+See [Filtering traversal](doc/filtering.md) when using `--filter`; filter output
+controls which smaller windows are visited and is not copied to normal output.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

@@ -1,7 +1,19 @@
 # min
 
-`min` minifies CSS, JavaScript, HTML, or generic text and writes the result
-directly to standard output.
+`min` minifies CSS, JavaScript, HTML, or generic text and writes the result to
+standard output.
+
+## Quick start
+
+```bash
+min --type css "body { color: red; }"
+```
+
+Generic text is the default type:
+
+```bash
+printf '  hello   world  ' | min
+```
 
 ## Usage
 
@@ -15,77 +27,38 @@ Options:
   -v, --version       Show version
 ```
 
-The positional argument is literal source text. File input is selected with
-`-i` or `--input`.
-
-If input is available from more than one source, `min` uses this order:
+Input is selected in this order:
 
 ```text
 argument > stdin > -i/--input
 ```
 
-A positional argument wins over redirected or piped stdin. Without an argument,
-stdin wins over `-i` when stdin contains input. An empty redirected stdin may
-fall through to the file.
-
-Generic text is the default mode:
-
-```bash
-min "fdfsdfsd sdfsd     ff sd              fsdfd"
-```
-
-Output:
-
-```text
-fdfsdfsd sdfsd ff sd fsdfd
-```
-
-Read from standard input:
-
-```bash
-printf '  hello   world  ' | min
-```
-
-Read from a file:
-
-```bash
-min -i input.txt
-```
-
-Select another minifier with `-t` or `--type`:
-
-```bash
-min -t css "body { color: red; }"
-min -t js "const x = 1; // comment"
-min -t html "<!-- comment --><p>hello</p>"
-min -t css -i style.css
-```
+The positional argument is literal source text. Supported type names are `css`,
+`js`, `html`, and `txt`.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

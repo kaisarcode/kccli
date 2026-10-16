@@ -1,30 +1,9 @@
 # pow
 
-`pow` creates, solves, and verifies portable proof-of-work challenges backed by `libpow.c`.
+`pow` creates, solves, and verifies portable proof-of-work challenges.
+Challenges and solutions are opaque binary values.
 
-## Usage
-
-```text
-Usage: pow <command> [arguments] [options]
-
-Commands:
-  challenge <effort>         Create a proof-of-work challenge
-  solve                      Solve a challenge
-  verify                     Verify a solution against a challenge
-
-solve options:
-  -i, --input <file>         Read challenge from file
-
-verify options:
-  -c, --challenge <file>     Read challenge from file
-  -i, --input <file>         Read solution from file
-
-Common options:
-  -h, --help                 Show this help
-  -v, --version              Show version
-```
-
-Challenges and solutions are opaque binary entities. The CLI does not add transport, encoding, replay, expiry, identity, or admission semantics.
+## Quick start
 
 Create a challenge:
 
@@ -38,58 +17,59 @@ Solve it:
 pow solve -i challenge.pow > solution.pow
 ```
 
-or:
-
-```bash
-pow solve < challenge.pow > solution.pow
-```
-
-When standard input contains data, `solve` uses it before `-i`/`--input`.
-
-Verify it:
+Verify the solution:
 
 ```bash
 pow verify -c challenge.pow -i solution.pow
 ```
 
-or:
+Successful verification exits with status `0` and produces no normal output.
 
-```bash
-cat solution.pow | pow verify -c challenge.pow
+## Usage
+
+```text
+Usage: pow <challenge|solve|verify> [arguments] [options]
+
+Options:
+  -i, --input <file>      Read command input from file
+  -c, --challenge <file>  Read verify challenge from file
+  -h, --help              Show this help
+  -v, --version           Show version
 ```
 
-`verify` reads the challenge from `-c`/`--challenge`. Its solution input uses
-standard input before `-i`/`--input` when both are available.
+`challenge <effort>` creates a new challenge. `effort` is the approximate
+expected number of nonce attempts, so higher values represent more work.
 
-Successful verification exits with status `0` and produces no normal output. Invalid proofs and operational failures return a nonzero status.
+`solve` reads its challenge from redirected stdin before `--input` when both are
+available. `verify` reads the challenge from `--challenge`; its solution input
+uses redirected stdin before `--input`.
 
-`effort` is the approximate expected number of nonce attempts. Higher values represent harder challenges.
+The CLI does not add transport, encoding, replay, expiry, identity, or admission
+policy around the binary proof-of-work values.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

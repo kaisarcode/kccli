@@ -1,38 +1,27 @@
-# init.c - Persistent Startup Registration CLI
+# init
 
-`init` manages persistent operating-system startup registrations from the
-command line.
+`init` creates, lists, replaces, and removes persistent operating-system startup
+registrations. It does not execute or supervise the registered command in the
+current process.
 
-It creates or replaces startup commands by identifier, lists existing
-registrations, and removes registrations. It does not start, stop, supervise, or
-execute the registered commands in the current process.
+## Quick start
 
-## Build
+Register a command:
 
-Build the native host target:
-
-```sh
-make
+```bash
+init my-service ./service
 ```
 
-Build all configured Linux, Windows, and macOS targets:
+List registrations:
 
-```sh
-make all
+```bash
+init -l
 ```
 
-## Tests
+Remove it:
 
-Run the native CLI contract:
-
-```sh
-make test
-```
-
-Run the x86_64 Windows CLI contract through Wine:
-
-```sh
-make test wine
+```bash
+init my-service -d
 ```
 
 ## Usage
@@ -52,15 +41,39 @@ Options:
   -v, --version        Show version
 ```
 
-`init -l` and `init -l <id>` use the same fixed, tab-separated output schema:
+## Listing
+
+Both list forms use the same tab-separated schema:
 
 ```text
 <id><TAB><user><TAB><cmd>
 ```
 
-The user column is the registration user and is not wrapped in brackets.
+Registering an existing id replaces that registration.
 
----
+## Build
+
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
+```bash
+export KCLIB_DIR=path/to/kclib
+make
+make test
+```
+
+Build every configured target with:
+
+```bash
+make all
+```
+
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
+
+```bash
+make test wine
+```
 
 ## License
 

@@ -1,6 +1,20 @@
-# tray CLI
+# tray
 
-`tray` creates one persistent native system tray icon and an ordered menu.
+`tray` creates one persistent native system-tray icon with an ordered menu.
+Menu items can run commands and an optional quit item closes the tray.
+
+## Quick start
+
+```bash
+tray \
+    --tooltip "My application" \
+    --item "Open site" "xdg-open https://example.com" \
+    --separator \
+    --quit "Quit"
+```
+
+Items and separators are created in the same order in which their options are
+provided.
 
 ## Usage
 
@@ -17,53 +31,16 @@ Options:
   -v, --version            Show version
 ```
 
-Items and separators are created in the same order in which their options are
-provided.
+`--item` runs its command when activated and leaves the tray open. `--quit`
+adds an item that ends the tray process cleanly. `Ctrl+C` and termination
+signals also close the tray.
 
-`--item` executes its command when activated. The tray remains open after the
-command completes.
+## Platform notes
 
-`--quit` adds a menu item whose activation ends the tray process cleanly.
+Windows expects `.ico` file paths. Linux accepts icon file paths or icon names.
+macOS accepts icon file paths or named AppKit images.
 
-`Ctrl+C` and process termination signals also close the tray cleanly.
-
-## Examples
-
-Create a tray with one command and a quit item:
-
-```bash
-tray \
-    --tooltip "My application" \
-    --item "Open site" "xdg-open https://example.com" \
-    --separator \
-    --quit "Quit"
-```
-
-With an icon:
-
-```bash
-tray --icon ./app.png --tooltip "App" --quit "Exit"
-```
-
-Platform icon behavior:
-
-- Windows expects `.ico` file paths.
-- Linux accepts icon file paths or icon names.
-- macOS accepts icon file paths or named AppKit images.
-
-## Build
-
-```bash
-make
-```
-
-Build all supported targets:
-
-```bash
-make all
-```
-
-Configured targets:
+Configured targets are:
 
 ```text
 x86_64/linux
@@ -72,26 +49,31 @@ x86_64/macos
 aarch64/macos
 ```
 
-Linux builds require GTK 3 development files. Windows uses the native system
-tray APIs. macOS uses Cocoa/AppKit and services the AppKit event loop on the
-main thread while the tray is active.
+Linux builds require GTK 3 development files.
 
-## Tests
+## Build
+
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
 
 ```bash
+export KCLIB_DIR=path/to/kclib
+make
 make test
 ```
 
-The tests validate the argument contract without requiring an interactive tray
-session.
+Build every configured target with:
 
-Windows parser tests can be run through Wine:
+```bash
+make all
+```
+
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

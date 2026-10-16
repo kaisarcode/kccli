@@ -1,7 +1,19 @@
 # flow
 
-`flow` opens a `.flow` document, applies temporary ordered overrides, runs it,
-and writes successful output to stdout.
+`flow` runs a `.flow` document, applies temporary ordered overrides, and writes
+successful output to standard output.
+
+## Quick start
+
+```bash
+flow example.flow
+```
+
+Run one entry and provide binary input from a file:
+
+```bash
+flow example.flow --entry build --input payload.bin
+```
 
 ## Usage
 
@@ -17,87 +29,43 @@ Options:
   -v, --version            Show version
 ```
 
-`--set` and `--unset` may be repeated. Their order is preserved.
+## Execution
 
-If `--entry` is omitted, the declared flow entries are used.
+`--set` and `--unset` may be repeated. Their order is preserved and the changes
+apply only to the current invocation.
 
-If `--input` is omitted, the run receives no input buffer. Use `-i -` to read
-input from stdin:
+If `--entry` is omitted, the declared flow entries are used. If `--input` is
+omitted, no input buffer is supplied. Use `--input -` to read standard input.
 
-```bash
-printf 'hello' | flow example.flow -i -
-```
+Successful output is written unchanged to stdout and diagnostics go to stderr.
 
-A binary input file can be supplied directly:
-
-```bash
-flow example.flow --input payload.bin
-```
-
-Successful output is written unchanged to stdout. Diagnostics are written to
-stderr.
-
-## Overrides
-
-Overrides apply only to the current invocation and do not modify the source
-`.flow` file.
-
-```bash
-flow example.flow \
-    --set flow.name Alice \
-    --unset flow.debug \
-    --set flow.mode production
-```
-
-The operations above are applied in exactly that order.
-
-## Entry
-
-Run one specific entry node:
-
-```bash
-flow example.flow --entry build
-```
-
-## Cancellation
-
-`Ctrl+C` and termination signals request cancellation. The command currently
-running is not killed; the current step completes and the run stops before
-starting another step.
-
-A cooperatively stopped flow exits with status `130`.
+`Ctrl+C` and termination signals request cooperative cancellation. The active
+step finishes before the run stops, and a cooperatively stopped run exits with
+status `130`.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Run the Windows tests through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
-## Platforms
-
-Configured desktop/server targets include Linux, Windows, and macOS.
-
-No external runtime services are required.
-
----
 
 ## License
 

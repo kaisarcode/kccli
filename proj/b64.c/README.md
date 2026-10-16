@@ -1,7 +1,25 @@
 # b64
 
 `b64` encodes binary or text input as RFC 4648 Base64 and decodes strict
-canonical Base64 input. Output is written directly to standard output.
+canonical Base64 input. Results are written directly to standard output.
+
+## Quick start
+
+Encode text:
+
+```bash
+b64 --encode "hello world"
+```
+
+```text
+aGVsbG8gd29ybGQ=
+```
+
+Decode it again:
+
+```bash
+b64 --decode aGVsbG8gd29ybGQ=
+```
 
 ## Usage
 
@@ -17,88 +35,46 @@ Options:
   -v, --version       Show version
 ```
 
-Exactly one of `-e`/`--encode` or `-d`/`--decode` is required.
+Exactly one of `--encode` or `--decode` is required.
 
-If input is available from more than one source, `b64` uses this order:
+## Input and output
+
+Input is selected in this order:
 
 ```text
 argument > stdin > -i/--input
 ```
 
-A positional argument wins over redirected or piped stdin. Without an argument,
-stdin wins over `-i` when stdin contains input. An empty redirected stdin may
-fall through to the file.
+The positional argument is literal input. Redirected or piped stdin takes
+priority over `--input` when no positional argument is present. An empty
+redirected stdin may fall through to the input file.
 
-Encode text from an argument:
-
-```bash
-b64 -e "hello world"
-```
-
-Output:
-
-```text
-aGVsbG8gd29ybGQ=
-```
-
-Encode standard input:
-
-```bash
-printf 'hello world' | b64 --encode
-```
-
-Encode a file:
-
-```bash
-b64 --encode -i payload.bin
-```
-
-Decode from an argument:
-
-```bash
-b64 -d aGVsbG8gd29ybGQ=
-```
-
-Decode standard input:
-
-```bash
-printf 'aGVsbG8gd29ybGQ=' | b64 --decode
-```
-
-Decode a file:
-
-```bash
-b64 --decode -i payload.b64
-```
-
-Encoding from standard input and `-i` is binary-safe. Decoded bytes are written
-raw to standard output. Decoding accepts strict canonical RFC 4648 input.
+Encoding from stdin or a file is binary-safe. Decoded bytes are written raw to
+standard output.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

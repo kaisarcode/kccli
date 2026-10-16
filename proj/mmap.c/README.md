@@ -1,10 +1,27 @@
 # mmap
 
-`mmap` stores persistent binary values in backing files.
+`mmap` reads, replaces, and deletes one persistent binary value stored in a
+backing file.
 
-It operates on one backing file at a time. Values are binary-safe: `get` writes
-stored bytes directly to standard output, and `set` reads bytes from a file or
-standard input.
+## Quick start
+
+Store bytes from standard input:
+
+```bash
+printf 'hello' | mmap set state.bin
+```
+
+Read them back:
+
+```bash
+mmap get state.bin
+```
+
+Remove the value:
+
+```bash
+mmap del state.bin
+```
 
 ## Usage
 
@@ -24,61 +41,38 @@ Common options:
   -v, --version        Show version
 ```
 
-Read a stored value:
+## Binary values
 
-```bash
-mmap get state.bin
-```
+`get` writes stored bytes directly to stdout. `set` is binary-safe and reads
+stdin by default or the file selected with `--input`.
 
-Write bytes from a file:
-
-```bash
-mmap set state.bin -i payload.bin
-```
-
-Write bytes from standard input:
-
-```bash
-printf 'hello' | mmap set state.bin
-```
-
-An empty input is a real zero-byte value and creates or truncates the backing
-file to zero bytes. It is distinct from a missing value.
-
-Delete the value and backing file:
-
-```bash
-mmap del state.bin
-```
-
-A missing value causes `get` to return a nonzero exit status. A stored zero-byte
-value causes `get` to succeed while writing zero bytes.
+An empty input is a real zero-byte value and is different from a missing value.
+Reading a missing value fails; reading a stored zero-byte value succeeds and
+writes no bytes.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured desktop targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 

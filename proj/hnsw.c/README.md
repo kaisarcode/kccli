@@ -1,7 +1,19 @@
 # hnsw
 
-`hnsw` builds an in-memory HNSW index from a vector dataset, runs one query,
+`hnsw` builds one in-memory HNSW index from a vector dataset, runs one query,
 prints the matches, and exits.
+
+## Quick start
+
+```bash
+printf 'a\t1,0\nb\t0,1\n' | hnsw -q 1,0 -d 2
+```
+
+Results are written as headerless CSV:
+
+```text
+<id>,<score>
+```
 
 ## Usage
 
@@ -22,95 +34,50 @@ Options:
   -v, --version            Show version
 ```
 
-The vector dataset has exactly two columns per row, separated by one tab:
+## Dataset and metrics
+
+Each input row contains an id, one tab, and a comma-separated vector:
 
 ```text
 <id><TAB><vector>
 ```
 
-The vector is a comma-separated list of floats. For example:
-
-```text
-alice   1,0,0
-bob 0,1,0
-carol   0,0,1
-```
-
-The positional dataset argument is literal content, not a filename. File input
-is selected with `-i` or `--input`.
-
-If vector data is available from more than one source, `hnsw` uses this order:
+The positional dataset argument is literal content. Input is selected in this
+order:
 
 ```text
 argument > stdin > -i/--input
 ```
 
-Search literal vectors:
+Metrics are `cosine`, `inner`, and `l2`; `inner_product` is also accepted as an
+alias for `inner`. For cosine and inner product, `--threshold` is a minimum
+accepted score. For L2, it is a maximum accepted squared distance.
 
-```bash
-hnsw $'a\t1,0\nb\t0,1' -q 1,0 -d 2
-```
-
-Search vectors from standard input:
-
-```bash
-printf 'a\t1,0\nb\t0,1\n' | hnsw -q 1,0 -d 2
-```
-
-Search vectors from a file:
-
-```bash
-hnsw -i vectors.tsv -q 1,0 -d 2
-```
-
-Output is headerless CSV:
-
-```text
-<id>,<score>
-```
-
-The index exists only for the current invocation. There are no save/load
-commands.
-
-Available metrics are:
-
-```text
-cosine
-inner
-l2
-```
-
-`inner_product` is also accepted as an alias for `inner`.
-
-For cosine and inner product, `--threshold` is a minimum accepted score. For
-L2 it is a maximum accepted squared distance. If omitted, the threshold is
-unbounded for the selected metric.
+The index exists only for the current invocation.
 
 ## Build
 
+The Makefile requires `KCLIB_DIR` to point to the checkout that contains the
+matching prebuilt library and public header.
+
 ```bash
+export KCLIB_DIR=path/to/kclib
 make
+make test
 ```
 
-Build all configured native targets:
+Build every configured target with:
 
 ```bash
 make all
 ```
 
-## Tests
-
-```bash
-make test
-```
-
-Windows tests can be run through Wine:
+`make all` requires the toolchains for the targets being built. Run the x86_64
+Windows CLI tests through Wine with:
 
 ```bash
 make test wine
 ```
-
----
 
 ## License
 
