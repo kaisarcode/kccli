@@ -35,6 +35,7 @@ typedef SOCKET tlsio_cli_socket_t;
 #define tlsio_cli_socket_close closesocket
 #else
 #include <netdb.h>
+#include <netinet/in.h>
 #include <signal.h>
 #include <sys/select.h>
 #include <sys/socket.h>
