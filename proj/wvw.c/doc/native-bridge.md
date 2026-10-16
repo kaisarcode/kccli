@@ -9,8 +9,8 @@ Register each allowed executable path with a separate `--exec` option:
 
 ```bash
 wvw ./index.html \
-    --exec /path/to/myexe \
-    --exec /path/to/other
+    --exec ./myexe \
+    --exec ./other
 ```
 
 Page code addresses a registered executable by its basename:
