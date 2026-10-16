@@ -1,5 +1,5 @@
 /**
- * test.c - hpm CLI contract tests.
+ * test.c - punch CLI contract tests.
  * Summary: Exercises argument validation and one-datagram loopback exchange.
  *
  * Author:  KaisarCode
@@ -12,7 +12,7 @@
 #include <string.h>
 
 #ifndef KC_CLI_PATH
-#define KC_CLI_PATH "hpm"
+#define KC_CLI_PATH "punch"
 #endif
 
 #ifdef _WIN32
@@ -44,7 +44,7 @@ typedef socklen_t test_socklen_t;
 #define CAT_FILE "cat"
 #endif
 
-#define HPM_TEST_COUNT 16
+#define PUNCH_TEST_COUNT 16
 
 static int test_current;
 static int test_failures;
@@ -65,7 +65,7 @@ static void result(const char *name, const char *detail, int ok)
 {
     test_current++;
     if (!ok) test_failures++;
-    printf("[%d/%d] [%s] %s: %s\n", test_current, HPM_TEST_COUNT,
+    printf("[%d/%d] [%s] %s: %s\n", test_current, PUNCH_TEST_COUNT,
         ok ? "PASS" : "FAIL", name, detail);
 }
 
@@ -220,7 +220,7 @@ static void join_command_thread(test_thread_t thread)
  */
 static int write_payload(const char *path, int variant)
 {
-    static const unsigned char first[] = { 'h', 'p', 'm', 0, 'x' };
+    static const unsigned char first[] = { 'p', 'u', 'n', 'c', 'h', 0, 'x' };
     static const unsigned char second[] = { 1, 2, 3, 4, 5, 0, 7 };
     const unsigned char *data = variant ? second : first;
     size_t size = variant ? sizeof(second) : sizeof(first);
@@ -277,22 +277,22 @@ static int exchange_test(void)
     int sender_status;
 
     if (!test_ports(&send_port, &receive_port, &dead_port)) return 0;
-    if (!write_payload("hpm-test-input.bin", 0)) return 0;
+    if (!write_payload("punch-test-input.bin", 0)) return 0;
     memset(&receiver, 0, sizeof(receiver));
     snprintf(receiver.command, sizeof(receiver.command),
         "%s receive 127.0.0.1:%u -p %u -t 2000 --receive-timeout 2000 "
-        "> hpm-test-output.bin 2> hpm-test-receive.err",
+        "> punch-test-output.bin 2> punch-test-receive.err",
         KC_CLI_PATH, (unsigned)send_port, (unsigned)receive_port);
     if (!start_command_thread(&receiver_thread, &receiver)) return 0;
     snprintf(sender, sizeof(sender),
         "%s send 127.0.0.1:%u 127.0.0.1:%u -p %u -t 2000 "
-        "-i hpm-test-input.bin > " DEV_NULL " 2> hpm-test-send.err",
+        "-i punch-test-input.bin > " DEV_NULL " 2> punch-test-send.err",
         KC_CLI_PATH, (unsigned)dead_port, (unsigned)receive_port,
         (unsigned)send_port);
     sender_status = system(sender);
     join_command_thread(receiver_thread);
     return sender_status == 0 && receiver.status == 0 &&
-        files_equal("hpm-test-input.bin", "hpm-test-output.bin");
+        files_equal("punch-test-input.bin", "punch-test-output.bin");
 }
 
 /**
@@ -310,22 +310,22 @@ static int stdin_precedence_test(void)
     int sender_status;
 
     if (!test_ports(&send_port, &receive_port, &dead_port)) return 0;
-    if (!write_payload("hpm-test-stdin.bin", 0) ||
-        !write_payload("hpm-test-file.bin", 1)) return 0;
+    if (!write_payload("punch-test-stdin.bin", 0) ||
+        !write_payload("punch-test-file.bin", 1)) return 0;
     memset(&receiver, 0, sizeof(receiver));
     snprintf(receiver.command, sizeof(receiver.command),
         "%s receive 127.0.0.1:%u -p %u -t 2000 --receive-timeout 2000 "
-        "> hpm-test-precedence.bin 2> hpm-test-receive.err",
+        "> punch-test-precedence.bin 2> punch-test-receive.err",
         KC_CLI_PATH, (unsigned)send_port, (unsigned)receive_port);
     if (!start_command_thread(&receiver_thread, &receiver)) return 0;
     snprintf(sender, sizeof(sender),
-        CAT_FILE " hpm-test-stdin.bin | %s send 127.0.0.1:%u -p %u -t 2000 "
-        "-i hpm-test-file.bin > " DEV_NULL " 2> hpm-test-send.err",
+        CAT_FILE " punch-test-stdin.bin | %s send 127.0.0.1:%u -p %u -t 2000 "
+        "-i punch-test-file.bin > " DEV_NULL " 2> punch-test-send.err",
         KC_CLI_PATH, (unsigned)receive_port, (unsigned)send_port);
     sender_status = system(sender);
     join_command_thread(receiver_thread);
     return sender_status == 0 && receiver.status == 0 &&
-        files_equal("hpm-test-stdin.bin", "hpm-test-precedence.bin");
+        files_equal("punch-test-stdin.bin", "punch-test-precedence.bin");
 }
 
 /**
@@ -367,15 +367,15 @@ int main(void)
     result("exchange", "sends and receives one binary datagram", exchange_test());
     result("stdin-precedence", "stdin wins over --input", stdin_precedence_test());
 
-    remove("hpm-test-send.err");
-    remove("hpm-test-receive.err");
-    remove("hpm-test-precedence.bin");
-    remove("hpm-test-file.bin");
-    remove("hpm-test-stdin.bin");
-    remove("hpm-test-output.bin");
-    remove("hpm-test-input.bin");
+    remove("punch-test-send.err");
+    remove("punch-test-receive.err");
+    remove("punch-test-precedence.bin");
+    remove("punch-test-file.bin");
+    remove("punch-test-stdin.bin");
+    remove("punch-test-output.bin");
+    remove("punch-test-input.bin");
 
     printf("\n%d passed, %d failed\n",
-        HPM_TEST_COUNT - test_failures, test_failures);
+        PUNCH_TEST_COUNT - test_failures, test_failures);
     return test_failures ? 1 : 0;
 }

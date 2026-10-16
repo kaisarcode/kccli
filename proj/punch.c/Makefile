@@ -1,5 +1,5 @@
 ## Makefile
-## Summary: Builds the hpm CLI against precompiled static kclib artifacts.
+## Summary: Builds the punch CLI against precompiled static kclib artifacts.
 ##
 ## Author:  KaisarCode
 ## Website: https://kaisarcode.com
@@ -10,9 +10,9 @@ SHELL := /bin/sh
 ifndef KCLIB_DIR
 $(error KCLIB_DIR environment variable is required)
 endif
-HPM_PROJECT_DIR := $(KCLIB_DIR)/proj/libhpm.c
-HPM_BIN_DIR := $(HPM_PROJECT_DIR)/bin
-HPM_INCLUDE_DIR := $(HPM_PROJECT_DIR)/src
+PUNCH_PROJECT_DIR := $(KCLIB_DIR)/proj/libpunch.c
+PUNCH_BIN_DIR := $(PUNCH_PROJECT_DIR)/bin
+PUNCH_INCLUDE_DIR := $(PUNCH_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -96,16 +96,16 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(HPM_BIN_DIR)/$(1)/linux'; \
-	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
-	library="$$target/libhpm.a"; \
-	out='$(BIN_DIR)/$(1)/linux/hpm'; \
-	[ -f "$$header" ] || { echo "kccli: missing libhpm header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libhpm static library: $$library" >&2; exit 1; }; \
+	@target='$(PUNCH_BIN_DIR)/$(1)/linux'; \
+	header='$(PUNCH_INCLUDE_DIR)/libpunch.h'; \
+	library="$$target/libpunch.a"; \
+	out='$(BIN_DIR)/$(1)/linux/punch'; \
+	[ -f "$$header" ] || { echo "kccli: missing libpunch header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libpunch static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(HPM_INCLUDE_DIR)' \
-		src/hpm.c "$$library" -o "$$out" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(PUNCH_INCLUDE_DIR)' \
+		src/punch.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
 
@@ -146,16 +146,16 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(HPM_BIN_DIR)/$(1)/android'; \
-	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
-	library="$$target/libhpm.a"; \
-	out='$(BIN_DIR)/$(1)/android/hpm'; \
-	[ -f "$$header" ] || { echo "kccli: missing libhpm header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libhpm static library: $$library" >&2; exit 1; }; \
+	@target='$(PUNCH_BIN_DIR)/$(1)/android'; \
+	header='$(PUNCH_INCLUDE_DIR)/libpunch.h'; \
+	library="$$target/libpunch.a"; \
+	out='$(BIN_DIR)/$(1)/android/punch'; \
+	[ -f "$$header" ] || { echo "kccli: missing libpunch header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libpunch static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(HPM_INCLUDE_DIR)' \
-		src/hpm.c "$$library" -o "$$out" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(PUNCH_INCLUDE_DIR)' \
+		src/punch.c "$$library" -o "$$out" || exit 1; \
 	echo "OK $(1)/android"
 endef
 
@@ -166,16 +166,16 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(HPM_BIN_DIR)/$(1)/windows'; \
-	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
-	library="$$target/libhpm.a"; \
-	out='$(BIN_DIR)/$(1)/windows/hpm.exe'; \
-	[ -f "$$header" ] || { echo "kccli: missing libhpm header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libhpm static library: $$library" >&2; exit 1; }; \
+	@target='$(PUNCH_BIN_DIR)/$(1)/windows'; \
+	header='$(PUNCH_INCLUDE_DIR)/libpunch.h'; \
+	library="$$target/libpunch.a"; \
+	out='$(BIN_DIR)/$(1)/windows/punch.exe'; \
+	[ -f "$$header" ] || { echo "kccli: missing libpunch header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libpunch static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(HPM_INCLUDE_DIR)' \
-		src/hpm.c "$$library" -lws2_32 -o "$$out" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(PUNCH_INCLUDE_DIR)' \
+		src/punch.c "$$library" -lws2_32 -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
 
@@ -186,10 +186,10 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(HPM_BIN_DIR)/$(1)/macos'; \
-	header='$(HPM_INCLUDE_DIR)/libhpm.h'; \
-	library="$$target/libhpm.a"; \
-	out='$(BIN_DIR)/$(1)/macos/hpm'; \
+	@target='$(PUNCH_BIN_DIR)/$(1)/macos'; \
+	header='$(PUNCH_INCLUDE_DIR)/libpunch.h'; \
+	library="$$target/libpunch.a"; \
+	out='$(BIN_DIR)/$(1)/macos/punch'; \
 	compiler='$(2)'; \
 	otool='$(MACOSX_OTOOL)'; \
 	native=0; \
@@ -198,8 +198,8 @@ define macos_target
 		otool='otool'; \
 		native=1; \
 	fi; \
-	[ -f "$$header" ] || { echo "kccli: missing libhpm header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libhpm static library: $$library" >&2; exit 1; }; \
+	[ -f "$$header" ] || { echo "kccli: missing libpunch header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libpunch static library: $$library" >&2; exit 1; }; \
 	command -v "$$compiler" >/dev/null 2>&1 || { echo "kccli: missing macOS compiler: $$compiler" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/macos'; \
 	min='$(MACOSX_DEPLOYMENT_TARGET)'; \
@@ -210,12 +210,12 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	if [ "$$native" = 1 ]; then \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I'$(HPM_INCLUDE_DIR)' src/hpm.c "$$library" -o "$$out"; \
+			-mmacosx-version-min="$$min" -I'$(PUNCH_INCLUDE_DIR)' src/punch.c "$$library" -o "$$out"; \
 	else \
 		LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 		PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I'$(HPM_INCLUDE_DIR)' src/hpm.c "$$library" -o "$$out"; \
+			-mmacosx-version-min="$$min" -I'$(PUNCH_INCLUDE_DIR)' src/punch.c "$$library" -o "$$out"; \
 	fi || exit 1; \
 	echo "OK $(1)/macos"
 endef
@@ -232,9 +232,9 @@ test:
 		command -v $(WINE) >/dev/null 2>&1 || { echo "kccli: missing Wine runtime: $(WINE)" >&2; exit 1; }; \
 		command -v $(WINE_X86_64_CC) >/dev/null 2>&1 || { echo "kccli: missing Windows compiler: $(WINE_X86_64_CC)" >&2; exit 1; }; \
 		mkdir -p '$(BUILD_DIR)/test-wine'; \
-		cp '$(BIN_DIR)/x86_64/windows/hpm.exe' '$(BUILD_DIR)/test-wine/hpm.exe'; \
+		cp '$(BIN_DIR)/x86_64/windows/punch.exe' '$(BUILD_DIR)/test-wine/punch.exe'; \
 		$(WINE_X86_64_CC) -std=c11 -O2 -Wall -Wextra -Werror \
-			-DKC_CLI_PATH=\"hpm.exe\" src/test.c -lws2_32 \
+			-DKC_CLI_PATH=\"punch.exe\" src/test.c -lws2_32 \
 			-o '$(BUILD_DIR)/test-wine/kccli_test.exe' || exit 1; \
 		cd '$(BUILD_DIR)/test-wine' && WINEDEBUG=-all $(WINE) kccli_test.exe; \
 	else \
@@ -244,7 +244,7 @@ test:
 		$(MAKE) --no-print-directory '$(NATIVE_TARGET)'; \
 		mkdir -p '$(BUILD_DIR)/test'; \
 		$(CC) -std=c11 -O2 -Wall -Wextra -Werror -pthread \
-			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/hpm$(NATIVE_EXE_EXT)\" \
+			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/punch$(NATIVE_EXE_EXT)\" \
 			src/test.c -o '$(BUILD_DIR)/test/kccli_test' || exit 1; \
 		'$(BUILD_DIR)/test/kccli_test'; \
 	fi

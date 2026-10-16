@@ -1,6 +1,6 @@
 /**
- * hpm.c - Hole-Punch-Man command-line interface.
- * Summary: Sends or receives one datagram over a direct libhpm UDP path.
+ * punch.c - Punch command-line interface.
+ * Summary: Sends or receives one datagram over a direct libpunch UDP path.
  *
  * Author:  KaisarCode
  * Website: https://kaisarcode.com
@@ -11,7 +11,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include "libhpm.h"
+#include "libpunch.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -32,7 +32,7 @@
  * @param name Program name.
  * @return None.
  */
-static void hpm_cli_usage(const char *name)
+static void punch_cli_usage(const char *name)
 {
     printf("Usage: %s <send|receive> <peer> [peer...] [options]\n", name);
     printf("\n");
@@ -50,7 +50,7 @@ static void hpm_cli_usage(const char *name)
  * Checks if stdin is a TTY.
  * @return 1 if stdin is a TTY, 0 otherwise.
  */
-static int hpm_cli_stdin_is_tty(void)
+static int punch_cli_stdin_is_tty(void)
 {
 #ifdef _WIN32
     HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
@@ -70,7 +70,7 @@ static int hpm_cli_stdin_is_tty(void)
  * @param out_size Output byte count.
  * @return Zero on success.
  */
-static int hpm_cli_read_stream(FILE *stream, void **out, size_t *out_size)
+static int punch_cli_read_stream(FILE *stream, void **out, size_t *out_size)
 {
     unsigned char *buffer = NULL;
     size_t size = 0;
@@ -132,7 +132,7 @@ static int hpm_cli_read_stream(FILE *stream, void **out, size_t *out_size)
  * @param out_size Output byte count.
  * @return Zero on success.
  */
-static int hpm_cli_read_file(const char *path, void **out, size_t *out_size)
+static int punch_cli_read_file(const char *path, void **out, size_t *out_size)
 {
     FILE *file;
     int status;
@@ -140,7 +140,7 @@ static int hpm_cli_read_file(const char *path, void **out, size_t *out_size)
     if (!path) return 1;
     file = fopen(path, "rb");
     if (!file) return 1;
-    status = hpm_cli_read_stream(file, out, out_size);
+    status = punch_cli_read_stream(file, out, out_size);
     fclose(file);
     return status;
 }
@@ -152,18 +152,18 @@ static int hpm_cli_read_file(const char *path, void **out, size_t *out_size)
  * @param out_size Output byte count.
  * @return Zero on success.
  */
-static int hpm_cli_read_input(const char *path, void **out, size_t *out_size)
+static int punch_cli_read_input(const char *path, void **out, size_t *out_size)
 {
-    if (!hpm_cli_stdin_is_tty()) {
+    if (!punch_cli_stdin_is_tty()) {
 #ifdef _WIN32
         if (_setmode(_fileno(stdin), _O_BINARY) == -1) return 1;
 #endif
-        if (hpm_cli_read_stream(stdin, out, out_size)) return 1;
+        if (punch_cli_read_stream(stdin, out, out_size)) return 1;
         if (*out_size > 0U || !path) return 0;
         free(*out);
         *out = NULL;
     }
-    if (path) return hpm_cli_read_file(path, out, out_size);
+    if (path) return punch_cli_read_file(path, out, out_size);
     return 1;
 }
 
@@ -173,7 +173,7 @@ static int hpm_cli_read_input(const char *path, void **out, size_t *out_size)
  * @param size Datagram size.
  * @return Zero on success.
  */
-static int hpm_cli_write_stdout(const void *data, size_t size)
+static int punch_cli_write_stdout(const void *data, size_t size)
 {
 #ifdef _WIN32
     if (_setmode(_fileno(stdout), _O_BINARY) == -1) return 1;
@@ -188,7 +188,7 @@ static int hpm_cli_write_stdout(const void *data, size_t size)
  * @param out Parsed value.
  * @return Nonzero on success.
  */
-static int hpm_cli_u64(const char *text, uint64_t *out)
+static int punch_cli_u64(const char *text, uint64_t *out)
 {
     unsigned long long value;
     char *end = NULL;
@@ -208,11 +208,11 @@ static int hpm_cli_u64(const char *text, uint64_t *out)
  * @param out Parsed port.
  * @return Nonzero on success.
  */
-static int hpm_cli_port(const char *text, int allow_zero, unsigned short *out)
+static int punch_cli_port(const char *text, int allow_zero, unsigned short *out)
 {
     uint64_t value;
 
-    if (!hpm_cli_u64(text, &value) || value > 65535ULL) return 0;
+    if (!punch_cli_u64(text, &value) || value > 65535ULL) return 0;
     if (!allow_zero && value == 0ULL) return 0;
     *out = (unsigned short)value;
     return 1;
@@ -224,7 +224,7 @@ static int hpm_cli_port(const char *text, int allow_zero, unsigned short *out)
  * @param out Output endpoint.
  * @return Zero on success.
  */
-static int hpm_cli_endpoint(const char *text, kc_hpm_endpoint_t *out)
+static int punch_cli_endpoint(const char *text, kc_punch_endpoint_t *out)
 {
     const char *host_begin;
     const char *host_end;
@@ -248,7 +248,7 @@ static int hpm_cli_endpoint(const char *text, kc_hpm_endpoint_t *out)
         host_end = colon;
         port_text = colon + 1;
     }
-    if (!hpm_cli_port(port_text, 0, &port)) return 1;
+    if (!punch_cli_port(port_text, 0, &port)) return 1;
     host_size = (size_t)(host_end - host_begin);
     host = (char *)malloc(host_size + 1U);
     if (!host) return 1;
@@ -265,7 +265,7 @@ static int hpm_cli_endpoint(const char *text, kc_hpm_endpoint_t *out)
  * @param count Peer count.
  * @return None.
  */
-static void hpm_cli_free_peers(kc_hpm_endpoint_t *peers, size_t count)
+static void punch_cli_free_peers(kc_punch_endpoint_t *peers, size_t count)
 {
     size_t i;
     if (!peers) return;
@@ -275,32 +275,32 @@ static void hpm_cli_free_peers(kc_hpm_endpoint_t *peers, size_t count)
 
 /**
  * Establishes a path and sends one datagram.
- * @param options HPM connection options.
+ * @param options PUNCH connection options.
  * @param input_path Optional input file.
  * @return Process exit status.
  */
-static int hpm_cli_send(const kc_hpm_options_t *options, const char *input_path)
+static int punch_cli_send(const kc_punch_options_t *options, const char *input_path)
 {
-    kc_hpm_path_t *path = NULL;
+    kc_punch_path_t *path = NULL;
     void *data = NULL;
     size_t size = 0;
     int rc;
 
-    if (hpm_cli_read_input(input_path, &data, &size)) {
-        fprintf(stderr, "hpm: cannot read datagram\n");
+    if (punch_cli_read_input(input_path, &data, &size)) {
+        fprintf(stderr, "punch: cannot read datagram\n");
         return 1;
     }
-    rc = kc_hpm_connect(&path, options);
-    if (rc != KC_HPM_OK) {
-        fprintf(stderr, "hpm: connect failed: %s\n", kc_hpm_strerror(rc));
+    rc = kc_punch_connect(&path, options);
+    if (rc != KC_PUNCH_OK) {
+        fprintf(stderr, "punch: connect failed: %s\n", kc_punch_strerror(rc));
         free(data);
         return 1;
     }
-    rc = kc_hpm_send(path, data, size);
+    rc = kc_punch_send(path, data, size);
     free(data);
-    kc_hpm_close(path);
-    if (rc != KC_HPM_OK) {
-        fprintf(stderr, "hpm: send failed: %s\n", kc_hpm_strerror(rc));
+    kc_punch_close(path);
+    if (rc != KC_PUNCH_OK) {
+        fprintf(stderr, "punch: send failed: %s\n", kc_punch_strerror(rc));
         return 1;
     }
     return 0;
@@ -308,35 +308,35 @@ static int hpm_cli_send(const kc_hpm_options_t *options, const char *input_path)
 
 /**
  * Establishes a path and receives one datagram.
- * @param options HPM connection options.
+ * @param options PUNCH connection options.
  * @param receive_timeout_ms Receive timeout in milliseconds.
  * @return Process exit status.
  */
-static int hpm_cli_receive(const kc_hpm_options_t *options,
+static int punch_cli_receive(const kc_punch_options_t *options,
     uint64_t receive_timeout_ms)
 {
-    kc_hpm_path_t *path = NULL;
+    kc_punch_path_t *path = NULL;
     void *data = NULL;
     size_t size = 0;
     int rc;
 
-    rc = kc_hpm_connect(&path, options);
-    if (rc != KC_HPM_OK) {
-        fprintf(stderr, "hpm: connect failed: %s\n", kc_hpm_strerror(rc));
+    rc = kc_punch_connect(&path, options);
+    if (rc != KC_PUNCH_OK) {
+        fprintf(stderr, "punch: connect failed: %s\n", kc_punch_strerror(rc));
         return 1;
     }
-    rc = kc_hpm_receive(path, &data, &size, receive_timeout_ms);
-    kc_hpm_close(path);
-    if (rc != KC_HPM_OK) {
-        fprintf(stderr, "hpm: receive failed: %s\n", kc_hpm_strerror(rc));
+    rc = kc_punch_receive(path, &data, &size, receive_timeout_ms);
+    kc_punch_close(path);
+    if (rc != KC_PUNCH_OK) {
+        fprintf(stderr, "punch: receive failed: %s\n", kc_punch_strerror(rc));
         return 1;
     }
-    if (hpm_cli_write_stdout(data, size)) {
-        fprintf(stderr, "hpm: cannot write datagram\n");
-        kc_hpm_free(data);
+    if (punch_cli_write_stdout(data, size)) {
+        fprintf(stderr, "punch: cannot write datagram\n");
+        kc_punch_free(data);
         return 1;
     }
-    kc_hpm_free(data);
+    kc_punch_free(data);
     return 0;
 }
 
@@ -353,8 +353,8 @@ int main(int argc, char **argv)
     const char *input_path = NULL;
     const char **peer_args = NULL;
     size_t peer_count = 0;
-    kc_hpm_endpoint_t *peers = NULL;
-    kc_hpm_options_t options;
+    kc_punch_endpoint_t *peers = NULL;
+    kc_punch_options_t options;
     unsigned short port = 0;
     uint64_t timeout_ms = 0;
     uint64_t receive_timeout_ms = 0;
@@ -363,63 +363,63 @@ int main(int argc, char **argv)
 
     if (argc == 2 && (strcmp(argv[1], "-h") == 0 ||
         strcmp(argv[1], "--help") == 0)) {
-        hpm_cli_usage(argv[0]);
+        punch_cli_usage(argv[0]);
         return 0;
     }
     if (argc == 2 && (strcmp(argv[1], "-v") == 0 ||
         strcmp(argv[1], "--version") == 0)) {
-        printf("%llu\n", (unsigned long long)kc_hpm_version());
+        printf("%llu\n", (unsigned long long)kc_punch_version());
         return 0;
     }
     if (argc < 2) {
-        hpm_cli_usage(argv[0]);
+        punch_cli_usage(argv[0]);
         return 1;
     }
 
     peer_args = (const char **)calloc((size_t)argc, sizeof(*peer_args));
     if (!peer_args) {
-        fprintf(stderr, "hpm: out of memory\n");
+        fprintf(stderr, "punch: out of memory\n");
         return 1;
     }
 
     for (i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--host") == 0) {
             if (++i >= argc || !argv[i][0] || host) {
-                fprintf(stderr, "hpm: --host requires one host\n");
+                fprintf(stderr, "punch: --host requires one host\n");
                 goto done;
             }
             host = argv[i];
         } else if (strcmp(argv[i], "-p") == 0 ||
             strcmp(argv[i], "--port") == 0) {
-            if (++i >= argc || !hpm_cli_port(argv[i], 1, &port)) {
-                fprintf(stderr, "hpm: invalid port\n");
+            if (++i >= argc || !punch_cli_port(argv[i], 1, &port)) {
+                fprintf(stderr, "punch: invalid port\n");
                 goto done;
             }
         } else if (strcmp(argv[i], "-t") == 0 ||
             strcmp(argv[i], "--timeout") == 0) {
-            if (++i >= argc || !hpm_cli_u64(argv[i], &timeout_ms)) {
-                fprintf(stderr, "hpm: invalid timeout\n");
+            if (++i >= argc || !punch_cli_u64(argv[i], &timeout_ms)) {
+                fprintf(stderr, "punch: invalid timeout\n");
                 goto done;
             }
         } else if (strcmp(argv[i], "--receive-timeout") == 0) {
-            if (++i >= argc || !hpm_cli_u64(argv[i], &receive_timeout_ms)) {
-                fprintf(stderr, "hpm: invalid receive timeout\n");
+            if (++i >= argc || !punch_cli_u64(argv[i], &receive_timeout_ms)) {
+                fprintf(stderr, "punch: invalid receive timeout\n");
                 goto done;
             }
         } else if (strcmp(argv[i], "-i") == 0 ||
             strcmp(argv[i], "--input") == 0) {
             if (++i >= argc || !argv[i][0] || input_path) {
-                fprintf(stderr, "hpm: --input requires one file\n");
+                fprintf(stderr, "punch: --input requires one file\n");
                 goto done;
             }
             input_path = argv[i];
         } else if (strcmp(argv[i], "-h") == 0 ||
             strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-v") == 0 ||
             strcmp(argv[i], "--version") == 0) {
-            fprintf(stderr, "hpm: -h/--help and -v/--version must be used alone\n");
+            fprintf(stderr, "punch: -h/--help and -v/--version must be used alone\n");
             goto done;
         } else if (argv[i][0] == '-') {
-            fprintf(stderr, "hpm: unknown option: %s\n", argv[i]);
+            fprintf(stderr, "punch: unknown option: %s\n", argv[i]);
             goto done;
         } else if (!command) {
             command = argv[i];
@@ -429,34 +429,34 @@ int main(int argc, char **argv)
     }
 
     if (!command) {
-        fprintf(stderr, "hpm: missing command\n");
+        fprintf(stderr, "punch: missing command\n");
         goto done;
     }
     if (strcmp(command, "send") != 0 && strcmp(command, "receive") != 0) {
-        fprintf(stderr, "hpm: unknown command '%s'\n", command);
+        fprintf(stderr, "punch: unknown command '%s'\n", command);
         goto done;
     }
     if (peer_count == 0U) {
-        fprintf(stderr, "hpm: %s requires at least one peer\n", command);
+        fprintf(stderr, "punch: %s requires at least one peer\n", command);
         goto done;
     }
     if (strcmp(command, "send") == 0 && receive_timeout_ms != 0U) {
-        fprintf(stderr, "hpm: send does not use --receive-timeout\n");
+        fprintf(stderr, "punch: send does not use --receive-timeout\n");
         goto done;
     }
     if (strcmp(command, "receive") == 0 && input_path) {
-        fprintf(stderr, "hpm: receive does not use --input\n");
+        fprintf(stderr, "punch: receive does not use --input\n");
         goto done;
     }
 
-    peers = (kc_hpm_endpoint_t *)calloc(peer_count, sizeof(*peers));
+    peers = (kc_punch_endpoint_t *)calloc(peer_count, sizeof(*peers));
     if (!peers) {
-        fprintf(stderr, "hpm: out of memory\n");
+        fprintf(stderr, "punch: out of memory\n");
         goto done;
     }
     for (i = 0; (size_t)i < peer_count; ++i) {
-        if (hpm_cli_endpoint(peer_args[i], &peers[i])) {
-            fprintf(stderr, "hpm: invalid peer endpoint: %s\n", peer_args[i]);
+        if (punch_cli_endpoint(peer_args[i], &peers[i])) {
+            fprintf(stderr, "punch: invalid peer endpoint: %s\n", peer_args[i]);
             goto done;
         }
     }
@@ -469,12 +469,12 @@ int main(int argc, char **argv)
     options.timeout_ms = timeout_ms;
 
     if (strcmp(command, "send") == 0)
-        rc = hpm_cli_send(&options, input_path);
+        rc = punch_cli_send(&options, input_path);
     else
-        rc = hpm_cli_receive(&options, receive_timeout_ms);
+        rc = punch_cli_receive(&options, receive_timeout_ms);
 
 done:
-    hpm_cli_free_peers(peers, peer_count);
+    punch_cli_free_peers(peers, peer_count);
     free(peer_args);
     return rc;
 }
