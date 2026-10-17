@@ -32,6 +32,7 @@ typedef int test_socklen_t;
 #define TEST_INVALID_SOCKET INVALID_SOCKET
 #define test_socket_close closesocket
 #define DEV_NULL "NUL"
+#define TEST_CLI_FORMAT "%s"
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -45,6 +46,7 @@ typedef socklen_t test_socklen_t;
 #define TEST_INVALID_SOCKET (-1)
 #define test_socket_close close
 #define DEV_NULL "/dev/null"
+#define TEST_CLI_FORMAT "\"%s\""
 #endif
 
 #define RSTRM_TEST_COUNT 18
@@ -139,7 +141,7 @@ static int run(const char *args)
     count = snprintf(
         command,
         sizeof(command),
-        "\"%s\" %s > " DEV_NULL " 2> " DEV_NULL,
+        TEST_CLI_FORMAT " %s > " DEV_NULL " 2> " DEV_NULL,
         KC_CLI_PATH,
         args
     );
@@ -430,7 +432,7 @@ static int one_way_test(void)
     snprintf(
         receiver.command,
         sizeof(receiver.command),
-        "\"%s\" 127.0.0.1 %u --host 127.0.0.1 -p %u "
+        TEST_CLI_FORMAT " 127.0.0.1 %u --host 127.0.0.1 -p %u "
         "< " DEV_NULL " > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)sender_port,
@@ -443,7 +445,7 @@ static int one_way_test(void)
     snprintf(
         sender,
         sizeof(sender),
-        "\"%s\" 127.0.0.1 %u --host 127.0.0.1 -p %u --mtu 1200 "
+        TEST_CLI_FORMAT " 127.0.0.1 %u --host 127.0.0.1 -p %u --mtu 1200 "
         "< \"%s\" > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)receiver_port,
@@ -496,7 +498,7 @@ static int full_duplex_test(void)
     snprintf(
         first.command,
         sizeof(first.command),
-        "\"%s\" 127.0.0.1 %u -p %u < \"%s\" > \"%s\" 2> \"%s\"",
+        TEST_CLI_FORMAT " 127.0.0.1 %u -p %u < \"%s\" > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)second_port,
         (unsigned)first_port,
@@ -507,7 +509,7 @@ static int full_duplex_test(void)
     snprintf(
         second.command,
         sizeof(second.command),
-        "\"%s\" 127.0.0.1 %u -p %u < \"%s\" > \"%s\" 2> \"%s\"",
+        TEST_CLI_FORMAT " 127.0.0.1 %u -p %u < \"%s\" > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)first_port,
         (unsigned)second_port,
