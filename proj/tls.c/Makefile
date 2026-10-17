@@ -1,5 +1,5 @@
 ## Makefile
-## Summary: Builds the tlsio CLI against precompiled static kclib artifacts.
+## Summary: Builds the tls CLI against precompiled static kclib artifacts.
 ##
 ## Author:  KaisarCode
 ## Website: https://kaisarcode.com
@@ -10,9 +10,9 @@ SHELL := /bin/sh
 ifndef KCLIB_DIR
 $(error KCLIB_DIR environment variable is required)
 endif
-TLSIO_PROJECT_DIR := $(KCLIB_DIR)/proj/libtlsio.c
-TLSIO_BIN_DIR := $(TLSIO_PROJECT_DIR)/bin
-TLSIO_INCLUDE_DIR := $(TLSIO_PROJECT_DIR)/src
+TLS_PROJECT_DIR := $(KCLIB_DIR)/proj/libtls.c
+TLS_BIN_DIR := $(TLS_PROJECT_DIR)/bin
+TLS_INCLUDE_DIR := $(TLS_PROJECT_DIR)/src
 BIN_DIR := bin
 BUILD_DIR := .build
 
@@ -96,16 +96,16 @@ all: \
 	s390x/linux loongarch64/linux
 
 define linux_target
-	@target='$(TLSIO_BIN_DIR)/$(1)/linux'; \
-	header='$(TLSIO_INCLUDE_DIR)/libtlsio.h'; \
-	library="$$target/libtlsio.a"; \
-	out='$(BIN_DIR)/$(1)/linux/tlsio'; \
-	[ -f "$$header" ] || { echo "kccli: missing libtlsio header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libtlsio static library: $$library" >&2; exit 1; }; \
+	@target='$(TLS_BIN_DIR)/$(1)/linux'; \
+	header='$(TLS_INCLUDE_DIR)/libtls.h'; \
+	library="$$target/libtls.a"; \
+	out='$(BIN_DIR)/$(1)/linux/tls'; \
+	[ -f "$$header" ] || { echo "kccli: missing libtls header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libtls static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/linux'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TLSIO_INCLUDE_DIR)' \
-		src/tlsio.c "$$library" -pthread -o "$$out" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TLS_INCLUDE_DIR)' \
+		src/tls.c "$$library" -pthread -o "$$out" || exit 1; \
 	echo "OK $(1)/linux"
 endef
 
@@ -146,16 +146,16 @@ loongarch64/linux:
 	$(call linux_target,loongarch64,loongarch64-linux-gnu-gcc)
 
 define android_target
-	@target='$(TLSIO_BIN_DIR)/$(1)/android'; \
-	header='$(TLSIO_INCLUDE_DIR)/libtlsio.h'; \
-	library="$$target/libtlsio.a"; \
-	out='$(BIN_DIR)/$(1)/android/tlsio'; \
-	[ -f "$$header" ] || { echo "kccli: missing libtlsio header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libtlsio static library: $$library" >&2; exit 1; }; \
+	@target='$(TLS_BIN_DIR)/$(1)/android'; \
+	header='$(TLS_INCLUDE_DIR)/libtls.h'; \
+	library="$$target/libtls.a"; \
+	out='$(BIN_DIR)/$(1)/android/tls'; \
+	[ -f "$$header" ] || { echo "kccli: missing libtls header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libtls static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/android'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TLSIO_INCLUDE_DIR)' \
-		src/tlsio.c "$$library" -pthread -o "$$out" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TLS_INCLUDE_DIR)' \
+		src/tls.c "$$library" -pthread -o "$$out" || exit 1; \
 	echo "OK $(1)/android"
 endef
 
@@ -166,16 +166,16 @@ armv7/android:
 	$(call android_target,armv7,$(ANDROID_ARMV7_CC))
 
 define windows_target
-	@target='$(TLSIO_BIN_DIR)/$(1)/windows'; \
-	header='$(TLSIO_INCLUDE_DIR)/libtlsio.h'; \
-	library="$$target/libtlsio.a"; \
-	out='$(BIN_DIR)/$(1)/windows/tlsio.exe'; \
-	[ -f "$$header" ] || { echo "kccli: missing libtlsio header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libtlsio static library: $$library" >&2; exit 1; }; \
+	@target='$(TLS_BIN_DIR)/$(1)/windows'; \
+	header='$(TLS_INCLUDE_DIR)/libtls.h'; \
+	library="$$target/libtls.a"; \
+	out='$(BIN_DIR)/$(1)/windows/tls.exe'; \
+	[ -f "$$header" ] || { echo "kccli: missing libtls header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libtls static library: $$library" >&2; exit 1; }; \
 	command -v $(2) >/dev/null 2>&1 || { echo "kccli: missing compiler: $(2)" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/windows'; \
-	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TLSIO_INCLUDE_DIR)' \
-		src/tlsio.c "$$library" -lws2_32 -lbcrypt -lcrypt32 -o "$$out" || exit 1; \
+	$(2) -std=c11 -O2 -Wall -Wextra -Werror -I'$(TLS_INCLUDE_DIR)' \
+		src/tls.c "$$library" -lws2_32 -lbcrypt -lcrypt32 -o "$$out" || exit 1; \
 	echo "OK $(1)/windows"
 endef
 
@@ -186,10 +186,10 @@ i686/windows:
 	$(call windows_target,i686,i686-w64-mingw32-gcc)
 
 define macos_target
-	@target='$(TLSIO_BIN_DIR)/$(1)/macos'; \
-	header='$(TLSIO_INCLUDE_DIR)/libtlsio.h'; \
-	library="$$target/libtlsio.a"; \
-	out='$(BIN_DIR)/$(1)/macos/tlsio'; \
+	@target='$(TLS_BIN_DIR)/$(1)/macos'; \
+	header='$(TLS_INCLUDE_DIR)/libtls.h'; \
+	library="$$target/libtls.a"; \
+	out='$(BIN_DIR)/$(1)/macos/tls'; \
 	compiler='$(2)'; \
 	otool='$(MACOSX_OTOOL)'; \
 	native=0; \
@@ -198,8 +198,8 @@ define macos_target
 		otool='otool'; \
 		native=1; \
 	fi; \
-	[ -f "$$header" ] || { echo "kccli: missing libtlsio header: $$header" >&2; exit 1; }; \
-	[ -f "$$library" ] || { echo "kccli: missing libtlsio static library: $$library" >&2; exit 1; }; \
+	[ -f "$$header" ] || { echo "kccli: missing libtls header: $$header" >&2; exit 1; }; \
+	[ -f "$$library" ] || { echo "kccli: missing libtls static library: $$library" >&2; exit 1; }; \
 	command -v "$$compiler" >/dev/null 2>&1 || { echo "kccli: missing macOS compiler: $$compiler" >&2; exit 1; }; \
 	mkdir -p '$(BIN_DIR)/$(1)/macos'; \
 	min='$(MACOSX_DEPLOYMENT_TARGET)'; \
@@ -210,15 +210,15 @@ define macos_target
 	[ -n "$$min" ] || { echo "kccli: cannot determine macOS deployment target from $$library" >&2; exit 1; }; \
 	if [ "$$native" = 1 ]; then \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I'$(TLSIO_INCLUDE_DIR)' \
-			src/tlsio.c "$$library" -pthread -framework Security \
+			-mmacosx-version-min="$$min" -I'$(TLS_INCLUDE_DIR)' \
+			src/tls.c "$$library" -pthread -framework Security \
 			-framework CoreFoundation -o "$$out"; \
 	else \
 		LD_LIBRARY_PATH='$(OSXCROSS_ROOT)/lib':$$LD_LIBRARY_PATH \
 		PATH='$(OSXCROSS_ROOT)/bin':$$PATH \
 		"$$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-			-mmacosx-version-min="$$min" -I'$(TLSIO_INCLUDE_DIR)' \
-			src/tlsio.c "$$library" -pthread -framework Security \
+			-mmacosx-version-min="$$min" -I'$(TLS_INCLUDE_DIR)' \
+			src/tls.c "$$library" -pthread -framework Security \
 			-framework CoreFoundation -o "$$out"; \
 	fi || exit 1; \
 	echo "OK $(1)/macos"
@@ -236,9 +236,9 @@ test:
 		command -v $(WINE) >/dev/null 2>&1 || { echo "kccli: missing Wine runtime: $(WINE)" >&2; exit 1; }; \
 		command -v $(WINE_X86_64_CC) >/dev/null 2>&1 || { echo "kccli: missing Windows compiler: $(WINE_X86_64_CC)" >&2; exit 1; }; \
 		mkdir -p '$(BUILD_DIR)/test-wine'; \
-		cp '$(BIN_DIR)/x86_64/windows/tlsio.exe' '$(BUILD_DIR)/test-wine/tlsio.exe'; \
+		cp '$(BIN_DIR)/x86_64/windows/tls.exe' '$(BUILD_DIR)/test-wine/tls.exe'; \
 		$(WINE_X86_64_CC) -std=c11 -O2 -Wall -Wextra -Werror \
-			-DKC_CLI_PATH=\"tlsio.exe\" src/test.c \
+			-DKC_CLI_PATH=\"tls.exe\" src/test.c \
 			-o '$(BUILD_DIR)/test-wine/kccli_test.exe' || exit 1; \
 		cd '$(BUILD_DIR)/test-wine' && WINEDEBUG=-all $(WINE) kccli_test.exe; \
 	else \
@@ -248,7 +248,7 @@ test:
 		$(MAKE) --no-print-directory '$(NATIVE_TARGET)'; \
 		mkdir -p '$(BUILD_DIR)/test'; \
 		$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
-			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/tlsio$(NATIVE_EXE_EXT)\" \
+			-DKC_CLI_PATH=\"$(CURDIR)/$(BIN_DIR)/$(NATIVE_TARGET)/tls$(NATIVE_EXE_EXT)\" \
 			src/test.c -o '$(BUILD_DIR)/test/kccli_test' || exit 1; \
 		'$(BUILD_DIR)/test/kccli_test'; \
 	fi

@@ -1,6 +1,6 @@
-# tlsio
+# tls
 
-`tlsio` is a binary TLS relay for one TCP connection. It can run as a TLS
+`tls` is a binary TLS relay for one TCP connection. It can run as a TLS
 client or as a one-connection TLS server, sending standard input as application
 data and writing authenticated peer plaintext to standard output.
 
@@ -13,7 +13,7 @@ other processes.
 Send an HTTP/1.0 request through a verified TLS client session:
 
 ```bash
-printf 'GET / HTTP/1.0\r\nHost: example.com\r\n\r\n' | tlsio client example.com 443
+printf 'GET / HTTP/1.0\r\nHost: example.com\r\n\r\n' | tls client example.com 443
 ```
 
 The TCP destination is `example.com:443`. By default, the same host is used for
@@ -22,8 +22,8 @@ SNI and certificate hostname verification.
 ## Usage
 
 ```text
-tlsio client <host> <port> [options]
-tlsio server <port> --cert <file> --key <file> [options]
+tls client <host> <port> [options]
+tls server <port> --cert <file> --key <file> [options]
 ```
 
 Client options:
@@ -52,7 +52,7 @@ server identity. Use `--name` when those values differ, such as when connecting
 to a local address while verifying a certificate for another hostname:
 
 ```bash
-tlsio client 127.0.0.1 8443 --name localhost --ca ca.pem
+tls client 127.0.0.1 8443 --name localhost --ca ca.pem
 ```
 
 Without `--ca`, the client uses the platform trust store. With `--ca`, only the
@@ -65,13 +65,13 @@ The server authenticates itself with the certificate and private key supplied by
 `--cert` and `--key`.
 
 ```bash
-tlsio server 8443 --cert server.pem --key server.key
+tls server 8443 --cert server.pem --key server.key
 ```
 
 Use `--bind` to restrict the listener to a specific local address:
 
 ```bash
-tlsio server 8443 --bind 127.0.0.1 --cert server.pem --key server.key
+tls server 8443 --bind 127.0.0.1 --cert server.pem --key server.key
 ```
 
 Server mode does not request or verify a client certificate.
@@ -90,7 +90,7 @@ as a transport failure.
 ## Build
 
 The Makefile requires `KCLIB_DIR` to point to the checkout containing the
-matching prebuilt `libtlsio` artifacts and public header.
+matching prebuilt `libtls` artifacts and public header.
 
 ```bash
 export KCLIB_DIR=path/to/kclib

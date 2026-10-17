@@ -1,5 +1,5 @@
 /**
- * tlsio.c - TLS stream relay command-line interface.
+ * tls.c - TLS stream relay command-line interface.
  * Summary: Relays plaintext through one authenticated TLS client or server.
  *
  * Author:  KaisarCode
@@ -11,7 +11,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include "libtlsio.h"
+#include "libtls.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -30,9 +30,9 @@
 #include <conio.h>
 #include <fcntl.h>
 #include <io.h>
-typedef SOCKET tlsio_cli_socket_t;
-#define TLSIO_CLI_INVALID_SOCKET INVALID_SOCKET
-#define tlsio_cli_socket_close closesocket
+typedef SOCKET tls_cli_socket_t;
+#define TLS_CLI_INVALID_SOCKET INVALID_SOCKET
+#define tls_cli_socket_close closesocket
 #else
 #include <netdb.h>
 #include <netinet/in.h>
@@ -41,15 +41,15 @@ typedef SOCKET tlsio_cli_socket_t;
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-typedef int tlsio_cli_socket_t;
-#define TLSIO_CLI_INVALID_SOCKET (-1)
-#define tlsio_cli_socket_close close
+typedef int tls_cli_socket_t;
+#define TLS_CLI_INVALID_SOCKET (-1)
+#define tls_cli_socket_close close
 #endif
 
-#define TLSIO_CLI_BUFFER_SIZE 16384U
-#define TLSIO_CLI_EVENT_SOCKET 1
-#define TLSIO_CLI_EVENT_STDIN 2
-#define TLSIO_CLI_EVENT_STDIN_CLOSED 4
+#define TLS_CLI_BUFFER_SIZE 16384U
+#define TLS_CLI_EVENT_SOCKET 1
+#define TLS_CLI_EVENT_STDIN 2
+#define TLS_CLI_EVENT_STDIN_CLOSED 4
 
 typedef struct {
     int role;
@@ -60,20 +60,20 @@ typedef struct {
     const char *certificate_path;
     const char *private_key_path;
     unsigned short port;
-} tlsio_cli_options_t;
+} tls_cli_options_t;
 
 typedef struct {
-    kc_tlsio_t *tls;
-    tlsio_cli_socket_t socket;
+    kc_tls_t *tls;
+    tls_cli_socket_t socket;
     int io_failed;
-} tlsio_cli_state_t;
+} tls_cli_state_t;
 
 /**
  * Prints command usage.
  * @param name Program name.
  * @return void.
  */
-static void tlsio_cli_help(const char *name)
+static void tls_cli_help(const char *name)
 {
     printf("Usage: %s client <host> <port> [options]\n", name);
     printf("       %s server <port> --cert <file> --key <file> [options]\n", name);
@@ -97,12 +97,12 @@ static void tlsio_cli_help(const char *name)
 }
 
 /**
- * Prints the linked libtlsio build version.
+ * Prints the linked libtls build version.
  * @return void.
  */
-static void tlsio_cli_version(void)
+static void tls_cli_version(void)
 {
-    printf("%llu\n", (unsigned long long)kc_tlsio_version());
+    printf("%llu\n", (unsigned long long)kc_tls_version());
 }
 
 /**
@@ -110,9 +110,9 @@ static void tlsio_cli_version(void)
  * @param message Error message.
  * @return One.
  */
-static int tlsio_cli_error(const char *message)
+static int tls_cli_error(const char *message)
 {
-    fprintf(stderr, "tlsio: %s\n", message);
+    fprintf(stderr, "tls: %s\n", message);
     return 1;
 }
 
@@ -122,9 +122,9 @@ static int tlsio_cli_error(const char *message)
  * @param value Error value.
  * @return One.
  */
-static int tlsio_cli_error_value(const char *message, const char *value)
+static int tls_cli_error_value(const char *message, const char *value)
 {
-    fprintf(stderr, "tlsio: %s%s\n", message, value ? value : "");
+    fprintf(stderr, "tls: %s%s\n", message, value ? value : "");
     return 1;
 }
 
@@ -134,7 +134,7 @@ static int tlsio_cli_error_value(const char *message, const char *value)
  * @param out Parsed port.
  * @return Nonzero on success.
  */
-static int tlsio_cli_parse_port(const char *text, unsigned short *out)
+static int tls_cli_parse_port(const char *text, unsigned short *out)
 {
     unsigned long value;
     char *end;
@@ -159,7 +159,7 @@ static int tlsio_cli_parse_port(const char *text, unsigned short *out)
  * @param out Destination value.
  * @return Zero on success.
  */
-static int tlsio_cli_option_value(
+static int tls_cli_option_value(
     int argc,
     char **argv,
     int *index,
@@ -168,7 +168,7 @@ static int tlsio_cli_option_value(
 )
 {
     if (*index + 1 >= argc || argv[*index + 1][0] == '\0') {
-        fprintf(stderr, "tlsio: %s requires a value\n", option);
+        fprintf(stderr, "tls: %s requires a value\n", option);
         return 1;
     }
     *index += 1;
@@ -183,24 +183,24 @@ static int tlsio_cli_option_value(
  * @param options Parsed options.
  * @return Zero on success.
  */
-static int tlsio_cli_parse(
+static int tls_cli_parse(
     int argc,
     char **argv,
-    tlsio_cli_options_t *options
+    tls_cli_options_t *options
 )
 {
     const char *positionals[3];
     size_t positional_count;
     int index;
 
-    if (argc < 2 || !options) return tlsio_cli_error("missing command");
+    if (argc < 2 || !options) return tls_cli_error("missing command");
     memset(options, 0, sizeof(*options));
     if (strcmp(argv[1], "client") == 0) {
-        options->role = KC_TLSIO_CLIENT;
+        options->role = KC_TLS_CLIENT;
     } else if (strcmp(argv[1], "server") == 0) {
-        options->role = KC_TLSIO_SERVER;
+        options->role = KC_TLS_SERVER;
     } else {
-        return tlsio_cli_error_value("unknown command: ", argv[1]);
+        return tls_cli_error_value("unknown command: ", argv[1]);
     }
 
     positional_count = 0U;
@@ -209,10 +209,10 @@ static int tlsio_cli_parse(
 
         argument = argv[index];
         if (strcmp(argument, "--name") == 0) {
-            if (options->role != KC_TLSIO_CLIENT) {
-                return tlsio_cli_error("--name is only valid for client");
+            if (options->role != KC_TLS_CLIENT) {
+                return tls_cli_error("--name is only valid for client");
             }
-            if (tlsio_cli_option_value(
+            if (tls_cli_option_value(
                     argc,
                     argv,
                     &index,
@@ -222,10 +222,10 @@ static int tlsio_cli_parse(
                 return 1;
             }
         } else if (strcmp(argument, "--ca") == 0) {
-            if (options->role != KC_TLSIO_CLIENT) {
-                return tlsio_cli_error("--ca is only valid for client");
+            if (options->role != KC_TLS_CLIENT) {
+                return tls_cli_error("--ca is only valid for client");
             }
-            if (tlsio_cli_option_value(
+            if (tls_cli_option_value(
                     argc,
                     argv,
                     &index,
@@ -235,10 +235,10 @@ static int tlsio_cli_parse(
                 return 1;
             }
         } else if (strcmp(argument, "--bind") == 0) {
-            if (options->role != KC_TLSIO_SERVER) {
-                return tlsio_cli_error("--bind is only valid for server");
+            if (options->role != KC_TLS_SERVER) {
+                return tls_cli_error("--bind is only valid for server");
             }
-            if (tlsio_cli_option_value(
+            if (tls_cli_option_value(
                     argc,
                     argv,
                     &index,
@@ -248,10 +248,10 @@ static int tlsio_cli_parse(
                 return 1;
             }
         } else if (strcmp(argument, "--cert") == 0) {
-            if (options->role != KC_TLSIO_SERVER) {
-                return tlsio_cli_error("--cert is only valid for server");
+            if (options->role != KC_TLS_SERVER) {
+                return tls_cli_error("--cert is only valid for server");
             }
-            if (tlsio_cli_option_value(
+            if (tls_cli_option_value(
                     argc,
                     argv,
                     &index,
@@ -261,10 +261,10 @@ static int tlsio_cli_parse(
                 return 1;
             }
         } else if (strcmp(argument, "--key") == 0) {
-            if (options->role != KC_TLSIO_SERVER) {
-                return tlsio_cli_error("--key is only valid for server");
+            if (options->role != KC_TLS_SERVER) {
+                return tls_cli_error("--key is only valid for server");
             }
-            if (tlsio_cli_option_value(
+            if (tls_cli_option_value(
                     argc,
                     argv,
                     &index,
@@ -274,35 +274,35 @@ static int tlsio_cli_parse(
                 return 1;
             }
         } else if (argument[0] == '-') {
-            return tlsio_cli_error_value("unknown option: ", argument);
+            return tls_cli_error_value("unknown option: ", argument);
         } else {
             if (positional_count >= sizeof(positionals) / sizeof(positionals[0])) {
-                return tlsio_cli_error("too many positional arguments");
+                return tls_cli_error("too many positional arguments");
             }
             positionals[positional_count++] = argument;
         }
     }
 
-    if (options->role == KC_TLSIO_CLIENT) {
+    if (options->role == KC_TLS_CLIENT) {
         if (positional_count != 2U) {
-            return tlsio_cli_error("client requires <host> <port>");
+            return tls_cli_error("client requires <host> <port>");
         }
         options->network_host = positionals[0];
-        if (!tlsio_cli_parse_port(positionals[1], &options->port)) {
-            return tlsio_cli_error_value("invalid port: ", positionals[1]);
+        if (!tls_cli_parse_port(positionals[1], &options->port)) {
+            return tls_cli_error_value("invalid port: ", positionals[1]);
         }
         if (!options->tls_host) options->tls_host = options->network_host;
         return 0;
     }
 
     if (positional_count != 1U) {
-        return tlsio_cli_error("server requires <port>");
+        return tls_cli_error("server requires <port>");
     }
-    if (!tlsio_cli_parse_port(positionals[0], &options->port)) {
-        return tlsio_cli_error_value("invalid port: ", positionals[0]);
+    if (!tls_cli_parse_port(positionals[0], &options->port)) {
+        return tls_cli_error_value("invalid port: ", positionals[0]);
     }
     if (!options->certificate_path || !options->private_key_path) {
-        return tlsio_cli_error("server requires --cert <file> and --key <file>");
+        return tls_cli_error("server requires --cert <file> and --key <file>");
     }
     return 0;
 }
@@ -311,7 +311,7 @@ static int tlsio_cli_parse(
  * Starts the native socket runtime.
  * @return Zero on success.
  */
-static int tlsio_cli_socket_runtime_start(void)
+static int tls_cli_socket_runtime_start(void)
 {
 #ifdef _WIN32
     WSADATA data;
@@ -327,7 +327,7 @@ static int tlsio_cli_socket_runtime_start(void)
  * Stops the native socket runtime.
  * @return void.
  */
-static void tlsio_cli_socket_runtime_stop(void)
+static void tls_cli_socket_runtime_stop(void)
 {
 #ifdef _WIN32
     WSACleanup();
@@ -341,7 +341,7 @@ static void tlsio_cli_socket_runtime_stop(void)
  * @param size Destination size.
  * @return Zero on success.
  */
-static int tlsio_cli_service(
+static int tls_cli_service(
     unsigned short port,
     char *service,
     size_t size
@@ -357,9 +357,9 @@ static int tlsio_cli_service(
  * Opens one outbound TCP connection.
  * @param host Destination host.
  * @param port Destination port.
- * @return Connected socket or TLSIO_CLI_INVALID_SOCKET.
+ * @return Connected socket or TLS_CLI_INVALID_SOCKET.
  */
-static tlsio_cli_socket_t tlsio_cli_connect(
+static tls_cli_socket_t tls_cli_connect(
     const char *host,
     unsigned short port
 )
@@ -367,11 +367,11 @@ static tlsio_cli_socket_t tlsio_cli_connect(
     struct addrinfo hints;
     struct addrinfo *addresses;
     struct addrinfo *address;
-    tlsio_cli_socket_t socket_fd;
+    tls_cli_socket_t socket_fd;
     char service[16];
 
-    if (tlsio_cli_service(port, service, sizeof(service)) != 0) {
-        return TLSIO_CLI_INVALID_SOCKET;
+    if (tls_cli_service(port, service, sizeof(service)) != 0) {
+        return TLS_CLI_INVALID_SOCKET;
     }
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
@@ -379,22 +379,22 @@ static tlsio_cli_socket_t tlsio_cli_connect(
     hints.ai_protocol = IPPROTO_TCP;
     addresses = NULL;
     if (getaddrinfo(host, service, &hints, &addresses) != 0) {
-        return TLSIO_CLI_INVALID_SOCKET;
+        return TLS_CLI_INVALID_SOCKET;
     }
 
-    socket_fd = TLSIO_CLI_INVALID_SOCKET;
+    socket_fd = TLS_CLI_INVALID_SOCKET;
     for (address = addresses; address; address = address->ai_next) {
         socket_fd = socket(
             address->ai_family,
             address->ai_socktype,
             address->ai_protocol
         );
-        if (socket_fd == TLSIO_CLI_INVALID_SOCKET) continue;
+        if (socket_fd == TLS_CLI_INVALID_SOCKET) continue;
         if (connect(socket_fd, address->ai_addr, (int)address->ai_addrlen) == 0) {
             break;
         }
-        tlsio_cli_socket_close(socket_fd);
-        socket_fd = TLSIO_CLI_INVALID_SOCKET;
+        tls_cli_socket_close(socket_fd);
+        socket_fd = TLS_CLI_INVALID_SOCKET;
     }
     freeaddrinfo(addresses);
     return socket_fd;
@@ -404,9 +404,9 @@ static tlsio_cli_socket_t tlsio_cli_connect(
  * Opens one TCP listener.
  * @param host Optional bind host.
  * @param port Local port.
- * @return Listening socket or TLSIO_CLI_INVALID_SOCKET.
+ * @return Listening socket or TLS_CLI_INVALID_SOCKET.
  */
-static tlsio_cli_socket_t tlsio_cli_listen(
+static tls_cli_socket_t tls_cli_listen(
     const char *host,
     unsigned short port
 )
@@ -414,11 +414,11 @@ static tlsio_cli_socket_t tlsio_cli_listen(
     struct addrinfo hints;
     struct addrinfo *addresses;
     struct addrinfo *address;
-    tlsio_cli_socket_t socket_fd;
+    tls_cli_socket_t socket_fd;
     char service[16];
 
-    if (tlsio_cli_service(port, service, sizeof(service)) != 0) {
-        return TLSIO_CLI_INVALID_SOCKET;
+    if (tls_cli_service(port, service, sizeof(service)) != 0) {
+        return TLS_CLI_INVALID_SOCKET;
     }
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
@@ -427,10 +427,10 @@ static tlsio_cli_socket_t tlsio_cli_listen(
     hints.ai_flags = AI_PASSIVE;
     addresses = NULL;
     if (getaddrinfo(host, service, &hints, &addresses) != 0) {
-        return TLSIO_CLI_INVALID_SOCKET;
+        return TLS_CLI_INVALID_SOCKET;
     }
 
-    socket_fd = TLSIO_CLI_INVALID_SOCKET;
+    socket_fd = TLS_CLI_INVALID_SOCKET;
     for (address = addresses; address; address = address->ai_next) {
         int reuse;
 
@@ -439,7 +439,7 @@ static tlsio_cli_socket_t tlsio_cli_listen(
             address->ai_socktype,
             address->ai_protocol
         );
-        if (socket_fd == TLSIO_CLI_INVALID_SOCKET) continue;
+        if (socket_fd == TLS_CLI_INVALID_SOCKET) continue;
         reuse = 1;
         (void)setsockopt(
             socket_fd,
@@ -452,8 +452,8 @@ static tlsio_cli_socket_t tlsio_cli_listen(
             listen(socket_fd, 16) == 0) {
             break;
         }
-        tlsio_cli_socket_close(socket_fd);
-        socket_fd = TLSIO_CLI_INVALID_SOCKET;
+        tls_cli_socket_close(socket_fd);
+        socket_fd = TLS_CLI_INVALID_SOCKET;
     }
     freeaddrinfo(addresses);
     return socket_fd;
@@ -466,8 +466,8 @@ static tlsio_cli_socket_t tlsio_cli_listen(
  * @param size Byte count.
  * @return Zero on success.
  */
-static int tlsio_cli_socket_send_all(
-    tlsio_cli_socket_t socket_fd,
+static int tls_cli_socket_send_all(
+    tls_cli_socket_t socket_fd,
     const void *data,
     size_t size
 )
@@ -513,8 +513,8 @@ static int tlsio_cli_socket_send_all(
  * @param size Destination size.
  * @return Received byte count, zero on EOF, or negative on error.
  */
-static int tlsio_cli_socket_receive(
-    tlsio_cli_socket_t socket_fd,
+static int tls_cli_socket_receive(
+    tls_cli_socket_t socket_fd,
     void *data,
     size_t size
 )
@@ -548,7 +548,7 @@ static int tlsio_cli_socket_receive(
  * @param size Byte count.
  * @return Zero on success.
  */
-static int tlsio_cli_write_stdout(const void *data, size_t size)
+static int tls_cli_write_stdout(const void *data, size_t size)
 {
     const unsigned char *bytes;
     size_t offset;
@@ -587,7 +587,7 @@ static int tlsio_cli_write_stdout(const void *data, size_t size)
  * @param size Destination size.
  * @return Byte count, zero on EOF, or negative on error.
  */
-static int tlsio_cli_read_stdin(void *data, size_t size)
+static int tls_cli_read_stdin(void *data, size_t size)
 {
     for (;;) {
 #ifdef _WIN32
@@ -612,7 +612,7 @@ static int tlsio_cli_read_stdin(void *data, size_t size)
  * Configures binary standard streams when required.
  * @return Zero on success.
  */
-static int tlsio_cli_prepare_stdio(void)
+static int tls_cli_prepare_stdio(void)
 {
 #ifdef _WIN32
     if (_setmode(_fileno(stdin), _O_BINARY) == -1) return 1;
@@ -627,7 +627,7 @@ static int tlsio_cli_prepare_stdio(void)
  * @param closed Set when redirected standard input reached EOF.
  * @return Nonzero when input is ready.
  */
-static int tlsio_cli_windows_stdin_ready(int *closed)
+static int tls_cli_windows_stdin_ready(int *closed)
 {
     HANDLE handle;
     DWORD type;
@@ -671,8 +671,8 @@ static int tlsio_cli_windows_stdin_ready(int *closed)
  * @param watch_stdin Nonzero while standard input remains open.
  * @return Event flags, or negative on error.
  */
-static int tlsio_cli_wait(
-    tlsio_cli_socket_t socket_fd,
+static int tls_cli_wait(
+    tls_cli_socket_t socket_fd,
     int watch_stdin
 )
 {
@@ -688,14 +688,14 @@ static int tlsio_cli_wait(
     timeout.tv_usec = 100000;
     result = select(0, &readable, NULL, NULL, &timeout);
     if (result == SOCKET_ERROR) return -1;
-    events = FD_ISSET(socket_fd, &readable) ? TLSIO_CLI_EVENT_SOCKET : 0;
+    events = FD_ISSET(socket_fd, &readable) ? TLS_CLI_EVENT_SOCKET : 0;
     if (watch_stdin) {
         int closed;
 
-        if (tlsio_cli_windows_stdin_ready(&closed)) {
-            events |= TLSIO_CLI_EVENT_STDIN;
+        if (tls_cli_windows_stdin_ready(&closed)) {
+            events |= TLS_CLI_EVENT_STDIN;
         } else if (closed) {
-            events |= TLSIO_CLI_EVENT_STDIN_CLOSED;
+            events |= TLS_CLI_EVENT_STDIN_CLOSED;
         }
     }
     return events;
@@ -716,31 +716,31 @@ static int tlsio_cli_wait(
         result = select(maximum + 1, &readable, NULL, NULL, NULL);
     } while (result < 0 && errno == EINTR);
     if (result < 0) return -1;
-    events = FD_ISSET(socket_fd, &readable) ? TLSIO_CLI_EVENT_SOCKET : 0;
+    events = FD_ISSET(socket_fd, &readable) ? TLS_CLI_EVENT_SOCKET : 0;
     if (watch_stdin && FD_ISSET(STDIN_FILENO, &readable)) {
-        events |= TLSIO_CLI_EVENT_STDIN;
+        events |= TLS_CLI_EVENT_STDIN;
     }
     return events;
 #endif
 }
 
 /**
- * Receives authenticated plaintext from libtlsio.
+ * Receives authenticated plaintext from libtls.
  * @param data Plaintext bytes.
  * @param data_size Plaintext byte count.
  * @param userdata Relay state.
  * @return void.
  */
-static void tlsio_cli_plaintext(
+static void tls_cli_plaintext(
     const void *data,
     size_t data_size,
     void *userdata
 )
 {
-    tlsio_cli_state_t *state;
+    tls_cli_state_t *state;
 
-    state = (tlsio_cli_state_t *)userdata;
-    if (tlsio_cli_write_stdout(data, data_size) != 0) state->io_failed = 1;
+    state = (tls_cli_state_t *)userdata;
+    if (tls_cli_write_stdout(data, data_size) != 0) state->io_failed = 1;
 }
 
 /**
@@ -750,16 +750,16 @@ static void tlsio_cli_plaintext(
  * @param userdata Relay state.
  * @return void.
  */
-static void tlsio_cli_ciphertext(
+static void tls_cli_ciphertext(
     const void *data,
     size_t data_size,
     void *userdata
 )
 {
-    tlsio_cli_state_t *state;
+    tls_cli_state_t *state;
 
-    state = (tlsio_cli_state_t *)userdata;
-    if (tlsio_cli_socket_send_all(state->socket, data, data_size) != 0) {
+    state = (tls_cli_state_t *)userdata;
+    if (tls_cli_socket_send_all(state->socket, data, data_size) != 0) {
         state->io_failed = 1;
     }
 }
@@ -771,7 +771,7 @@ static void tlsio_cli_ciphertext(
  * @param out_size Output byte count.
  * @return Zero on success.
  */
-static int tlsio_cli_read_file(
+static int tls_cli_read_file(
     const char *path,
     unsigned char **out,
     size_t *out_size
@@ -812,13 +812,13 @@ static int tlsio_cli_read_file(
 }
 
 /**
- * Prints one libtlsio failure.
- * @param status Public libtlsio status.
+ * Prints one libtls failure.
+ * @param status Public libtls status.
  * @return One.
  */
-static int tlsio_cli_tls_error(int status)
+static int tls_cli_tls_error(int status)
 {
-    fprintf(stderr, "tlsio: %s\n", kc_tlsio_strerror(status));
+    fprintf(stderr, "tls: %s\n", kc_tls_strerror(status));
     return 1;
 }
 
@@ -827,53 +827,53 @@ static int tlsio_cli_tls_error(int status)
  * @param state Active relay state.
  * @return Zero on clean TLS shutdown.
  */
-static int tlsio_cli_relay(tlsio_cli_state_t *state)
+static int tls_cli_relay(tls_cli_state_t *state)
 {
-    unsigned char buffer[TLSIO_CLI_BUFFER_SIZE];
+    unsigned char buffer[TLS_CLI_BUFFER_SIZE];
     int stdin_open;
 
     stdin_open = 1;
     for (;;) {
         int events;
 
-        if (state->io_failed) return tlsio_cli_error("transport I/O failed");
-        events = tlsio_cli_wait(state->socket, stdin_open);
-        if (events < 0) return tlsio_cli_error("transport wait failed");
-        if (events & TLSIO_CLI_EVENT_STDIN_CLOSED) stdin_open = 0;
+        if (state->io_failed) return tls_cli_error("transport I/O failed");
+        events = tls_cli_wait(state->socket, stdin_open);
+        if (events < 0) return tls_cli_error("transport wait failed");
+        if (events & TLS_CLI_EVENT_STDIN_CLOSED) stdin_open = 0;
 
-        if (events & TLSIO_CLI_EVENT_SOCKET) {
+        if (events & TLS_CLI_EVENT_SOCKET) {
             int size;
             int status;
 
-            size = tlsio_cli_socket_receive(
+            size = tls_cli_socket_receive(
                 state->socket,
                 buffer,
                 sizeof(buffer)
             );
-            if (size < 0) return tlsio_cli_error("TCP receive failed");
+            if (size < 0) return tls_cli_error("TCP receive failed");
             if (size == 0) {
-                return tlsio_cli_error("TCP closed before TLS close_notify");
+                return tls_cli_error("TCP closed before TLS close_notify");
             }
-            status = kc_tlsio_receive(state->tls, buffer, (size_t)size);
-            if (state->io_failed) return tlsio_cli_error("transport I/O failed");
-            if (status == KC_TLSIO_CLOSED) return 0;
-            if (status != KC_TLSIO_OK) return tlsio_cli_tls_error(status);
+            status = kc_tls_receive(state->tls, buffer, (size_t)size);
+            if (state->io_failed) return tls_cli_error("transport I/O failed");
+            if (status == KC_TLS_CLOSED) return 0;
+            if (status != KC_TLS_OK) return tls_cli_tls_error(status);
         }
 
-        if (stdin_open && (events & TLSIO_CLI_EVENT_STDIN)) {
+        if (stdin_open && (events & TLS_CLI_EVENT_STDIN)) {
             int size;
             int status;
 
-            size = tlsio_cli_read_stdin(buffer, sizeof(buffer));
-            if (size < 0) return tlsio_cli_error("standard input read failed");
+            size = tls_cli_read_stdin(buffer, sizeof(buffer));
+            if (size < 0) return tls_cli_error("standard input read failed");
             if (size == 0) {
                 stdin_open = 0;
                 continue;
             }
-            status = kc_tlsio_send(state->tls, buffer, (size_t)size);
-            if (state->io_failed) return tlsio_cli_error("transport I/O failed");
-            if (status == KC_TLSIO_CLOSED) return 0;
-            if (status != KC_TLSIO_OK) return tlsio_cli_tls_error(status);
+            status = kc_tls_send(state->tls, buffer, (size_t)size);
+            if (state->io_failed) return tls_cli_error("transport I/O failed");
+            if (status == KC_TLS_CLOSED) return 0;
+            if (status != KC_TLS_OK) return tls_cli_tls_error(status);
         }
     }
 }
@@ -888,11 +888,11 @@ static int tlsio_cli_relay(tlsio_cli_state_t *state)
  * @param certificate_size Certificate byte count.
  * @param private_key Optional private-key bytes.
  * @param private_key_size Private-key byte count.
- * @return Public libtlsio status.
+ * @return Public libtls status.
  */
-static int tlsio_cli_open_tls(
-    tlsio_cli_state_t *state,
-    const tlsio_cli_options_t *options,
+static int tls_cli_open_tls(
+    tls_cli_state_t *state,
+    const tls_cli_options_t *options,
     const void *ca,
     size_t ca_size,
     const void *certificate,
@@ -901,7 +901,7 @@ static int tlsio_cli_open_tls(
     size_t private_key_size
 )
 {
-    kc_tlsio_options_t tls_options;
+    kc_tls_options_t tls_options;
 
     memset(&tls_options, 0, sizeof(tls_options));
     tls_options.role = options->role;
@@ -912,11 +912,11 @@ static int tlsio_cli_open_tls(
     tls_options.certificate_size = certificate_size;
     tls_options.private_key = private_key;
     tls_options.private_key_size = private_key_size;
-    return kc_tlsio_open(
+    return kc_tls_open(
         &state->tls,
         &tls_options,
-        tlsio_cli_plaintext,
-        tlsio_cli_ciphertext,
+        tls_cli_plaintext,
+        tls_cli_ciphertext,
         state
     );
 }
@@ -926,40 +926,40 @@ static int tlsio_cli_open_tls(
  * @param options Client options.
  * @return Process status.
  */
-static int tlsio_cli_run_client(const tlsio_cli_options_t *options)
+static int tls_cli_run_client(const tls_cli_options_t *options)
 {
-    tlsio_cli_state_t state;
+    tls_cli_state_t state;
     unsigned char *ca;
     size_t ca_size;
     int status;
     int result;
 
     memset(&state, 0, sizeof(state));
-    state.socket = TLSIO_CLI_INVALID_SOCKET;
+    state.socket = TLS_CLI_INVALID_SOCKET;
     ca = NULL;
     ca_size = 0U;
     if (options->ca_path &&
-        tlsio_cli_read_file(options->ca_path, &ca, &ca_size) != 0) {
-        return tlsio_cli_error_value("cannot read CA file: ", options->ca_path);
+        tls_cli_read_file(options->ca_path, &ca, &ca_size) != 0) {
+        return tls_cli_error_value("cannot read CA file: ", options->ca_path);
     }
-    if (tlsio_cli_socket_runtime_start() != 0) {
+    if (tls_cli_socket_runtime_start() != 0) {
         free(ca);
-        return tlsio_cli_error("cannot initialize socket runtime");
+        return tls_cli_error("cannot initialize socket runtime");
     }
-    state.socket = tlsio_cli_connect(options->network_host, options->port);
-    if (state.socket == TLSIO_CLI_INVALID_SOCKET) {
-        tlsio_cli_socket_runtime_stop();
+    state.socket = tls_cli_connect(options->network_host, options->port);
+    if (state.socket == TLS_CLI_INVALID_SOCKET) {
+        tls_cli_socket_runtime_stop();
         free(ca);
-        return tlsio_cli_error("TCP connection failed");
+        return tls_cli_error("TCP connection failed");
     }
-    if (tlsio_cli_prepare_stdio() != 0) {
-        tlsio_cli_socket_close(state.socket);
-        tlsio_cli_socket_runtime_stop();
+    if (tls_cli_prepare_stdio() != 0) {
+        tls_cli_socket_close(state.socket);
+        tls_cli_socket_runtime_stop();
         free(ca);
-        return tlsio_cli_error("cannot configure standard streams");
+        return tls_cli_error("cannot configure standard streams");
     }
 
-    status = tlsio_cli_open_tls(
+    status = tls_cli_open_tls(
         &state,
         options,
         ca,
@@ -970,18 +970,18 @@ static int tlsio_cli_run_client(const tlsio_cli_options_t *options)
         0U
     );
     free(ca);
-    if (status != KC_TLSIO_OK || state.io_failed) {
-        if (state.tls) kc_tlsio_close(state.tls);
-        tlsio_cli_socket_close(state.socket);
-        tlsio_cli_socket_runtime_stop();
-        if (status != KC_TLSIO_OK) return tlsio_cli_tls_error(status);
-        return tlsio_cli_error("transport I/O failed");
+    if (status != KC_TLS_OK || state.io_failed) {
+        if (state.tls) kc_tls_close(state.tls);
+        tls_cli_socket_close(state.socket);
+        tls_cli_socket_runtime_stop();
+        if (status != KC_TLS_OK) return tls_cli_tls_error(status);
+        return tls_cli_error("transport I/O failed");
     }
 
-    result = tlsio_cli_relay(&state);
-    kc_tlsio_close(state.tls);
-    tlsio_cli_socket_close(state.socket);
-    tlsio_cli_socket_runtime_stop();
+    result = tls_cli_relay(&state);
+    kc_tls_close(state.tls);
+    tls_cli_socket_close(state.socket);
+    tls_cli_socket_runtime_stop();
     return result;
 }
 
@@ -990,10 +990,10 @@ static int tlsio_cli_run_client(const tlsio_cli_options_t *options)
  * @param options Server options.
  * @return Process status.
  */
-static int tlsio_cli_run_server(const tlsio_cli_options_t *options)
+static int tls_cli_run_server(const tls_cli_options_t *options)
 {
-    tlsio_cli_state_t state;
-    tlsio_cli_socket_t listener;
+    tls_cli_state_t state;
+    tls_cli_socket_t listener;
     unsigned char *certificate;
     unsigned char *private_key;
     size_t certificate_size;
@@ -1002,63 +1002,63 @@ static int tlsio_cli_run_server(const tlsio_cli_options_t *options)
     int result;
 
     memset(&state, 0, sizeof(state));
-    state.socket = TLSIO_CLI_INVALID_SOCKET;
-    listener = TLSIO_CLI_INVALID_SOCKET;
+    state.socket = TLS_CLI_INVALID_SOCKET;
+    listener = TLS_CLI_INVALID_SOCKET;
     certificate = NULL;
     private_key = NULL;
     certificate_size = 0U;
     private_key_size = 0U;
 
-    if (tlsio_cli_read_file(
+    if (tls_cli_read_file(
             options->certificate_path,
             &certificate,
             &certificate_size
         ) != 0) {
-        return tlsio_cli_error_value(
+        return tls_cli_error_value(
             "cannot read certificate file: ",
             options->certificate_path
         );
     }
-    if (tlsio_cli_read_file(
+    if (tls_cli_read_file(
             options->private_key_path,
             &private_key,
             &private_key_size
         ) != 0) {
         free(certificate);
-        return tlsio_cli_error_value(
+        return tls_cli_error_value(
             "cannot read private key file: ",
             options->private_key_path
         );
     }
-    if (tlsio_cli_socket_runtime_start() != 0) {
+    if (tls_cli_socket_runtime_start() != 0) {
         free(certificate);
         free(private_key);
-        return tlsio_cli_error("cannot initialize socket runtime");
+        return tls_cli_error("cannot initialize socket runtime");
     }
-    listener = tlsio_cli_listen(options->bind_host, options->port);
-    if (listener == TLSIO_CLI_INVALID_SOCKET) {
-        tlsio_cli_socket_runtime_stop();
+    listener = tls_cli_listen(options->bind_host, options->port);
+    if (listener == TLS_CLI_INVALID_SOCKET) {
+        tls_cli_socket_runtime_stop();
         free(certificate);
         free(private_key);
-        return tlsio_cli_error("TCP listen failed");
+        return tls_cli_error("TCP listen failed");
     }
     state.socket = accept(listener, NULL, NULL);
-    tlsio_cli_socket_close(listener);
-    if (state.socket == TLSIO_CLI_INVALID_SOCKET) {
-        tlsio_cli_socket_runtime_stop();
+    tls_cli_socket_close(listener);
+    if (state.socket == TLS_CLI_INVALID_SOCKET) {
+        tls_cli_socket_runtime_stop();
         free(certificate);
         free(private_key);
-        return tlsio_cli_error("TCP accept failed");
+        return tls_cli_error("TCP accept failed");
     }
-    if (tlsio_cli_prepare_stdio() != 0) {
-        tlsio_cli_socket_close(state.socket);
-        tlsio_cli_socket_runtime_stop();
+    if (tls_cli_prepare_stdio() != 0) {
+        tls_cli_socket_close(state.socket);
+        tls_cli_socket_runtime_stop();
         free(certificate);
         free(private_key);
-        return tlsio_cli_error("cannot configure standard streams");
+        return tls_cli_error("cannot configure standard streams");
     }
 
-    status = tlsio_cli_open_tls(
+    status = tls_cli_open_tls(
         &state,
         options,
         NULL,
@@ -1070,47 +1070,47 @@ static int tlsio_cli_run_server(const tlsio_cli_options_t *options)
     );
     free(certificate);
     free(private_key);
-    if (status != KC_TLSIO_OK || state.io_failed) {
-        if (state.tls) kc_tlsio_close(state.tls);
-        tlsio_cli_socket_close(state.socket);
-        tlsio_cli_socket_runtime_stop();
-        if (status != KC_TLSIO_OK) return tlsio_cli_tls_error(status);
-        return tlsio_cli_error("transport I/O failed");
+    if (status != KC_TLS_OK || state.io_failed) {
+        if (state.tls) kc_tls_close(state.tls);
+        tls_cli_socket_close(state.socket);
+        tls_cli_socket_runtime_stop();
+        if (status != KC_TLS_OK) return tls_cli_tls_error(status);
+        return tls_cli_error("transport I/O failed");
     }
 
-    result = tlsio_cli_relay(&state);
-    kc_tlsio_close(state.tls);
-    tlsio_cli_socket_close(state.socket);
-    tlsio_cli_socket_runtime_stop();
+    result = tls_cli_relay(&state);
+    kc_tls_close(state.tls);
+    tls_cli_socket_close(state.socket);
+    tls_cli_socket_runtime_stop();
     return result;
 }
 
 /**
- * Runs the tlsio CLI.
+ * Runs the tls CLI.
  * @param argc Argument count.
  * @param argv Argument vector.
  * @return Process status.
  */
 int main(int argc, char **argv)
 {
-    tlsio_cli_options_t options;
+    tls_cli_options_t options;
     int index;
 
     for (index = 1; index < argc; index++) {
         if (strcmp(argv[index], "-h") == 0 ||
             strcmp(argv[index], "--help") == 0) {
-            tlsio_cli_help(argv[0]);
+            tls_cli_help(argv[0]);
             return 0;
         }
         if (strcmp(argv[index], "-v") == 0 ||
             strcmp(argv[index], "--version") == 0) {
-            tlsio_cli_version();
+            tls_cli_version();
             return 0;
         }
     }
-    if (tlsio_cli_parse(argc, argv, &options) != 0) return 1;
-    if (options.role == KC_TLSIO_CLIENT) {
-        return tlsio_cli_run_client(&options);
+    if (tls_cli_parse(argc, argv, &options) != 0) return 1;
+    if (options.role == KC_TLS_CLIENT) {
+        return tls_cli_run_client(&options);
     }
-    return tlsio_cli_run_server(&options);
+    return tls_cli_run_server(&options);
 }

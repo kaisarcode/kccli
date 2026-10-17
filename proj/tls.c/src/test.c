@@ -1,5 +1,5 @@
 /**
- * test.c - tlsio CLI contract tests.
+ * test.c - tls CLI contract tests.
  * Summary: Exercises client/server command parsing and metadata behavior.
  *
  * Author:  KaisarCode
@@ -12,7 +12,7 @@
 #include <string.h>
 
 #ifndef KC_CLI_PATH
-#define KC_CLI_PATH "tlsio"
+#define KC_CLI_PATH "tls"
 #endif
 
 #ifdef _WIN32
@@ -21,7 +21,7 @@
 #define DEV_NULL "/dev/null"
 #endif
 
-#define TLSIO_TEST_COUNT 14
+#define TLS_TEST_COUNT 14
 
 static int test_current;
 static int test_failures;
@@ -40,7 +40,7 @@ static void result(const char *name, const char *detail, int ok)
     printf(
         "[%d/%d] [%s] %s: %s\n",
         test_current,
-        TLSIO_TEST_COUNT,
+        TLS_TEST_COUNT,
         ok ? "PASS" : "FAIL",
         name,
         detail
@@ -126,7 +126,7 @@ int main(void)
     );
     printf(
         "\n%d passed, %d failed\n",
-        TLSIO_TEST_COUNT - test_failures,
+        TLS_TEST_COUNT - test_failures,
         test_failures
     );
     return test_failures == 0 ? 0 : 1;
