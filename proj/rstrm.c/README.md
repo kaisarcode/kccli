@@ -34,12 +34,12 @@ rstrm <peer-host> <peer-port> [options]
 Options:
 
 - `--host <host>` selects the local UDP bind host. The default is the wildcard
-  address for the selected peer address family.
+    address for the selected peer address family.
 - `-p, --port <port>` selects the local UDP port. The default is `0`, which lets
-  the operating system choose an ephemeral port.
+    the operating system choose an ephemeral port.
 - `--mtu <bytes>` selects the maximum datagram size passed to `librstrm`.
-  Omitting the option or using `0` selects the library default. Other values are
-  validated by the public library contract.
+    Omitting the option or using `0` selects the library default. Other values
+    are validated by the public library contract.
 - `-h, --help` shows command help.
 - `-v, --version` prints the linked `librstrm` build version.
 
