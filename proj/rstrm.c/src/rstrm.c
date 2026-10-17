@@ -938,7 +938,11 @@ static int rstrm_cli_run(const rstrm_cli_options_t *options)
             );
             break;
         }
-        if (local_shutdown && atomic_load(&state.remote_eof)) break;
+        if (local_shutdown && atomic_load(&state.remote_eof) &&
+            kc_rstrm_shutdown_complete(stream))
+        {
+            break;
+        }
 
         status = rstrm_cli_send_pending(
             stream,

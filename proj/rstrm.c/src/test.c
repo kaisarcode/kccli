@@ -56,6 +56,54 @@ typedef struct {
 
 static int test_current;
 static int test_failures;
+static char test_dir[1024];
+
+/**
+ * Joins one temporary-test path.
+ * @param out Destination path buffer.
+ * @param cap Destination path capacity.
+ * @param name Filename inside the temporary directory.
+ * @return Nonzero on success.
+ */
+static int test_path(char *out, size_t cap, const char *name)
+{
+    int count;
+
+#ifdef _WIN32
+    count = snprintf(out, cap, "%s\\%s", test_dir, name);
+#else
+    count = snprintf(out, cap, "%s/%s", test_dir, name);
+#endif
+    return count > 0 && (size_t)count < cap;
+}
+
+/**
+ * Creates one isolated temporary directory for integration-test files.
+ * @return Nonzero on success.
+ */
+static int test_dir_create(void)
+{
+#ifdef _WIN32
+    char base[MAX_PATH];
+    char path[MAX_PATH];
+
+    if (!GetTempPathA((DWORD)sizeof(base), base)) return 0;
+    if (!GetTempFileNameA(base, "kcc", 0, path)) return 0;
+    (void)DeleteFileA(path);
+    if (!CreateDirectoryA(path, NULL) || strlen(path) + 1U > sizeof(test_dir)) {
+        return 0;
+    }
+    strcpy(test_dir, path);
+    return 1;
+#else
+    char path[] = "/tmp/kccli-rstrm-XXXXXX";
+    char *dir = mkdtemp(path);
+
+    if (!dir || strlen(dir) + 1U > sizeof(test_dir)) return 0;
+    strcpy(test_dir, dir);
+    return 1;
+#endif
+}
 
 /**
  * Prints one test result.
@@ -360,20 +408,35 @@ static int one_way_test(void)
     test_command_t receiver;
     test_thread_t receiver_thread;
     char sender[4096];
+    char input[1024];
+    char output[1024];
+    char empty[1024];
+    char sender_error[1024];
+    char receiver_error[1024];
     int sender_status;
 
     if (!test_ports(&sender_port, &receiver_port)) return 0;
-    if (!write_payload("rstrm-test-one.bin", 262161U, 17U)) return 0;
+    if (!test_path(input, sizeof(input), "one.bin") ||
+        !test_path(output, sizeof(output), "one.out") ||
+        !test_path(empty, sizeof(empty), "empty.out") ||
+        !test_path(sender_error, sizeof(sender_error), "one-a.err") ||
+        !test_path(receiver_error, sizeof(receiver_error), "one-b.err") ||
+        !write_payload(input, 262161U, 17U))
+    {
+        return 0;
+    }
     memset(&receiver, 0, sizeof(receiver));
     receiver.status = 1;
     snprintf(
         receiver.command,
         sizeof(receiver.command),
         "\"%s\" 127.0.0.1 %u --host 127.0.0.1 -p %u "
-        "< " DEV_NULL " > rstrm-test-one.out 2> rstrm-test-one-b.err",
+        "< " DEV_NULL " > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)sender_port,
-        (unsigned)receiver_port
+        (unsigned)receiver_port,
+        output,
+        receiver_error
     );
     if (!start_command_thread(&receiver_thread, &receiver)) return 0;
     test_sleep(100U);
@@ -381,17 +444,18 @@ static int one_way_test(void)
         sender,
         sizeof(sender),
         "\"%s\" 127.0.0.1 %u --host 127.0.0.1 -p %u --mtu 1200 "
-        "< rstrm-test-one.bin > rstrm-test-empty.out "
-        "2> rstrm-test-one-a.err",
+        "< \"%s\" > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)receiver_port,
-        (unsigned)sender_port
+        (unsigned)sender_port,
+        input,
+        empty,
+        sender_error
     );
     sender_status = system(sender);
     join_command_thread(receiver_thread);
     return sender_status == 0 && receiver.status == 0 &&
-        files_equal("rstrm-test-one.bin", "rstrm-test-one.out") &&
-        file_is_empty("rstrm-test-empty.out");
+        files_equal(input, output) && file_is_empty(empty);
 }
 
 /**
@@ -406,10 +470,25 @@ static int full_duplex_test(void)
     test_command_t second;
     test_thread_t first_thread;
     test_thread_t second_thread;
+    char first_input[1024];
+    char second_input[1024];
+    char first_output[1024];
+    char second_output[1024];
+    char first_error[1024];
+    char second_error[1024];
 
     if (!test_ports(&first_port, &second_port)) return 0;
-    if (!write_payload("rstrm-test-a.bin", 131101U, 29U)) return 0;
-    if (!write_payload("rstrm-test-b.bin", 147509U, 83U)) return 0;
+    if (!test_path(first_input, sizeof(first_input), "a.bin") ||
+        !test_path(second_input, sizeof(second_input), "b.bin") ||
+        !test_path(first_output, sizeof(first_output), "a.out") ||
+        !test_path(second_output, sizeof(second_output), "b.out") ||
+        !test_path(first_error, sizeof(first_error), "a.err") ||
+        !test_path(second_error, sizeof(second_error), "b.err") ||
+        !write_payload(first_input, 131101U, 29U) ||
+        !write_payload(second_input, 147509U, 83U))
+    {
+        return 0;
+    }
     memset(&first, 0, sizeof(first));
     memset(&second, 0, sizeof(second));
     first.status = 1;
@@ -417,20 +496,24 @@ static int full_duplex_test(void)
     snprintf(
         first.command,
         sizeof(first.command),
-        "\"%s\" 127.0.0.1 %u -p %u < rstrm-test-a.bin "
-        "> rstrm-test-a.out 2> rstrm-test-a.err",
+        "\"%s\" 127.0.0.1 %u -p %u < \"%s\" > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)second_port,
-        (unsigned)first_port
+        (unsigned)first_port,
+        first_input,
+        first_output,
+        first_error
     );
     snprintf(
         second.command,
         sizeof(second.command),
-        "\"%s\" 127.0.0.1 %u -p %u < rstrm-test-b.bin "
-        "> rstrm-test-b.out 2> rstrm-test-b.err",
+        "\"%s\" 127.0.0.1 %u -p %u < \"%s\" > \"%s\" 2> \"%s\"",
         KC_CLI_PATH,
         (unsigned)first_port,
-        (unsigned)second_port
+        (unsigned)second_port,
+        second_input,
+        second_output,
+        second_error
     );
     if (!start_command_thread(&first_thread, &first)) return 0;
     if (!start_command_thread(&second_thread, &second)) {
@@ -440,8 +523,8 @@ static int full_duplex_test(void)
     join_command_thread(first_thread);
     join_command_thread(second_thread);
     return first.status == 0 && second.status == 0 &&
-        files_equal("rstrm-test-b.bin", "rstrm-test-a.out") &&
-        files_equal("rstrm-test-a.bin", "rstrm-test-b.out");
+        files_equal(second_input, first_output) &&
+        files_equal(first_input, second_output);
 }
 
 /**
@@ -450,17 +533,21 @@ static int full_duplex_test(void)
  */
 static void cleanup(void)
 {
-    remove("rstrm-test-one.bin");
-    remove("rstrm-test-one.out");
-    remove("rstrm-test-empty.out");
-    remove("rstrm-test-one-a.err");
-    remove("rstrm-test-one-b.err");
-    remove("rstrm-test-a.bin");
-    remove("rstrm-test-b.bin");
-    remove("rstrm-test-a.out");
-    remove("rstrm-test-b.out");
-    remove("rstrm-test-a.err");
-    remove("rstrm-test-b.err");
+    static const char *names[] = {
+        "one.bin", "one.out", "empty.out", "one-a.err", "one-b.err",
+        "a.bin", "b.bin", "a.out", "b.out", "a.err", "b.err"
+    };
+    char path[1024];
+    size_t index;
+
+    for (index = 0U; index < sizeof(names) / sizeof(names[0]); index++) {
+        if (test_path(path, sizeof(path), names[index])) (void)remove(path);
+    }
+#ifdef _WIN32
+    (void)RemoveDirectoryA(test_dir);
+#else
+    (void)rmdir(test_dir);
+#endif
 }
 
 /**
@@ -471,6 +558,7 @@ int main(void)
 {
     test_current = 0;
     test_failures = 0;
+    if (!test_dir_create()) return 1;
 
     result("help", "--help succeeds", run("--help") == 0);
     result("short help", "-h succeeds", run("-h") == 0);
