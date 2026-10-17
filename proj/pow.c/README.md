@@ -11,6 +11,20 @@ Create a challenge:
 pow challenge 1000000 > challenge.pow
 ```
 
+The default is libpow's portable SHA-256 backend. It may also be selected
+explicitly:
+
+```bash
+pow challenge 1000000 --backend sha256 > challenge.pow
+```
+
+HashWX is an alternative backend and must be selected explicitly when it is
+available in the linked libpow build:
+
+```bash
+pow challenge 1000000 --backend hashwx > challenge.pow
+```
+
 Solve it:
 
 ```bash
@@ -33,12 +47,19 @@ Usage: pow <challenge|solve|verify> [arguments] [options]
 Options:
   -i, --input <file>      Read command input from file
   -c, --challenge <file>  Read verify challenge from file
+  -b, --backend <name>    Select challenge backend: auto, sha256, hashwx
   -h, --help              Show this help
   -v, --version           Show version
 ```
 
 `challenge <effort>` creates a new challenge. `effort` is the approximate
 expected number of nonce attempts, so higher values represent more work.
+`--backend` is valid only with `challenge`. `auto` resolves to SHA-256, which
+is also libpow's default. HashWX is never selected automatically.
+
+The selected backend is encoded in the challenge. Therefore `solve` and
+`verify` do not accept a backend option and use the backend carried by their
+challenge input.
 
 `solve` reads its challenge from redirected stdin before `--input` when both are
 available. `verify` reads the challenge from `--challenge`; its solution input

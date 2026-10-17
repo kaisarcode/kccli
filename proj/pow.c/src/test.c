@@ -23,7 +23,7 @@
 #define CAT_FILE "cat"
 #endif
 
-#define POW_TEST_COUNT 20
+#define POW_TEST_COUNT 29
 
 static int test_current;
 static int test_failures;
@@ -126,6 +126,27 @@ int main(void)
         run("challenge nope > " DEV_NULL " 2>&1") != 0);
     result("challenge-options", "challenge rejects input option",
         run("challenge 1 -i input > " DEV_NULL " 2>&1") != 0);
+    result("backend-auto", "creates a challenge with AUTO",
+        run("challenge 1 --backend auto > pow-test-challenge-auto.bin") == 0);
+    result("backend-sha256", "creates a challenge with explicit SHA-256",
+        run("challenge 1 --backend sha256 > pow-test-challenge-sha256.bin") == 0);
+    result("backend-short", "creates a challenge with short SHA-256 option",
+        run("challenge 1 -b sha256 > pow-test-challenge-short.bin") == 0);
+    result("backend-invalid", "unknown backend fails with a diagnostic",
+        run("challenge 1 --backend unknown > " DEV_NULL " 2> pow-test-backend.err") != 0 &&
+        file_contains("pow-test-backend.err", "invalid backend: unknown"));
+    result("backend-missing", "missing long backend value fails",
+        run("challenge 1 --backend > " DEV_NULL " 2>&1") != 0);
+    result("backend-short-missing", "missing short backend value fails",
+        run("challenge 1 -b > " DEV_NULL " 2>&1") != 0);
+    result("backend-duplicate", "duplicate backend option fails",
+        run("challenge 1 --backend sha256 --backend hashwx > " DEV_NULL " 2>&1") != 0);
+    result("solve-backend", "solve rejects backend selection",
+        run("solve --backend sha256 > " DEV_NULL " 2> pow-test-solve-backend.err") != 0 &&
+        file_contains("pow-test-solve-backend.err", "only valid for challenge"));
+    result("verify-backend", "verify rejects backend selection",
+        run("verify --backend sha256 -c missing > " DEV_NULL " 2> pow-test-verify-backend.err") != 0 &&
+        file_contains("pow-test-verify-backend.err", "only valid for challenge"));
     result("challenge-a", "creates challenge A",
         run("challenge 4 > pow-test-challenge-a.bin") == 0);
     result("challenge-b", "creates hard challenge B",
@@ -161,6 +182,12 @@ int main(void)
         run("verify -i pow-test-solution-a.bin > " DEV_NULL " 2>&1") != 0);
 
     remove("pow-test-invalid.err");
+    remove("pow-test-backend.err");
+    remove("pow-test-solve-backend.err");
+    remove("pow-test-verify-backend.err");
+    remove("pow-test-challenge-short.bin");
+    remove("pow-test-challenge-sha256.bin");
+    remove("pow-test-challenge-auto.bin");
     remove("pow-test-junk.bin");
     remove("pow-test-solution-precedence.bin");
     remove("pow-test-solution-stdin.bin");

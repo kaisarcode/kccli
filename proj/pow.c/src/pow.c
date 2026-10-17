@@ -39,6 +39,7 @@ static void pow_cli_usage(const char *name)
     printf("Options:\n");
     printf("  -i, --input <file>      Read command input from file\n");
     printf("  -c, --challenge <file>  Read verify challenge from file\n");
+    printf("  -b, --backend <name>    Select challenge backend: auto, sha256, hashwx\n");
     printf("  -h, --help              Show this help\n");
     printf("  -v, --version           Show version\n");
 }
@@ -203,10 +204,12 @@ static int pow_cli_parse_effort(const char *text, uint64_t *out)
 /**
  * Executes the challenge command.
  * @param effort_text Effort string to parse.
+ * @param backend_name Optional requested backend name.
  * @return 0 on success, 1 on failure.
  */
-static int pow_cli_challenge(const char *effort_text)
+static int pow_cli_challenge(const char *effort_text, const char *backend_name)
 {
+    kc_pow_backend_t backend;
     uint64_t effort;
     void *challenge = NULL;
     size_t challenge_size = 0;
@@ -216,7 +219,22 @@ static int pow_cli_challenge(const char *effort_text)
         fprintf(stderr, "pow: invalid effort\n");
         return 1;
     }
-    if (kc_pow_challenge(effort, &challenge, &challenge_size) != KC_POW_OK) {
+    if (!backend_name) {
+        status = kc_pow_challenge(effort, &challenge, &challenge_size);
+    } else {
+        backend = kc_pow_backend_from_name(backend_name);
+        if (backend == KC_POW_BACKEND_INVALID) {
+            fprintf(stderr, "pow: invalid backend: %s\n", backend_name);
+            return 1;
+        }
+        if (!kc_pow_backend_available(backend)) {
+            fprintf(stderr, "pow: backend unavailable: %s\n", backend_name);
+            return 1;
+        }
+        status = kc_pow_challenge_with_backend(backend, effort, &challenge,
+            &challenge_size);
+    }
+    if (status != KC_POW_OK) {
         fprintf(stderr, "pow: challenge failed\n");
         goto done;
     }
@@ -311,6 +329,7 @@ int main(int argc, char **argv)
     const char *command = NULL;
     const char *input_path = NULL;
     const char *challenge_path = NULL;
+    const char *backend_name = NULL;
     const char *positionals[2];
     int positional_count = 0;
 
@@ -346,6 +365,14 @@ int main(int argc, char **argv)
                 return 1;
             }
             challenge_path = argv[i];
+        } else if (strcmp(argv[i], "-b") == 0 ||
+            strcmp(argv[i], "--backend") == 0)
+        {
+            if (++i >= argc || !argv[i][0] || backend_name) {
+                fprintf(stderr, "pow: --backend requires one name\n");
+                return 1;
+            }
+            backend_name = argv[i];
         } else if (strcmp(argv[i], "-h") == 0 ||
             strcmp(argv[i], "--help") == 0 ||
             strcmp(argv[i], "-v") == 0 ||
@@ -370,12 +397,16 @@ int main(int argc, char **argv)
         fprintf(stderr, "pow: missing command\n");
         return 1;
     }
+    if (backend_name && strcmp(command, "challenge") != 0) {
+        fprintf(stderr, "pow: --backend is only valid for challenge\n");
+        return 1;
+    }
     if (strcmp(command, "challenge") == 0) {
         if (positional_count != 1 || input_path || challenge_path) {
             fprintf(stderr, "pow: challenge requires one effort\n");
             return 1;
         }
-        return pow_cli_challenge(positionals[0]);
+        return pow_cli_challenge(positionals[0], backend_name);
     }
     if (strcmp(command, "solve") == 0) {
         if (positional_count != 0 || challenge_path) {
